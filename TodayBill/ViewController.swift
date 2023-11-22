@@ -9,8 +9,6 @@ import UIKit
 class ViewController: UIViewController {
     var dataBills : [Bills] = []
     
-    
-    
     lazy var dateView: UICalendarView = {
         var view = UICalendarView()
         view.translatesAutoresizingMaskIntoConstraints = false
@@ -35,7 +33,7 @@ class ViewController: UIViewController {
         dateView.selectionBehavior = dateSelection
     }
     
-    fileprivate func applyConstraints() {
+    func applyConstraints() {
         view.addSubview(dateView)
         
         let dateViewConstraints = [
@@ -50,25 +48,37 @@ class ViewController: UIViewController {
         if let date = date {
             let calendar = Calendar.current
             let dateComponents = calendar.dateComponents([.day, .month, .year], from: date)
-            // selectedDate 업데이트를 reloadDateView 이전으로 이동
             selectedDate = dateComponents
             dateView.reloadDecorations(forDateComponents: [dateComponents], animated: true)
         }
     }
-    
-    
-    
 }
 
 extension ViewController: UICalendarViewDelegate, UICalendarSelectionSingleDateDelegate {
     
-    // UICalendarView
     func calendarView(_ calendarView: UICalendarView, decorationFor dateComponents: DateComponents) -> UICalendarView.Decoration? {
-        return nil
-    }
+            guard let selectedDate = Calendar.current.date(from: dateComponents) else {
+                return nil
+            }
 
+            let count = countOfBillsForSelectedDate(selectedDate: selectedDate)
 
-    
+            if count > 0 {
+                return .customView {
+                    let label = UILabel()
+                    label.text = "\(count)"
+                    label.textAlignment = .center
+                    label.textColor = .blue
+                    label.layer.cornerRadius = label.frame.size.width / 2
+                    label.clipsToBounds = true
+                    print(count)
+                    return label
+                }
+            }
+
+            return nil
+        }
+
     // 달력에서 날짜 선택했을 경우
     func dateSelection(_ selection: UICalendarSelectionSingleDate, didSelectDate dateComponents: DateComponents?) {
         selection.setSelected(dateComponents, animated: true)
@@ -79,78 +89,43 @@ extension ViewController: UICalendarViewDelegate, UICalendarSelectionSingleDateD
         
         if let date = Calendar.current.date(from: dateComponents!) {
             
-            let modalViewController = BillModalViewController(date: date)
+            let modalViewController = BillModalViewController(date: date,dataBills: dataBills)
             if let sheet = modalViewController.sheetPresentationController {
                 sheet.detents = [.medium(), .large()]
+                sheet.prefersGrabberVisible = true
+                sheet.preferredCornerRadius = 20
+                sheet.prefersScrollingExpandsWhenScrolledToEdge = true
             }
             present(modalViewController, animated: true)
         }
     }
     
-   
-}
+    func countOfBillsForSelectedDate(selectedDate: Date) -> Int {
+        let formattedDate = dateFormattedString(from: selectedDate)
 
-extension ViewController {
-    func fetchBill(){
-        guard var url = URLComponents(string: "https://open.assembly.go.kr/portal/openapi/nzmimeepazxkubdpn") else {return}
-        
-        guard let key = Bundle.main.object(forInfoDictionaryKey: "serviceKey") as? String else {return}
-        let serviceKey = key
-        print(key)
-        
-        
-        
-        // 키-값 쌍 생성
-        url.queryItems = [
-            URLQueryItem(name: "key", value: serviceKey),
-            URLQueryItem(name: "Type", value: "json"),
-            URLQueryItem(name: "pIndex", value: "1"),
-            URLQueryItem(name: "pSize", value: "150"),
-            URLQueryItem(name: "AGE", value: "21")
-        ]
-        
-        guard let requestUrl = url.url else { return }
-        
-        var request = URLRequest(url: requestUrl)
-        request.httpMethod = "GET"
-        
-        let dataTask = URLSession.shared.dataTask(with: request) {[weak self] data,response,error in
-            guard error == nil,
-                  let self = self,
-                  let response = response as? HTTPURLResponse,
-                  let data = data,
-                  let bills = try? JSONDecoder().decode(Bills.self, from: data) else {
-                print("ERROR: URLSession data task \(error?.localizedDescription ?? "")")
-                
-                return
+        let billsForSelectedDate = dataBills.compactMap { bills in
+            return bills.nzmimeepazxkubdpn.flatMap { bill in
+                let selectedBills = bill.row?.filter {
+//                    print("PROPOSE_DT: \($0.PROPOSE_DT), formattedDate: \(formattedDate)")
+                    return $0.PROPOSE_DT == formattedDate
+                }
+                return selectedBills
             }
-            
-            switch response.statusCode{
-            case (200...299)://성공
-                self.dataBills += [bills]
-                print(dataBills)
-            case (400...499): //클라이언트 에러
-                print("""
-                    ERROR: Client ERROR\(response.statusCode)
-                    Response: \(response)
-                """)
-            case(500...599): //서버 에러
-                print("""
-                    ERROR: Serever ERROR\(response.statusCode)
-                    Response: \(response)
-                """)
-            default:
-                print("""
-                    ERROR:\(response.statusCode)
-                    Response: \(response)
-                """)
-            }
-            }
-        dataTask.resume()
-        }
-        
+        }.flatMap { $0 }
+
+//        print("Bills for \(formattedDate): \(billsForSelectedDate)")
+
+        return billsForSelectedDate.count
     }
+
+
     
+    func dateFormattedString(from date: Date) -> String {
+        let dateFormatter = DateFormatter()
+        dateFormatter.dateFormat = "yyyy-MM-dd"
+        dateFormatter.locale = Locale(identifier: "ko_KR")
+        dateFormatter.timeZone = TimeZone(identifier: "Asia/Seoul")
 
-
-
+        return dateFormatter.string(from: date)
+    }
+}
