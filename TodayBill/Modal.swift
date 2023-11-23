@@ -12,7 +12,7 @@ class BillModalViewController: UIViewController,UISearchBarDelegate  {
     
     var date: Date
     var dataRows = [Row]()
-    var filteredData: [Bills] = []
+
     
     var searchBar = UISearchBar()
     var tableView = UITableView()
@@ -36,7 +36,7 @@ class BillModalViewController: UIViewController,UISearchBarDelegate  {
         
         searchBar.delegate = self
         searchBar.translatesAutoresizingMaskIntoConstraints = false
-
+        
         searchBar.layer.cornerRadius = 10
         searchBar.clipsToBounds = true
         
@@ -51,11 +51,10 @@ class BillModalViewController: UIViewController,UISearchBarDelegate  {
         
         
         
-
-        
-        
         // date를 한국 표준시(KST) 형식으로 포맷팅하여 표시
         let formattedDate = dateFormattedString(from: date)
+        
+        
         
         view.backgroundColor = .white
         
@@ -71,17 +70,12 @@ class BillModalViewController: UIViewController,UISearchBarDelegate  {
             label.centerYAnchor.constraint(equalTo: view.centerYAnchor)
         ])
         
-
-
         
+        print(dataRows)
         
-
-
-
-
-
         
     }
+    
     
     func dateFormattedString(from date: Date) -> String {
         let dateFormatter = DateFormatter()

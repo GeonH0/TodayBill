@@ -15,7 +15,7 @@ extension ViewController {
             URLQueryItem(name: "key", value: serviceKey),
             URLQueryItem(name: "Type", value: "json"),
             URLQueryItem(name: "pIndex", value: "1"),
-            URLQueryItem(name: "pSize", value: "150"),
+            URLQueryItem(name: "pSize", value: "500"),
             URLQueryItem(name: "AGE", value: "21")
         ]
         
@@ -42,8 +42,9 @@ extension ViewController {
                                 // Optional 값 처리 후 중첩 컬렉션 평탄화
                                 let rows = bills.nzmimeepazxkubdpn.compactMap { $0.row }.flatMap { $0 }
                                 self.dataRows += rows
+                    
                     DispatchQueue.main.async {
-                        
+                        self.reloadDateView(date: Date())
                     }
                             }
                 

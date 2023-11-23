@@ -72,7 +72,6 @@ extension ViewController: UICalendarViewDelegate, UICalendarSelectionSingleDateD
                     label.textColor = .blue
                     label.layer.cornerRadius = label.frame.size.width / 2
                     label.clipsToBounds = true
-                    print(count)
                     return label
                 }
             }
@@ -85,12 +84,13 @@ extension ViewController: UICalendarViewDelegate, UICalendarSelectionSingleDateD
         selection.setSelected(dateComponents, animated: true)
         
         selectedDate = dateComponents
+        
 
         reloadDateView(date: Calendar.current.date(from: dateComponents!))
         
         if let date = Calendar.current.date(from: dateComponents!) {
-            
-            let modalViewController = BillModalViewController(date: date,dataRows: dataRows)
+            let filteredData = filterDataForSelectedDate(selectedDate: date)
+            let modalViewController = BillModalViewController(date: date,dataRows: filteredData)
             if let sheet = modalViewController.sheetPresentationController {
                 sheet.detents = [.medium(), .large()]
                 sheet.prefersGrabberVisible = true
@@ -99,6 +99,16 @@ extension ViewController: UICalendarViewDelegate, UICalendarSelectionSingleDateD
             }
             present(modalViewController, animated: true)
         }
+    }
+    
+    func filterDataForSelectedDate(selectedDate: Date) -> [Row] {
+        let formattedDate = dateFormattedString(from: selectedDate)
+
+        let filteredData = dataRows.filter {
+            return $0.PROPOSE_DT == formattedDate
+        }
+
+        return filteredData
     }
     
     func countOfBillsForSelectedDate(selectedDate: Date) -> Int {
