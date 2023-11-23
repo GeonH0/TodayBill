@@ -28,8 +28,8 @@ extension ViewController {
             guard error == nil,
                   let self = self,
                   let response = response as? HTTPURLResponse,
-                  let data = data,
-                  let bills = try? JSONDecoder().decode(Bills.self, from: data) else {
+                  let data = data
+                  /*let bills = try? JSONDecoder().decode(Bills.self, from: data)*/ else {
                 print("ERROR: URLSession data task \(error?.localizedDescription ?? "")")
                 
                 return
@@ -37,7 +37,15 @@ extension ViewController {
             
             switch response.statusCode{
             case (200...299)://성공
-                self.dataBills += [bills]
+//                self.dataBills += [bills]
+                if let bills = try? JSONDecoder().decode(Bills.self, from: data) {
+                                // Optional 값 처리 후 중첩 컬렉션 평탄화
+                                let rows = bills.nzmimeepazxkubdpn.compactMap { $0.row }.flatMap { $0 }
+                                self.dataRows += rows
+                    DispatchQueue.main.async {
+                        
+                    }
+                            }
                 
             case (400...499): //클라이언트 에러
                 print("""

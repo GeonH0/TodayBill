@@ -1,5 +1,5 @@
 struct Bills: Codable {
-    let nzmimeepazxkubdpn: [Nzmimeepazxkubdpn]
+    let nzmimeepazxkubdpn: [Nzmimeepazxkubdpn]    
 }
 
 struct Nzmimeepazxkubdpn: Codable {

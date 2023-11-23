@@ -7,7 +7,8 @@
 import UIKit
 
 class ViewController: UIViewController {
-    var dataBills : [Bills] = []
+    
+    var dataRows = [Row]()
     
     lazy var dateView: UICalendarView = {
         var view = UICalendarView()
@@ -89,12 +90,12 @@ extension ViewController: UICalendarViewDelegate, UICalendarSelectionSingleDateD
         
         if let date = Calendar.current.date(from: dateComponents!) {
             
-            let modalViewController = BillModalViewController(date: date,dataBills: dataBills)
+            let modalViewController = BillModalViewController(date: date,dataRows: dataRows)
             if let sheet = modalViewController.sheetPresentationController {
                 sheet.detents = [.medium(), .large()]
                 sheet.prefersGrabberVisible = true
                 sheet.preferredCornerRadius = 20
-                sheet.prefersScrollingExpandsWhenScrolledToEdge = true
+                sheet.prefersScrollingExpandsWhenScrolledToEdge = false
             }
             present(modalViewController, animated: true)
         }
@@ -103,17 +104,9 @@ extension ViewController: UICalendarViewDelegate, UICalendarSelectionSingleDateD
     func countOfBillsForSelectedDate(selectedDate: Date) -> Int {
         let formattedDate = dateFormattedString(from: selectedDate)
 
-        let billsForSelectedDate = dataBills.compactMap { bills in
-            return bills.nzmimeepazxkubdpn.flatMap { bill in
-                let selectedBills = bill.row?.filter {
-//                    print("PROPOSE_DT: \($0.PROPOSE_DT), formattedDate: \(formattedDate)")
-                    return $0.PROPOSE_DT == formattedDate
-                }
-                return selectedBills
-            }
-        }.flatMap { $0 }
-
-//        print("Bills for \(formattedDate): \(billsForSelectedDate)")
+        let billsForSelectedDate = dataRows.filter {
+            return $0.PROPOSE_DT == formattedDate
+        }
 
         return billsForSelectedDate.count
     }

@@ -7,17 +7,21 @@
 
 import UIKit
 
-class BillModalViewController: UIViewController,UISearchBarDelegate {
+class BillModalViewController: UIViewController,UISearchBarDelegate  {
+    
+    
     var date: Date
-    var dataBills: [Bills]
+    var dataRows = [Row]()
+    var filteredData: [Bills] = []
     
     var searchBar = UISearchBar()
+    var tableView = UITableView()
 
     
     
-    init(date: Date,dataBills : [Bills]) {
+    init(date: Date,dataRows : [Row]) {
         self.date = date
-        self.dataBills = dataBills
+        self.dataRows = dataRows
         super.init(nibName: nil, bundle: nil)
     }
     
@@ -45,6 +49,8 @@ class BillModalViewController: UIViewController,UISearchBarDelegate {
         ])
         
         
+        
+        
 
         
         
@@ -67,16 +73,8 @@ class BillModalViewController: UIViewController,UISearchBarDelegate {
         
 
 
-        let billsWithSameDate = dataBills.compactMap { bills in
-            return bills.nzmimeepazxkubdpn.compactMap { bill in
-                return bill.row?.filter { $0.PROPOSE_DT == formattedDate }
-            }
-        }.flatMap { $0.flatMap { $0 } }
-
-        for row in billsWithSameDate {
-            print(row.BILL_NAME,row.PROPOSE_DT)
-            
-        }
+        
+        
 
 
 
