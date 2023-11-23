@@ -7,7 +7,7 @@
 
 import UIKit
 
-class BillModalViewController: UIViewController,UISearchBarDelegate  {
+class BillModalViewController: UIViewController,UISearchBarDelegate, UICollectionViewDataSource, UICollectionViewDelegateFlowLayout  {
     
     
     var date: Date
@@ -16,6 +16,7 @@ class BillModalViewController: UIViewController,UISearchBarDelegate  {
     
     var searchBar = UISearchBar()
     var tableView = UITableView()
+    var collectionView: UICollectionView!
 
     
     
@@ -31,6 +32,9 @@ class BillModalViewController: UIViewController,UISearchBarDelegate  {
     
     override func viewDidLoad() {
         super.viewDidLoad()
+        setupSearchBar()
+        setupCollectionView()
+        
         
         
         
@@ -58,20 +62,39 @@ class BillModalViewController: UIViewController,UISearchBarDelegate  {
         
         view.backgroundColor = .white
         
-        let label = UILabel()
-        label.text = "선택한 날짜: \(formattedDate)"
-        label.textAlignment = .center
-        label.translatesAutoresizingMaskIntoConstraints = false
         
-        view.addSubview(label)
+        func setupSearchBar() {
+                searchBar.delegate = self
+                searchBar.translatesAutoresizingMaskIntoConstraints = false
+                searchBar.layer.cornerRadius = 10
+                searchBar.clipsToBounds = true
+                view.addSubview(searchBar)
+                
+                NSLayoutConstraint.activate([
+                    searchBar.topAnchor.constraint(equalTo: view.topAnchor),
+                    searchBar.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+                    searchBar.trailingAnchor.constraint(equalTo: view.trailingAnchor)
+                ])
+            }
         
-        NSLayoutConstraint.activate([
-            label.centerXAnchor.constraint(equalTo: view.centerXAnchor),
-            label.centerYAnchor.constraint(equalTo: view.centerYAnchor)
-        ])
         
-        
-        print(dataRows)
+        func setupCollectionView() {
+            let layout = UICollectionViewFlowLayout()
+            collectionView = UICollectionView(frame: view.bounds, collectionViewLayout: layout)
+            collectionView.dataSource = self
+            collectionView.delegate = self
+            collectionView.register(UICollectionViewCell.self, forCellWithReuseIdentifier: "cell")
+            collectionView.backgroundColor = .white
+            collectionView.translatesAutoresizingMaskIntoConstraints = false
+            view.addSubview(collectionView)
+            
+            NSLayoutConstraint.activate([
+                collectionView.topAnchor.constraint(equalTo: searchBar.bottomAnchor),
+                collectionView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+                collectionView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+                collectionView.bottomAnchor.constraint(equalTo: view.bottomAnchor)
+            ])
+        }
         
         
     }
@@ -85,6 +108,44 @@ class BillModalViewController: UIViewController,UISearchBarDelegate  {
         
         return dateFormatter.string(from: date)
     }
+    func collectionView(_ collectionView: UICollectionView, numberOfItemsInSection section: Int) -> Int {
+        return dataRows.count
+    }
+
+    func collectionView(_ collectionView: UICollectionView, cellForItemAt indexPath: IndexPath) -> UICollectionViewCell {
+        let cell = collectionView.dequeueReusableCell(withReuseIdentifier: "cell", for: indexPath)
+        
+        // 기존의 셀 하위 뷰들을 제거합니다.
+        for subview in cell.contentView.subviews {
+            subview.removeFromSuperview()
+        }
+        
+        let label = UILabel()
+        label.text = dataRows[indexPath.item].BILL_NAME // 원하는 텍스트 값을 설정합니다.
+        label.textAlignment = .center
+        label.translatesAutoresizingMaskIntoConstraints = false
+        
+        cell.contentView.addSubview(label)
+        
+        NSLayoutConstraint.activate([
+            label.topAnchor.constraint(equalTo: cell.contentView.topAnchor),
+            label.leadingAnchor.constraint(equalTo: cell.contentView.leadingAnchor),
+            label.trailingAnchor.constraint(equalTo: cell.contentView.trailingAnchor),
+            label.bottomAnchor.constraint(equalTo: cell.contentView.bottomAnchor)
+        ])
+        
+        return cell
+    }
+
+
+
+    // MARK: - UICollectionViewDelegateFlowLayout
+
+    func collectionView(_ collectionView: UICollectionView, layout collectionViewLayout: UICollectionViewLayout, sizeForItemAt indexPath: IndexPath) -> CGSize {
+        // Set the size of each cell
+        return CGSize(width: collectionView.bounds.width, height: 50)
+    }
+    
     
 
     
