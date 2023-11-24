@@ -158,10 +158,21 @@ class BillModalViewController: UIViewController,UISearchBarDelegate, UICollectio
 
     func collectionView(_ collectionView: UICollectionView, layout collectionViewLayout: UICollectionViewLayout, sizeForItemAt indexPath: IndexPath) -> CGSize {
         // Set the size of each cell
-        let padding: CGFloat = 20 // sectionInset에서 설정한 왼쪽, 오른쪽 여백
+        let padding: CGFloat = 10 // sectionInset에서 설정한 왼쪽, 오른쪽 여백
         let cellWidth = collectionView.bounds.width - padding * 2 // padding을 뺀 너비
         return CGSize(width: cellWidth, height: 50)
     }
+    
+    func collectionView(_ collectionView: UICollectionView, didSelectItemAt indexPath: IndexPath) {
+        let selectedRow = dataRows[indexPath.item]
+        let detailVC = DetailView(row: selectedRow)
+        detailVC.modalPresentationStyle = .fullScreen
+        print("suc")
+        self.present(detailVC, animated: true, completion: nil)
+    }
+
+
+
 
     
     
