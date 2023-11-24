@@ -14,7 +14,7 @@ import Foundation
 
 
 struct Representative: Codable {
-    let HG_NM: String?
+    let HG_NM: String
     let HJ_NM: String?
     let ENG_NM: String?
     let BTH_GBN_NM: String?
