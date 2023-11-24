@@ -64,17 +64,6 @@ extension ViewController: UICalendarViewDelegate, UICalendarSelectionSingleDateD
 
             let count = countOfBillsForSelectedDate(selectedDate: selectedDate)
 
-            if count > 0 {
-                return .customView {
-                    let label = UILabel()
-                    label.text = "\(count)"
-                    label.textAlignment = .center
-                    label.textColor = .blue
-                    label.layer.cornerRadius = label.frame.size.width / 2
-                    label.clipsToBounds = true
-                    return label
-                }
-            }
 
             return nil
         }

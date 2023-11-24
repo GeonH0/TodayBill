@@ -79,7 +79,11 @@ class BillModalViewController: UIViewController,UISearchBarDelegate, UICollectio
         
         
         func setupCollectionView() {
+
             let layout = UICollectionViewFlowLayout()
+            layout.sectionInset = UIEdgeInsets(top: 0, left: 20, bottom: 0, right: 20)
+            collectionView = UICollectionView(frame: view.bounds, collectionViewLayout: layout)
+
             collectionView = UICollectionView(frame: view.bounds, collectionViewLayout: layout)
             collectionView.dataSource = self
             collectionView.delegate = self
@@ -134,6 +138,17 @@ class BillModalViewController: UIViewController,UISearchBarDelegate, UICollectio
             label.bottomAnchor.constraint(equalTo: cell.contentView.bottomAnchor)
         ])
         
+        
+
+        // 경계선 그리기
+        cell.contentView.layer.borderWidth = 1 // 테두리의 두께
+        cell.contentView.layer.borderColor = UIColor.gray.cgColor // 테두리의 색상
+        
+
+        cell.contentView.layer.cornerRadius = 10 // 셀의 모서리를 둥글게 설정합니다.
+        cell.contentView.clipsToBounds = true // 셀의 내용이 모서리를 넘어가지 않도록 설정합니다.
+
+        
         return cell
     }
 
@@ -143,8 +158,11 @@ class BillModalViewController: UIViewController,UISearchBarDelegate, UICollectio
 
     func collectionView(_ collectionView: UICollectionView, layout collectionViewLayout: UICollectionViewLayout, sizeForItemAt indexPath: IndexPath) -> CGSize {
         // Set the size of each cell
-        return CGSize(width: collectionView.bounds.width, height: 50)
+        let padding: CGFloat = 20 // sectionInset에서 설정한 왼쪽, 오른쪽 여백
+        let cellWidth = collectionView.bounds.width - padding * 2 // padding을 뺀 너비
+        return CGSize(width: cellWidth, height: 50)
     }
+
     
     
 
