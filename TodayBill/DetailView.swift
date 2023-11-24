@@ -8,9 +8,11 @@
 import Foundation
 import UIKit
 
+
 class DetailView : UIViewController {
     
     var row: Row // 사용자가 선택한 셀의 정보
+    
     
     init(row: Row) {
         self.row = row
@@ -37,19 +39,8 @@ class DetailView : UIViewController {
         let navItem = UINavigationItem()
         navItem.leftBarButtonItem = backButton
         navBar.setItems([navItem], animated: false)
+                
         
-        
-        let label = UILabel()
-        label.text = row.BILL_NAME // 셀의 정보를 표시합니다.
-        label.textAlignment = .center
-        label.translatesAutoresizingMaskIntoConstraints = false
-        
-        view.addSubview(label)
-        
-        NSLayoutConstraint.activate([
-            label.centerXAnchor.constraint(equalTo: view.centerXAnchor),
-            label.centerYAnchor.constraint(equalTo: view.centerYAnchor),
-        ])
     }
     
     
