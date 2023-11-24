@@ -10,6 +10,7 @@ class ViewController: UIViewController {
     
     var dataRows = [Row]()
     
+    
     lazy var dateView: UICalendarView = {
         var view = UICalendarView()
         view.translatesAutoresizingMaskIntoConstraints = false
@@ -21,6 +22,7 @@ class ViewController: UIViewController {
 
     override func viewDidLoad() {
         super.viewDidLoad()
+
         fetchBill()
         applyConstraints()
         setCalendar()

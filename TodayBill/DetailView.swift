@@ -12,6 +12,7 @@ import UIKit
 class DetailView : UIViewController {
     
     var row: Row // 사용자가 선택한 셀의 정보
+    var name = [Representative]()
     
     
     init(row: Row) {
@@ -24,6 +25,8 @@ class DetailView : UIViewController {
     }
 
     override func viewDidLoad() {
+        
+        fetchRepresentatives()
         super.viewDidLoad()
         view.backgroundColor = .white
         let navBar = UINavigationBar(frame: CGRect(x: 0, y: UIApplication.shared.statusBarFrame.height , width: view.frame.size.width, height: 44))
