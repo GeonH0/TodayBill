@@ -39,5 +39,11 @@ struct Row: Codable {
     let COMMITTEE_ID: String?
     let PUBL_PROPOSER: String
     let LAW_PROC_RESULT_CD: String?
-    let RST_PROPOSER: String
+    let RST_PROPOSER: String?
+    
+    var favoriteInfo: FavoriteInfo? // 즐겨찾기 정보를 따로 저장하는 클래스
+}
+
+struct FavoriteInfo: Codable {
+    var isFavorite: Bool = false
 }

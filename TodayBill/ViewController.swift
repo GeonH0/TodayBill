@@ -6,9 +6,14 @@
 //
 import UIKit
 
+protocol BillModalViewControllerDelegate: AnyObject {
+    func favoriteDataUpdated(_ favoriteData: [Row])
+}
+
 class ViewController: UIViewController {
     
     var dataRows = [Row]()
+    var favoriteData: [Row] = []  // 즐겨찾기된 데이터를 저장할 배열 추가
     
     
     lazy var dateView: UICalendarView = {
@@ -81,7 +86,7 @@ extension ViewController: UICalendarViewDelegate, UICalendarSelectionSingleDateD
         
         if let date = Calendar.current.date(from: dateComponents!) {
             let filteredData = filterDataForSelectedDate(selectedDate: date)
-            let modalViewController = BillModalViewController(date: date,dataRows: filteredData)
+            let modalViewController = BillModalViewController(date: date, dataRows: filteredData, favoriteData: favoriteData)
             if let sheet = modalViewController.sheetPresentationController {
                 sheet.detents = [.medium(), .large()]
                 sheet.prefersGrabberVisible = true
@@ -101,6 +106,17 @@ extension ViewController: UICalendarViewDelegate, UICalendarSelectionSingleDateD
 
         return filteredData
     }
+    
+    func favoriteDataUpdated(_ favoriteData: [Row]) {
+         // 즐겨찾기 데이터가 업데이트될 때마다 캘린더 아래의 컬렉션 뷰를 업데이트
+         updateFavoriteCollectionView(favoriteData)
+     }
+    func updateFavoriteCollectionView(_ favoriteData: [Row]) {
+        // 캘린더 아래의 컬렉션 뷰를 업데이트하는 로직을 구현
+        // favoriteData를 사용하여 필요한 처리 수행
+        // 예: favoriteCollectionView.reloadData() 호출 등
+    }
+
     
     func countOfBillsForSelectedDate(selectedDate: Date) -> Int {
         let formattedDate = dateFormattedString(from: selectedDate)

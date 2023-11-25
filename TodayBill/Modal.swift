@@ -4,106 +4,76 @@
 //
 //  Created by 김건호 on 11/21/23.
 //
-
 import UIKit
 
-class BillModalViewController: UIViewController,UISearchBarDelegate, UICollectionViewDataSource, UICollectionViewDelegateFlowLayout  {
-    
-    
+class BillModalViewController: UIViewController, UISearchBarDelegate, UICollectionViewDataSource, UICollectionViewDelegateFlowLayout {
+
     var date: Date
     var dataRows = [Row]()
+    var filteredDataRows = [Row]()  // 필터링된 데이터를 저장할 배열 추가
+    var favoriteData = [Row]()
 
-    
     var searchBar = UISearchBar()
-    var tableView = UITableView()
     var collectionView: UICollectionView!
 
-    
-    
-    init(date: Date,dataRows : [Row]) {
+    init(date: Date, dataRows: [Row], favoriteData : [Row]) {
         self.date = date
         self.dataRows = dataRows
+        self.favoriteData = favoriteData
+        self.filteredDataRows = dataRows  // 초기에는 전체 데이터를 보여줄 것이므로 초기화
         super.init(nibName: nil, bundle: nil)
     }
-    
+
     required init?(coder: NSCoder) {
         fatalError("init(coder:) has not been implemented")
     }
-    
+
     override func viewDidLoad() {
         super.viewDidLoad()
         setupSearchBar()
         setupCollectionView()
-        
-        
-        
-        
+
+        // date를 한국 표준시(KST) 형식으로 포맷팅하여 표시
+        let formattedDate = dateFormattedString(from: date)
+        view.backgroundColor = .white
+    }
+
+    func setupSearchBar() {
         searchBar.delegate = self
         searchBar.translatesAutoresizingMaskIntoConstraints = false
-        
         searchBar.layer.cornerRadius = 10
         searchBar.clipsToBounds = true
-        
         view.addSubview(searchBar)
-        
+
         NSLayoutConstraint.activate([
             searchBar.topAnchor.constraint(equalTo: view.topAnchor),
             searchBar.leadingAnchor.constraint(equalTo: view.leadingAnchor),
             searchBar.trailingAnchor.constraint(equalTo: view.trailingAnchor)
         ])
-        
-        
-        
-        
-        // date를 한국 표준시(KST) 형식으로 포맷팅하여 표시
-        let formattedDate = dateFormattedString(from: date)
-        
-        
-        
-        view.backgroundColor = .white
-        
-        
-        func setupSearchBar() {
-                searchBar.delegate = self
-                searchBar.translatesAutoresizingMaskIntoConstraints = false
-                searchBar.layer.cornerRadius = 10
-                searchBar.clipsToBounds = true
-                view.addSubview(searchBar)
-                
-                NSLayoutConstraint.activate([
-                    searchBar.topAnchor.constraint(equalTo: view.topAnchor),
-                    searchBar.leadingAnchor.constraint(equalTo: view.leadingAnchor),
-                    searchBar.trailingAnchor.constraint(equalTo: view.trailingAnchor)
-                ])
-            }
-        
-        
-        func setupCollectionView() {
-
-            let layout = UICollectionViewFlowLayout()
-            layout.sectionInset = UIEdgeInsets(top: 0, left: 20, bottom: 0, right: 20)
-            collectionView = UICollectionView(frame: view.bounds, collectionViewLayout: layout)
-
-            collectionView = UICollectionView(frame: view.bounds, collectionViewLayout: layout)
-            collectionView.dataSource = self
-            collectionView.delegate = self
-            collectionView.register(UICollectionViewCell.self, forCellWithReuseIdentifier: "cell")
-            collectionView.backgroundColor = .white
-            collectionView.translatesAutoresizingMaskIntoConstraints = false
-            view.addSubview(collectionView)
-            
-            NSLayoutConstraint.activate([
-                collectionView.topAnchor.constraint(equalTo: searchBar.bottomAnchor),
-                collectionView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
-                collectionView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
-                collectionView.bottomAnchor.constraint(equalTo: view.bottomAnchor)
-            ])
-        }
-        
-        
     }
-    
-    
+
+    func setupCollectionView() {
+        let layout = UICollectionViewFlowLayout()
+        layout.sectionInset = UIEdgeInsets(top: 0, left: 20, bottom: 0, right: 20)
+        collectionView = UICollectionView(frame: view.bounds, collectionViewLayout: layout)
+
+        collectionView.dataSource = self
+        collectionView.delegate = self
+        collectionView.register(UICollectionViewCell.self, forCellWithReuseIdentifier: "cell")
+        collectionView.backgroundColor = .white
+        collectionView.translatesAutoresizingMaskIntoConstraints = false
+        view.addSubview(collectionView)
+
+        NSLayoutConstraint.activate([
+            collectionView.topAnchor.constraint(equalTo: searchBar.bottomAnchor),
+            collectionView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+            collectionView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+            collectionView.bottomAnchor.constraint(equalTo: view.bottomAnchor)
+        ])
+    }
+
+    // 나머지 함수 및 dateFormattedString 등은 동일하게 유지
+
     func dateFormattedString(from date: Date) -> String {
         let dateFormatter = DateFormatter()
         dateFormatter.dateFormat = "yyyy-MM-dd"
@@ -112,8 +82,9 @@ class BillModalViewController: UIViewController,UISearchBarDelegate, UICollectio
         
         return dateFormatter.string(from: date)
     }
+
     func collectionView(_ collectionView: UICollectionView, numberOfItemsInSection section: Int) -> Int {
-        return dataRows.count
+        return filteredDataRows.count  // 필터링된 데이터 배열의 크기로 반환
     }
 
     func collectionView(_ collectionView: UICollectionView, cellForItemAt indexPath: IndexPath) -> UICollectionViewCell {
@@ -125,7 +96,7 @@ class BillModalViewController: UIViewController,UISearchBarDelegate, UICollectio
         }
         
         let label = UILabel()
-        label.text = dataRows[indexPath.item].BILL_NAME // 원하는 텍스트 값을 설정합니다.
+        label.text = filteredDataRows[indexPath.item].BILL_NAME  // 필터링된 데이터 배열에서 가져옴
         label.textAlignment = .center
         label.translatesAutoresizingMaskIntoConstraints = false
         
@@ -138,46 +109,36 @@ class BillModalViewController: UIViewController,UISearchBarDelegate, UICollectio
             label.bottomAnchor.constraint(equalTo: cell.contentView.bottomAnchor)
         ])
         
-        
-
         // 경계선 그리기
-        cell.contentView.layer.borderWidth = 1 // 테두리의 두께
-        cell.contentView.layer.borderColor = UIColor.gray.cgColor // 테두리의 색상
-        
+        cell.contentView.layer.borderWidth = 1  // 테두리의 두께
+        cell.contentView.layer.borderColor = UIColor.gray.cgColor  // 테두리의 색상
+        cell.contentView.layer.cornerRadius = 10  // 셀의 모서리를 둥글게 설정
+        cell.contentView.clipsToBounds = true  // 셀의 내용이 모서리를 넘어가지 않도록 설정
 
-        cell.contentView.layer.cornerRadius = 10 // 셀의 모서리를 둥글게 설정합니다.
-        cell.contentView.clipsToBounds = true // 셀의 내용이 모서리를 넘어가지 않도록 설정합니다.
-
-        
         return cell
     }
-
-
 
     // MARK: - UICollectionViewDelegateFlowLayout
 
     func collectionView(_ collectionView: UICollectionView, layout collectionViewLayout: UICollectionViewLayout, sizeForItemAt indexPath: IndexPath) -> CGSize {
         // Set the size of each cell
-        let padding: CGFloat = 10 // sectionInset에서 설정한 왼쪽, 오른쪽 여백
-        let cellWidth = collectionView.bounds.width - padding * 2 // padding을 뺀 너비
+        let padding: CGFloat = 10  // sectionInset에서 설정한 왼쪽, 오른쪽 여백
+        let cellWidth = collectionView.bounds.width - padding * 2  // padding을 뺀 너비
         return CGSize(width: cellWidth, height: 50)
     }
     
     func collectionView(_ collectionView: UICollectionView, didSelectItemAt indexPath: IndexPath) {
-        let selectedRow = dataRows[indexPath.item]
+        let selectedRow = filteredDataRows[indexPath.item]  // 필터링된 데이터 배열에서 가져옴
         let detailVC = DetailView(row: selectedRow)
         detailVC.modalPresentationStyle = .fullScreen
-        print("suc")
         self.present(detailVC, animated: true, completion: nil)
     }
 
+    // MARK: - UISearchBarDelegate
 
-
-
-    
-    
-
-    
-    
+    func searchBar(_ searchBar: UISearchBar, textDidChange searchText: String) {
+        // 검색어에 따라 데이터를 필터링
+        filteredDataRows = searchText.isEmpty ? dataRows : dataRows.filter { $0.BILL_NAME.localizedCaseInsensitiveContains(searchText) }
+        collectionView.reloadData()
+    }
 }
-
