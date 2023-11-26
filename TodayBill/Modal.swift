@@ -6,15 +6,29 @@
 //
 import UIKit
 
+protocol BillModalViewControllerDelegate: AnyObject {
+    func favoriteDataUpdated(_ favoriteData: [Row])
+}
+
+
+
 class BillModalViewController: UIViewController, UISearchBarDelegate, UICollectionViewDataSource, UICollectionViewDelegateFlowLayout {
+    
+    weak var delegate: BillModalViewControllerDelegate?
 
     var date: Date
     var dataRows = [Row]()
     var filteredDataRows = [Row]()  // 필터링된 데이터를 저장할 배열 추가
-    var favoriteData = [Row]()
+    var favoriteData = [Row]() // 즐겨찾기를 저장할 배열 추가
 
     var searchBar = UISearchBar()
     var collectionView: UICollectionView!
+    
+
+    
+
+
+
 
     init(date: Date, dataRows: [Row], favoriteData : [Row]) {
         self.date = date
@@ -29,10 +43,13 @@ class BillModalViewController: UIViewController, UISearchBarDelegate, UICollecti
     }
 
     override func viewDidLoad() {
+        
         super.viewDidLoad()
         setupSearchBar()
         setupCollectionView()
 
+        
+        
         // date를 한국 표준시(KST) 형식으로 포맷팅하여 표시
         let formattedDate = dateFormattedString(from: date)
         view.backgroundColor = .white
@@ -70,7 +87,11 @@ class BillModalViewController: UIViewController, UISearchBarDelegate, UICollecti
             collectionView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
             collectionView.bottomAnchor.constraint(equalTo: view.bottomAnchor)
         ])
+        
+        let longPressGesture = UILongPressGestureRecognizer(target: self, action: #selector(handleLongPress(_:)))
+        collectionView.addGestureRecognizer(longPressGesture)
     }
+
 
     // 나머지 함수 및 dateFormattedString 등은 동일하게 유지
 
@@ -117,6 +138,17 @@ class BillModalViewController: UIViewController, UISearchBarDelegate, UICollecti
 
         return cell
     }
+    
+    @objc func handleLongPress(_ gesture: UILongPressGestureRecognizer) {
+        if gesture.state == .began {
+            let point = gesture.location(in: collectionView)
+            if let indexPath = collectionView.indexPathForItem(at: point) {
+                toggleFavoriteStatus(at: indexPath)
+            }
+        }
+    }
+    
+    
 
     // MARK: - UICollectionViewDelegateFlowLayout
 
@@ -141,4 +173,39 @@ class BillModalViewController: UIViewController, UISearchBarDelegate, UICollecti
         filteredDataRows = searchText.isEmpty ? dataRows : dataRows.filter { $0.BILL_NAME.localizedCaseInsensitiveContains(searchText) }
         collectionView.reloadData()
     }
+    
+    
+    func toggleFavoriteStatus(at indexPath: IndexPath) {
+        var favoriteInfo = filteredDataRows[indexPath.item].favoriteInfo
+        
+        favoriteInfo.isFavorite.toggle()
+        filteredDataRows[indexPath.item].favoriteInfo = favoriteInfo
+        
+        
+        // 원본 데이터인 dataRows 배열에서도 즐겨찾기 상태 업데이트
+        if let index = dataRows.firstIndex(where: { $0.BILL_ID == filteredDataRows[indexPath.item].BILL_ID }) {
+            dataRows[index].favoriteInfo = favoriteInfo
+        }
+        
+        let isFavorite = favoriteInfo.isFavorite
+        if isFavorite {
+            favoriteData.append(filteredDataRows[indexPath.item])
+        } else {
+            if let index = favoriteData.firstIndex(where: { $0.BILL_ID == filteredDataRows[indexPath.item].BILL_ID }) {
+                favoriteData.remove(at: index)
+            }
+        }
+        
+        
+        delegate?.favoriteDataUpdated(favoriteData)
+        collectionView.reloadItems(at: [indexPath])
+    }
+
+
+
+
+
+
+           
 }
+
