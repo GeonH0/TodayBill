@@ -25,7 +25,6 @@ class ViewController: UIViewController, BillModalViewControllerDelegate, UIColle
 
     override func viewDidLoad() {
         super.viewDidLoad()
-        loadFavoriteData()
         setupCollectionView()
         fetchBill(pIndex: currentPIndex)
         applyConstraints()
@@ -115,26 +114,6 @@ class ViewController: UIViewController, BillModalViewControllerDelegate, UIColle
         self.present(detailVC, animated: true, completion: nil)
     }
     
-    func saveFavoriteData() {
-        let encoder = JSONEncoder()
-        if let encoded = try? encoder.encode(favoriteData) {
-            UserDefaults.standard.set(encoded, forKey: "FavoriteData")
-            print("SUC")
-        }
-    }
-
-    func loadFavoriteData() {
-        if let savedData = UserDefaults.standard.object(forKey: "FavoriteData") as? Data {
-            let decoder = JSONDecoder()
-            do {
-                let loadedData = try decoder.decode([Row].self, from: savedData)
-                favoriteData = loadedData
-                print("Loaded data successfully")
-            } catch {
-                print("Failed to load data: \(error)")
-            }
-        }
-    }
 
 
     

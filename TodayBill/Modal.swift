@@ -8,10 +8,8 @@ import UIKit
 
 protocol BillModalViewControllerDelegate: AnyObject {
     func favoriteDataUpdated(_ favoriteData: [Row])
-    func saveFavoriteData() 
+    
 }
-
-
 
 class BillModalViewController: UIViewController, UISearchBarDelegate, UICollectionViewDataSource, UICollectionViewDelegateFlowLayout {
     
@@ -171,36 +169,33 @@ class BillModalViewController: UIViewController, UISearchBarDelegate, UICollecti
     
     
     func toggleFavoriteStatus(at indexPath: IndexPath) {
-        var favoriteInfo = filteredDataRows[indexPath.item].favoriteInfo
-
-        favoriteInfo.isFavorite.toggle()
-        filteredDataRows[indexPath.item].favoriteInfo = favoriteInfo
-
-        // 원본 데이터인 dataRows 배열에서도 즐겨찾기 상태 업데이트
+        // 원본 데이터인 dataRows 배열에서 즐겨찾기 상태 업데이트
         if let index = dataRows.firstIndex(where: { $0.BILL_ID == filteredDataRows[indexPath.item].BILL_ID }) {
-            dataRows[index].favoriteInfo = favoriteInfo
-        }
-        
-        let isFavorite = favoriteInfo.isFavorite
-        if isFavorite {
-            // dataRows 배열에서 해당 항목을 찾아서 favoriteData 배열에 추가
-            if let item = dataRows.first(where: { $0.BILL_ID == filteredDataRows[indexPath.item].BILL_ID }) {
+            dataRows[index].favoriteInfo.isFavorite.toggle()
+
+            let isFavorite = dataRows[index].favoriteInfo.isFavorite
+            if isFavorite {
+                // dataRows 배열에서 해당 항목을 찾아서 favoriteData 배열에 추가
                 // favoriteData 배열에 이미 같은 아이템이 없는 경우에만 추가
-                if !favoriteData.contains(where: { $0.BILL_ID == item.BILL_ID }) {
-                    favoriteData.append(item)
+                if !favoriteData.contains(where: { $0.BILL_ID == dataRows[index].BILL_ID }) {
+                    favoriteData.append(dataRows[index])
+                }
+            } else {
+                // favoriteData 배열에서 해당 항목을 제거
+                if let favoriteIndex = favoriteData.firstIndex(where: { $0.BILL_ID == dataRows[index].BILL_ID }) {
+                    favoriteData.remove(at: favoriteIndex)
                 }
             }
-        } else {
-            // favoriteData 배열에서 해당 항목을 제거
-            if let index = favoriteData.firstIndex(where: { $0.BILL_ID == filteredDataRows[indexPath.item].BILL_ID }) {
-                favoriteData.remove(at: index)
-            }
+
+            // 필터링된 데이터의 즐겨찾기 상태 업데이트
+            filteredDataRows[indexPath.item].favoriteInfo = dataRows[index].favoriteInfo
         }
-        
+
         delegate?.favoriteDataUpdated(favoriteData)
-        delegate?.saveFavoriteData()
+        
         collectionView.reloadItems(at: [indexPath])
     }
+
 
 
            
