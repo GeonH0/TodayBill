@@ -84,15 +84,23 @@ class DetailView: UIViewController {
            detailPageLabel.isUserInteractionEnabled = true
            let tapGesture = UITapGestureRecognizer(target: self, action: #selector(openDetailLink))
            detailPageLabel.addGestureRecognizer(tapGesture)
+        
+        let proposerLabel = createLabel(text: "제안자: \(row.PROPOSER ?? "정보 없음")", topAnchor: detailPageLabel.bottomAnchor, constant: 20)
+        
+        let lawProcDateLabel = createLabel(text: "법사위처리일: \(row.LAW_PROC_DT ?? "정보 없음")", topAnchor: proposerLabel.bottomAnchor, constant: 20)
+           let lawPresentDateLabel = createLabel(text: "법사위상정일: \(row.LAW_PRESENT_DT ?? "정보 없음")", topAnchor: lawProcDateLabel.bottomAnchor, constant: 20)
+           let lawSubmitDateLabel = createLabel(text: "법사위회부일: \(row.LAW_SUBMIT_DT ?? "정보 없음")", topAnchor: lawPresentDateLabel.bottomAnchor, constant: 20)
+
+           // 소관위원회 처리 결과와 법사위 처리 결과 추가
+           let cmtProcResultLabel = createLabel(text: "소관위처리결과: \(row.CMT_PROC_RESULT_CD ?? "정보 없음")", topAnchor: lawSubmitDateLabel.bottomAnchor, constant: 20)
+           let lawProcResultLabel = createLabel(text: "법사위처리결과: \(row.LAW_PROC_RESULT_CD ?? "정보 없음")", topAnchor: cmtProcResultLabel.bottomAnchor, constant: 20)
 
         
 
           // 추가 정보 표시
-          let proposeDateLabel = createLabel(text: "제안일: \(row.PROPOSE_DT ?? "정보 없음")", topAnchor: detailPageLabel.bottomAnchor, constant: 20)
+          let proposeDateLabel = createLabel(text: "제안일: \(row.PROPOSE_DT ?? "정보 없음")", topAnchor: lawProcResultLabel.bottomAnchor, constant: 20)
           let committeeLabel = createLabel(text: "소관위원회: \(row.COMMITTEE ?? "정보 없음")", topAnchor: proposeDateLabel.bottomAnchor, constant: 20)
-          let proposerLabel = createLabel(text: "제안자: \(row.PROPOSER ?? "정보 없음")", topAnchor: committeeLabel.bottomAnchor, constant: 20)
-          let lawProcResultLabel = createLabel(text: "법사위처리결과: \(row.LAW_PROC_RESULT_CD ?? "정보 없음")", topAnchor: proposerLabel.bottomAnchor, constant: 20)
-          let procResultLabel = createLabel(text: "본회의심의결과: \(row.PROC_RESULT ?? "정보 없음")", topAnchor: lawProcResultLabel.bottomAnchor, constant: 20)
+          let procResultLabel = createLabel(text: "본회의심의결과: \(row.PROC_RESULT ?? "정보 없음")", topAnchor: committeeLabel.bottomAnchor, constant: 20)
     }
 
     func setNavigationBarColor(for representative: Representative, customTopView: UIView, navBar: UINavigationBar) {
