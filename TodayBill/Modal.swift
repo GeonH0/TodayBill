@@ -8,6 +8,7 @@ import UIKit
 
 protocol BillModalViewControllerDelegate: AnyObject {
     func favoriteDataUpdated(_ favoriteData: [Row])
+    func saveFavoriteData() 
 }
 
 
@@ -24,11 +25,6 @@ class BillModalViewController: UIViewController, UISearchBarDelegate, UICollecti
     var searchBar = UISearchBar()
     var collectionView: UICollectionView!
     
-
-    
-
-
-
 
     init(date: Date, dataRows: [Row], favoriteData : [Row]) {
         self.date = date
@@ -47,8 +43,6 @@ class BillModalViewController: UIViewController, UISearchBarDelegate, UICollecti
         super.viewDidLoad()
         setupSearchBar()
         setupCollectionView()
-
-        
         
         // date를 한국 표준시(KST) 형식으로 포맷팅하여 표시
         let formattedDate = dateFormattedString(from: date)
@@ -144,6 +138,7 @@ class BillModalViewController: UIViewController, UISearchBarDelegate, UICollecti
             let point = gesture.location(in: collectionView)
             if let indexPath = collectionView.indexPathForItem(at: point) {
                 toggleFavoriteStatus(at: indexPath)
+                
             }
         }
     }
@@ -177,11 +172,10 @@ class BillModalViewController: UIViewController, UISearchBarDelegate, UICollecti
     
     func toggleFavoriteStatus(at indexPath: IndexPath) {
         var favoriteInfo = filteredDataRows[indexPath.item].favoriteInfo
-        
+
         favoriteInfo.isFavorite.toggle()
         filteredDataRows[indexPath.item].favoriteInfo = favoriteInfo
-        
-        
+
         // 원본 데이터인 dataRows 배열에서도 즐겨찾기 상태 업데이트
         if let index = dataRows.firstIndex(where: { $0.BILL_ID == filteredDataRows[indexPath.item].BILL_ID }) {
             dataRows[index].favoriteInfo = favoriteInfo
@@ -189,21 +183,24 @@ class BillModalViewController: UIViewController, UISearchBarDelegate, UICollecti
         
         let isFavorite = favoriteInfo.isFavorite
         if isFavorite {
-            favoriteData.append(filteredDataRows[indexPath.item])
+            // dataRows 배열에서 해당 항목을 찾아서 favoriteData 배열에 추가
+            if let item = dataRows.first(where: { $0.BILL_ID == filteredDataRows[indexPath.item].BILL_ID }) {
+                // favoriteData 배열에 이미 같은 아이템이 없는 경우에만 추가
+                if !favoriteData.contains(where: { $0.BILL_ID == item.BILL_ID }) {
+                    favoriteData.append(item)
+                }
+            }
         } else {
+            // favoriteData 배열에서 해당 항목을 제거
             if let index = favoriteData.firstIndex(where: { $0.BILL_ID == filteredDataRows[indexPath.item].BILL_ID }) {
                 favoriteData.remove(at: index)
             }
         }
         
-        
         delegate?.favoriteDataUpdated(favoriteData)
+        delegate?.saveFavoriteData()
         collectionView.reloadItems(at: [indexPath])
     }
-
-
-
-
 
 
            
