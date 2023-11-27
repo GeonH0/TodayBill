@@ -11,6 +11,7 @@ class ViewController: UIViewController, BillModalViewControllerDelegate, UIColle
     var dataRows = [Row]()
     var favoriteData: [Row] = []  // 즐겨찾기된 데이터를 저장할 배열 추가
     var favoriteCollectionView: UICollectionView!
+    var currentPIndex: Int = 1
     
     lazy var dateView: UICalendarView = {
         var view = UICalendarView()
@@ -20,11 +21,12 @@ class ViewController: UIViewController, BillModalViewControllerDelegate, UIColle
     }()
     
     var selectedDate: DateComponents? = nil
+    
 
     override func viewDidLoad() {
         super.viewDidLoad()
         setupCollectionView()
-        fetchBill()
+        fetchBill(pIndex: currentPIndex)
         applyConstraints()
         setCalendar()
         reloadDateView(date: Date())
@@ -34,25 +36,49 @@ class ViewController: UIViewController, BillModalViewControllerDelegate, UIColle
 
     fileprivate func setCalendar() {
         dateView.delegate = self
-
         let dateSelection = UICalendarSelectionSingleDate(delegate: self)
         dateView.selectionBehavior = dateSelection
     }
     
+
+    
     func applyConstraints() {
         view.addSubview(dateView)
+
+        // 새로운 라벨 생성
+        let label = UILabel()
+        label.text = "꾹 누르면 즐겨찾기가 됩니다!" // 라벨 텍스트 설정
+        label.translatesAutoresizingMaskIntoConstraints = false // Auto Layout 사용 설정
+        view.addSubview(label) // 라벨을 화면에 추가
+
+        // favoriteCollectionView도 화면에 추가
+        view.addSubview(favoriteCollectionView)
         
-        let dateViewConstraints = [
+        let gap: CGFloat = 20 // 원하는 간격 값
+        let leadingSpace: CGFloat = 10 // 왼쪽 여백 값
+
+        let constraints = [
+            // dateView의 제약 조건
+            dateView.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor),
             dateView.leadingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.leadingAnchor),
             dateView.trailingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.trailingAnchor),
-            dateView.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor),
-            favoriteCollectionView.topAnchor.constraint(equalTo: dateView.bottomAnchor),
+            
+            // 새로운 라벨의 제약 조건
+            label.topAnchor.constraint(equalTo: dateView.bottomAnchor),
+            label.leadingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.leadingAnchor, constant: leadingSpace), // 왼쪽 여백 추가
+            label.trailingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.trailingAnchor),
+            
+            // favoriteCollectionView의 제약 조건
+            favoriteCollectionView.topAnchor.constraint(equalTo: label.bottomAnchor, constant: gap), // 간격 추가
             favoriteCollectionView.leadingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.leadingAnchor),
             favoriteCollectionView.trailingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.trailingAnchor),
             favoriteCollectionView.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor)
         ]
-        NSLayoutConstraint.activate(dateViewConstraints)
+        NSLayoutConstraint.activate(constraints)
     }
+
+
+
     
     func reloadDateView(date: Date?) {
         if let date = date {
@@ -88,115 +114,22 @@ class ViewController: UIViewController, BillModalViewControllerDelegate, UIColle
         self.present(detailVC, animated: true, completion: nil)
     }
     
-}
-
-extension ViewController: UICalendarViewDelegate, UICalendarSelectionSingleDateDelegate {
-    
-    func calendarView(_ calendarView: UICalendarView, decorationFor dateComponents: DateComponents) -> UICalendarView.Decoration? {
-        guard let selectedDate = Calendar.current.date(from: dateComponents) else {
-            return nil
+    func saveFavoriteData() {
+        let encoder = JSONEncoder()
+        if let encoded = try? encoder.encode(favoriteData) {
+            UserDefaults.standard.set(encoded, forKey: "FavoriteData")
         }
-
-        let count = countOfBillsForSelectedDate(selectedDate: selectedDate)
-
-        return nil
     }
 
-    // 달력에서 날짜 선택했을 경우
-    func dateSelection(_ selection: UICalendarSelectionSingleDate, didSelectDate dateComponents: DateComponents?) {
-        selection.setSelected(dateComponents, animated: true)
-        
-        selectedDate = dateComponents
-        reloadDateView(date: Calendar.current.date(from: dateComponents!))
-        
-        if let date = Calendar.current.date(from: dateComponents!) {
-            let filteredData = filterDataForSelectedDate(selectedDate: date)
-            let modalViewController = BillModalViewController(date: date, dataRows: filteredData, favoriteData: favoriteData)
-            modalViewController.delegate = self  // delegate 설정
-            if let sheet = modalViewController.sheetPresentationController {
-                sheet.detents = [.medium(), .large()]
-                sheet.prefersGrabberVisible = true
-                sheet.preferredCornerRadius = 20
-                sheet.prefersScrollingExpandsWhenScrolledToEdge = false
+    func loadFavoriteData() {
+        if let savedData = UserDefaults.standard.object(forKey: "FavoriteData") as? Data {
+            let decoder = JSONDecoder()
+            if let loadedData = try? decoder.decode([Row].self, from: savedData) {
+                favoriteData = loadedData
             }
-            present(modalViewController, animated: true)
         }
     }
 
     
-    func filterDataForSelectedDate(selectedDate: Date) -> [Row] {
-        let formattedDate = dateFormattedString(from: selectedDate)
-
-        let filteredData = dataRows.filter {
-            return $0.PROPOSE_DT == formattedDate
-        }
-
-        return filteredData
-    }
-    
-    func favoriteDataUpdated(_ favoriteData: [Row]) {
-        updateFavoriteCollectionView(favoriteData)
-    }
-    
-    func updateFavoriteCollectionView(_ favoriteData: [Row]) {
-        self.favoriteData = favoriteData  // 즐겨찾기 데이터를 업데이트
-        favoriteCollectionView.reloadData()  // 컬렉션 뷰를 업데이트
-    }
-    
-    func countOfBillsForSelectedDate(selectedDate: Date) -> Int {
-        let formattedDate = dateFormattedString(from: selectedDate)
-
-        let billsForSelectedDate = dataRows.filter {
-            return $0.PROPOSE_DT == formattedDate
-        }
-
-        return billsForSelectedDate.count
-    }
-
-    func dateFormattedString(from date: Date) -> String {
-        let dateFormatter = DateFormatter()
-        dateFormatter.dateFormat = "yyyy-MM-dd"
-        dateFormatter.locale = Locale(identifier: "ko_KR")
-        dateFormatter.timeZone = TimeZone(identifier: "Asia/Seoul")
-
-        return dateFormatter.string(from: date)
-    }
 }
 
-extension ViewController: UICollectionViewDataSource {
-    
-    func collectionView(_ collectionView: UICollectionView, numberOfItemsInSection section: Int) -> Int {
-        return favoriteData.count
-    }
-    
-    func collectionView(_ collectionView: UICollectionView, cellForItemAt indexPath: IndexPath) -> UICollectionViewCell {
-        let cell = collectionView.dequeueReusableCell(withReuseIdentifier: "FavoriteCell", for: indexPath)
-        
-        // 기존의 셀 하위 뷰들을 제거합니다.
-        for subview in cell.contentView.subviews {
-            subview.removeFromSuperview()
-        }
-        
-        let label = UILabel()
-        label.text = favoriteData[indexPath.item].BILL_NAME  // 즐겨찾기된 데이터 배열에서 가져옴
-        label.textAlignment = .center
-        label.translatesAutoresizingMaskIntoConstraints = false
-        
-        cell.contentView.addSubview(label)
-        
-        NSLayoutConstraint.activate([
-            label.topAnchor.constraint(equalTo: cell.contentView.topAnchor),
-            label.leadingAnchor.constraint(equalTo: cell.contentView.leadingAnchor),
-            label.trailingAnchor.constraint(equalTo: cell.contentView.trailingAnchor),
-            label.bottomAnchor.constraint(equalTo: cell.contentView.bottomAnchor)
-        ])
-        
-        // 경계선 그리기
-        cell.contentView.layer.borderWidth = 1  // 테두리의 두께
-        cell.contentView.layer.borderColor = UIColor.gray.cgColor  // 테두리의 색상
-        cell.contentView.layer.cornerRadius = 10  // 셀의 모서리를 둥글게 설정
-        cell.contentView.clipsToBounds = true  // 셀의 내용이 모서리를 넘어가지 않도록 설정
-
-        return cell
-    }
-}

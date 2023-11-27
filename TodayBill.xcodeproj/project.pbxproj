@@ -21,6 +21,8 @@
 		1D44C6352B1025C000884C24 /* DetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D44C6342B1025C000884C24 /* DetailView.swift */; };
 		1D44C63B2B1061FE00884C24 /* .gitignore in Resources */ = {isa = PBXBuildFile; fileRef = 1D44C63A2B1061FE00884C24 /* .gitignore */; };
 		1D5438612B10762300136A66 /* name.json in Resources */ = {isa = PBXBuildFile; fileRef = 1D5438602B10762300136A66 /* name.json */; };
+		1D7B0AF52B142D8900651B03 /* ViewControllerCollectionViewDataSource.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D7B0AF42B142D8900651B03 /* ViewControllerCollectionViewDataSource.swift */; };
+		1D7B0AF72B142FCB00651B03 /* ViewControllerCalenderDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D7B0AF62B142FCB00651B03 /* ViewControllerCalenderDelegate.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -42,6 +44,8 @@
 		1D44C6342B1025C000884C24 /* DetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DetailView.swift; sourceTree = "<group>"; };
 		1D44C63A2B1061FE00884C24 /* .gitignore */ = {isa = PBXFileReference; lastKnownFileType = text; path = .gitignore; sourceTree = "<group>"; };
 		1D5438602B10762300136A66 /* name.json */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.json; path = name.json; sourceTree = "<group>"; };
+		1D7B0AF42B142D8900651B03 /* ViewControllerCollectionViewDataSource.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ViewControllerCollectionViewDataSource.swift; sourceTree = "<group>"; };
+		1D7B0AF62B142FCB00651B03 /* ViewControllerCalenderDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ViewControllerCalenderDelegate.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -84,11 +88,13 @@
 				1D30EB2E2B0C4264006C1588 /* Modal.swift */,
 				1D0E76662B10668300581776 /* Representative.swift */,
 				1D30EB362B0C7C23006C1588 /* fetchBill.swift */,
+				1D7B0AF42B142D8900651B03 /* ViewControllerCollectionViewDataSource.swift */,
 				1D0E76682B10677A00581776 /* fetchName.swift */,
 				1D30EB1E2B0C3156006C1588 /* Main.storyboard */,
 				1D30EB212B0C3157006C1588 /* Assets.xcassets */,
 				1D30EB232B0C3157006C1588 /* LaunchScreen.storyboard */,
 				1D30EB262B0C3157006C1588 /* Info.plist */,
+				1D7B0AF62B142FCB00651B03 /* ViewControllerCalenderDelegate.swift */,
 			);
 			path = TodayBill;
 			sourceTree = "<group>";
@@ -174,6 +180,8 @@
 				1D30EB192B0C3156006C1588 /* AppDelegate.swift in Sources */,
 				1D30EB1B2B0C3156006C1588 /* SceneDelegate.swift in Sources */,
 				1D30EB2F2B0C4264006C1588 /* Modal.swift in Sources */,
+				1D7B0AF52B142D8900651B03 /* ViewControllerCollectionViewDataSource.swift in Sources */,
+				1D7B0AF72B142FCB00651B03 /* ViewControllerCalenderDelegate.swift in Sources */,
 				1D30EB372B0C7C23006C1588 /* fetchBill.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
