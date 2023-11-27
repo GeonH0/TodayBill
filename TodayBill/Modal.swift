@@ -136,13 +136,11 @@ class BillModalViewController: UIViewController, UISearchBarDelegate, UICollecti
             let point = gesture.location(in: collectionView)
             if let indexPath = collectionView.indexPathForItem(at: point) {
                 toggleFavoriteStatus(at: indexPath)
-                
             }
         }
     }
     
     
-
     // MARK: - UICollectionViewDelegateFlowLayout
 
     func collectionView(_ collectionView: UICollectionView, layout collectionViewLayout: UICollectionViewLayout, sizeForItemAt indexPath: IndexPath) -> CGSize {
@@ -169,32 +167,29 @@ class BillModalViewController: UIViewController, UISearchBarDelegate, UICollecti
     
     
     func toggleFavoriteStatus(at indexPath: IndexPath) {
-        // 원본 데이터인 dataRows 배열에서 즐겨찾기 상태 업데이트
-        if let index = dataRows.firstIndex(where: { $0.BILL_ID == filteredDataRows[indexPath.item].BILL_ID }) {
-            dataRows[index].favoriteInfo.isFavorite.toggle()
+        let selectedRow = filteredDataRows[indexPath.item]
 
-            let isFavorite = dataRows[index].favoriteInfo.isFavorite
-            if isFavorite {
-                // dataRows 배열에서 해당 항목을 찾아서 favoriteData 배열에 추가
-                // favoriteData 배열에 이미 같은 아이템이 없는 경우에만 추가
-                if !favoriteData.contains(where: { $0.BILL_ID == dataRows[index].BILL_ID }) {
-                    favoriteData.append(dataRows[index])
-                }
-            } else {
-                // favoriteData 배열에서 해당 항목을 제거
-                if let favoriteIndex = favoriteData.firstIndex(where: { $0.BILL_ID == dataRows[index].BILL_ID }) {
-                    favoriteData.remove(at: favoriteIndex)
-                }
+        // 이미 favoriteData에 있는 데이터인지 확인
+        if favoriteData.contains(where: { $0.BILL_ID == selectedRow.BILL_ID }) {
+            // 이미 존재하면 제거
+            if let index = favoriteData.firstIndex(where: { $0.BILL_ID == selectedRow.BILL_ID }) {
+                favoriteData.remove(at: index)
             }
-
-            // 필터링된 데이터의 즐겨찾기 상태 업데이트
-            filteredDataRows[indexPath.item].favoriteInfo = dataRows[index].favoriteInfo
+        } else {
+            // 존재하지 않으면 추가
+            favoriteData.append(selectedRow)
         }
 
+        // 나머지 코드는 그대로 유지
+
+        // 필터링된 데이터의 즐겨찾기 상태 업데이트
+        filteredDataRows[indexPath.item].favoriteInfo.isFavorite.toggle()
+
         delegate?.favoriteDataUpdated(favoriteData)
-        
+
         collectionView.reloadItems(at: [indexPath])
     }
+
 
 
 

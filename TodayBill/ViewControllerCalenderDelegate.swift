@@ -29,8 +29,8 @@ extension ViewController: UICalendarViewDelegate, UICalendarSelectionSingleDateD
         selection.setSelected(dateComponents, animated: true)
         
 //        // 달력에서 달이 변경될 때마다 pIndex를 증가시키고 fetchBill을 호출
-//        currentPIndex += 1
-//        fetchBill(pIndex: currentPIndex)
+        currentPIndex += 1
+        fetchBill(pIndex: currentPIndex)
         
         selectedDate = dateComponents
         reloadDateView(date: Calendar.current.date(from: dateComponents!))
@@ -48,11 +48,8 @@ extension ViewController: UICalendarViewDelegate, UICalendarSelectionSingleDateD
             present(modalViewController, animated: true)
         }
     }
-    func calendarView(_ calendarView: UICalendarView, didDisplayMonth month: Int) {
-        currentPIndex += 1
-        fetchBill(pIndex: currentPIndex)
-        print("CHANGE")
-    }
+    
+
 
 
     

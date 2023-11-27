@@ -31,7 +31,6 @@ class ViewController: UIViewController, BillModalViewControllerDelegate, UIColle
         setCalendar()
         reloadDateView(date: Date())
         
-        
     }
 
     fileprivate func setCalendar() {
@@ -39,6 +38,7 @@ class ViewController: UIViewController, BillModalViewControllerDelegate, UIColle
         let dateSelection = UICalendarSelectionSingleDate(delegate: self)
         dateView.selectionBehavior = dateSelection
     }
+
     
 
     
@@ -77,7 +77,7 @@ class ViewController: UIViewController, BillModalViewControllerDelegate, UIColle
         NSLayoutConstraint.activate(constraints)
     }
 
-
+    
 
     
     func reloadDateView(date: Date?) {
@@ -107,6 +107,7 @@ class ViewController: UIViewController, BillModalViewControllerDelegate, UIColle
         let cellWidth = collectionView.bounds.width - padding * 2 - collectionView.contentInset.left - collectionView.contentInset.right
         return CGSize(width: cellWidth, height: 50)
     }
+    
     func collectionView(_ collectionView: UICollectionView, didSelectItemAt indexPath: IndexPath) {
         let selectedRow = favoriteData[indexPath.item]  // 필터링된 데이터 배열에서 가져옴
         let detailVC = DetailView(row: selectedRow)
@@ -114,8 +115,17 @@ class ViewController: UIViewController, BillModalViewControllerDelegate, UIColle
         self.present(detailVC, animated: true, completion: nil)
     }
     
+   
+
+
+
 
 
     
 }
+
+
+
+
+
 
