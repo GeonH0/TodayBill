@@ -6,13 +6,11 @@
 //
 import UIKit
 
-
-class ViewController: UIViewController,BillModalViewControllerDelegate {
+class ViewController: UIViewController, BillModalViewControllerDelegate, UICollectionViewDelegateFlowLayout {
     
     var dataRows = [Row]()
     var favoriteData: [Row] = []  // 즐겨찾기된 데이터를 저장할 배열 추가
     var favoriteCollectionView: UICollectionView!
-    
     
     lazy var dateView: UICalendarView = {
         var view = UICalendarView()
@@ -30,7 +28,8 @@ class ViewController: UIViewController,BillModalViewControllerDelegate {
         applyConstraints()
         setCalendar()
         reloadDateView(date: Date())
-        favoriteCollectionView.backgroundColor = .red
+        
+        
     }
 
     fileprivate func setCalendar() {
@@ -51,8 +50,6 @@ class ViewController: UIViewController,BillModalViewControllerDelegate {
             favoriteCollectionView.leadingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.leadingAnchor),
             favoriteCollectionView.trailingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.trailingAnchor),
             favoriteCollectionView.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor)
-            
-            
         ]
         NSLayoutConstraint.activate(dateViewConstraints)
     }
@@ -68,8 +65,9 @@ class ViewController: UIViewController,BillModalViewControllerDelegate {
     
     func setupCollectionView() {
         let layout = UICollectionViewFlowLayout()
-        layout.scrollDirection = .horizontal  // 스크롤 방향을 수평으로 설정
-        favoriteCollectionView = UICollectionView(frame: .zero, collectionViewLayout: layout)
+        layout.scrollDirection = .vertical  // 스크롤 방향을 수직으로 설정
+        layout.sectionInset = UIEdgeInsets(top: 0, left: 20, bottom: 0, right: 20)
+        favoriteCollectionView = UICollectionView(frame: view.bounds, collectionViewLayout: layout)
         favoriteCollectionView.register(UICollectionViewCell.self, forCellWithReuseIdentifier: "FavoriteCell")
         favoriteCollectionView.backgroundColor = .white
         favoriteCollectionView.delegate = self
@@ -77,20 +75,32 @@ class ViewController: UIViewController,BillModalViewControllerDelegate {
         favoriteCollectionView.translatesAutoresizingMaskIntoConstraints = false
         view.addSubview(favoriteCollectionView)
     }
-
+    
+    func collectionView(_ collectionView: UICollectionView, layout collectionViewLayout: UICollectionViewLayout, sizeForItemAt indexPath: IndexPath) -> CGSize {
+        let padding: CGFloat = 10  // sectionInset에서 설정한 왼쪽, 오른쪽 여백
+        let cellWidth = collectionView.bounds.width - padding * 2 - collectionView.contentInset.left - collectionView.contentInset.right
+        return CGSize(width: cellWidth, height: 50)
+    }
+    func collectionView(_ collectionView: UICollectionView, didSelectItemAt indexPath: IndexPath) {
+        let selectedRow = favoriteData[indexPath.item]  // 필터링된 데이터 배열에서 가져옴
+        let detailVC = DetailView(row: selectedRow)
+        detailVC.modalPresentationStyle = .fullScreen
+        self.present(detailVC, animated: true, completion: nil)
+    }
+    
 }
 
 extension ViewController: UICalendarViewDelegate, UICalendarSelectionSingleDateDelegate {
     
     func calendarView(_ calendarView: UICalendarView, decorationFor dateComponents: DateComponents) -> UICalendarView.Decoration? {
-            guard let selectedDate = Calendar.current.date(from: dateComponents) else {
-                return nil
-            }
-
-            let count = countOfBillsForSelectedDate(selectedDate: selectedDate)
-
+        guard let selectedDate = Calendar.current.date(from: dateComponents) else {
             return nil
         }
+
+        let count = countOfBillsForSelectedDate(selectedDate: selectedDate)
+
+        return nil
+    }
 
     // 달력에서 날짜 선택했을 경우
     func dateSelection(_ selection: UICalendarSelectionSingleDate, didSelectDate dateComponents: DateComponents?) {
@@ -125,19 +135,13 @@ extension ViewController: UICalendarViewDelegate, UICalendarSelectionSingleDateD
     }
     
     func favoriteDataUpdated(_ favoriteData: [Row]) {
-         // 즐겨찾기 데이터가 업데이트될 때마다 캘린더 아래의 컬렉션 뷰를 업데이트
-        print("SUC")
-         updateFavoriteCollectionView(favoriteData)
-     }
+        updateFavoriteCollectionView(favoriteData)
+    }
+    
     func updateFavoriteCollectionView(_ favoriteData: [Row]) {
-        print("SUC!!!!")
         self.favoriteData = favoriteData  // 즐겨찾기 데이터를 업데이트
         favoriteCollectionView.reloadData()  // 컬렉션 뷰를 업데이트
     }
-    
-    
-
-
     
     func countOfBillsForSelectedDate(selectedDate: Date) -> Int {
         let formattedDate = dateFormattedString(from: selectedDate)
@@ -149,8 +153,6 @@ extension ViewController: UICalendarViewDelegate, UICalendarSelectionSingleDateD
         return billsForSelectedDate.count
     }
 
-
-    
     func dateFormattedString(from date: Date) -> String {
         let dateFormatter = DateFormatter()
         dateFormatter.dateFormat = "yyyy-MM-dd"
@@ -161,18 +163,14 @@ extension ViewController: UICalendarViewDelegate, UICalendarSelectionSingleDateD
     }
 }
 
-extension ViewController: UICollectionViewDataSource, UICollectionViewDelegate {
-    
+extension ViewController: UICollectionViewDataSource {
     
     func collectionView(_ collectionView: UICollectionView, numberOfItemsInSection section: Int) -> Int {
-        print("Number of items: \(favoriteData.count)")
         return favoriteData.count
     }
     
-    
     func collectionView(_ collectionView: UICollectionView, cellForItemAt indexPath: IndexPath) -> UICollectionViewCell {
         let cell = collectionView.dequeueReusableCell(withReuseIdentifier: "FavoriteCell", for: indexPath)
-        print("Creating cell for item at \(indexPath)")
         
         // 기존의 셀 하위 뷰들을 제거합니다.
         for subview in cell.contentView.subviews {
@@ -201,6 +199,4 @@ extension ViewController: UICollectionViewDataSource, UICollectionViewDelegate {
 
         return cell
     }
-
 }
-
