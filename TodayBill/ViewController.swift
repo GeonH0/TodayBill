@@ -32,6 +32,9 @@ class ViewController: UIViewController, BillModalViewControllerDelegate, UIColle
         reloadDateView(date: Date())
         
         loadFavoriteData()
+        
+        let longPressGesture = UILongPressGestureRecognizer(target: self, action: #selector(handleLongPress(_:)))
+                favoriteCollectionView.addGestureRecognizer(longPressGesture)
     }
 
     fileprivate func setCalendar() {
@@ -120,4 +123,31 @@ class ViewController: UIViewController, BillModalViewControllerDelegate, UIColle
         detailVC.modalPresentationStyle = .fullScreen
         self.present(detailVC, animated: true, completion: nil)
     }
+    
+    @objc func handleLongPress(_ gesture: UILongPressGestureRecognizer) {
+           if gesture.state == .began {
+               let point = gesture.location(in: favoriteCollectionView)
+               if let indexPath = favoriteCollectionView.indexPathForItem(at: point) {
+                   removeCell(at: indexPath)
+               }
+           }
+       }
+    func saveFavoriteData() {
+        do {
+            let encodedData = try JSONEncoder().encode(favoriteData)
+            UserDefaults.standard.set(encodedData, forKey: "favoriteData")
+        } catch {
+            print("Error encoding favoriteData: \(error)")
+        }
+    }
+       
+       // 셀 제거 로직
+       func removeCell(at indexPath: IndexPath) {
+           // 선택된 인덱스에 해당하는 데이터 및 셀을 삭제
+           favoriteData.remove(at: indexPath.item)
+           favoriteCollectionView.deleteItems(at: [indexPath])
+           
+           // 저장된 데이터 업데이트
+           saveFavoriteData()
+       }
 }
