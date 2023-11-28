@@ -190,6 +190,16 @@ class BillModalViewController: UIViewController, UISearchBarDelegate, UICollecti
         collectionView.reloadData()
     }
     
+    func saveFavoriteData() {
+        do {
+            let encodedData = try JSONEncoder().encode(favoriteData)
+            UserDefaults.standard.set(encodedData, forKey: "favoriteData")
+        } catch {
+            print("Error encoding favoriteData: \(error)")
+        }
+    }
+
+    
 
 
 
@@ -213,7 +223,9 @@ class BillModalViewController: UIViewController, UISearchBarDelegate, UICollecti
 
         // 필터링된 데이터의 즐겨찾기 상태 업데이트
         filteredDataRows[indexPath.item].favoriteInfo.isFavorite.toggle()
-
+        
+        
+        saveFavoriteData()
         delegate?.favoriteDataUpdated(favoriteData)
 
         collectionView.reloadItems(at: [indexPath])
@@ -224,4 +236,6 @@ class BillModalViewController: UIViewController, UISearchBarDelegate, UICollecti
 
            
 }
+
+
 

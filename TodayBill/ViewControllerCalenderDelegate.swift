@@ -63,9 +63,12 @@ extension ViewController: UICalendarViewDelegate, UICalendarSelectionSingleDateD
         return filteredData
     }
     
+    
     func favoriteDataUpdated(_ favoriteData: [Row]) {
         updateFavoriteCollectionView(favoriteData)
     }
+    
+    
     
     func updateFavoriteCollectionView(_ favoriteData: [Row]) {
         self.favoriteData = favoriteData  // 즐겨찾기 데이터를 업데이트

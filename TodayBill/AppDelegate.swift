@@ -10,11 +10,28 @@ import UIKit
 @main
 class AppDelegate: UIResponder, UIApplicationDelegate {
 
-
+    var window: UIWindow?
 
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
-        // Override point for customization after application launch.
+        
+        
+        if let savedFavoriteData = UserDefaults.standard.data(forKey: "favoriteData"),
+                   let decodedFavoriteData = try? JSONDecoder().decode([Row].self, from: savedFavoriteData) {
+                    // 불러온 데이터를 앱 전체에서 사용할 수 있도록 설정합니다.
+                    if let viewController = window?.rootViewController as? ViewController {
+                        viewController.favoriteData = decodedFavoriteData
+                    }
+                }
+        
         return true
+    }
+    func applicationWillTerminate(_ application: UIApplication) {
+        // 앱이 종료될 때 UserDefaults에 favoriteData를 저장합니다.
+        if let viewController = window?.rootViewController as? ViewController {
+            if let encodedData = try? JSONEncoder().encode(viewController.favoriteData) {
+                UserDefaults.standard.set(encodedData, forKey: "favoriteData")
+            }
+        }
     }
 
     // MARK: UISceneSession Lifecycle

@@ -9,7 +9,7 @@ import UIKit
 class ViewController: UIViewController, BillModalViewControllerDelegate, UICollectionViewDelegateFlowLayout {
     
     var dataRows = [Row]()
-    var favoriteData: [Row] = []  // 즐겨찾기된 데이터를 저장할 배열 추가
+    var favoriteData = [Row]()
     var favoriteCollectionView: UICollectionView!
     var currentPIndex: Int = 1
     
@@ -31,6 +31,7 @@ class ViewController: UIViewController, BillModalViewControllerDelegate, UIColle
         setCalendar()
         reloadDateView(date: Date())
         
+        loadFavoriteData()
     }
 
     fileprivate func setCalendar() {
@@ -38,10 +39,18 @@ class ViewController: UIViewController, BillModalViewControllerDelegate, UIColle
         let dateSelection = UICalendarSelectionSingleDate(delegate: self)
         dateView.selectionBehavior = dateSelection
     }
+    func loadFavoriteData() {
+        if let savedData = UserDefaults.standard.data(forKey: "favoriteData") {
+            print("Saved Data:", savedData)
+            do {
+                favoriteData = try JSONDecoder().decode([Row].self, from: savedData)
+                print("LOAD")
+            } catch {
+                print("Failed to decode favoriteData from UserDefaults: \(error)")
+            }
+        }
+    }
 
-    
-
-    
     func applyConstraints() {
         view.addSubview(dateView)
 
@@ -77,9 +86,6 @@ class ViewController: UIViewController, BillModalViewControllerDelegate, UIColle
         NSLayoutConstraint.activate(constraints)
     }
 
-    
-
-    
     func reloadDateView(date: Date?) {
         if let date = date {
             let calendar = Calendar.current
@@ -114,18 +120,4 @@ class ViewController: UIViewController, BillModalViewControllerDelegate, UIColle
         detailVC.modalPresentationStyle = .fullScreen
         self.present(detailVC, animated: true, completion: nil)
     }
-    
-   
-
-
-
-
-
-    
 }
-
-
-
-
-
-
