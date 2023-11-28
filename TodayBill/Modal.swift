@@ -11,7 +11,7 @@ protocol BillModalViewControllerDelegate: AnyObject {
     
 }
 
-class BillModalViewController: UIViewController, UISearchBarDelegate, UICollectionViewDataSource, UICollectionViewDelegateFlowLayout {
+class BillModalViewController: UIViewController, UISearchBarDelegate, UICollectionViewDataSource,UICollectionViewDelegate,UICollectionViewDelegateFlowLayout {
     
     weak var delegate: BillModalViewControllerDelegate?
 
@@ -22,6 +22,7 @@ class BillModalViewController: UIViewController, UISearchBarDelegate, UICollecti
 
     var searchBar = UISearchBar()
     var collectionView: UICollectionView!
+    var noDataLabel: UILabel!
     
 
     init(date: Date, dataRows: [Row], favoriteData : [Row]) {
@@ -41,10 +42,25 @@ class BillModalViewController: UIViewController, UISearchBarDelegate, UICollecti
         super.viewDidLoad()
         setupSearchBar()
         setupCollectionView()
-        
+        setupNoDataLabel()
         // date를 한국 표준시(KST) 형식으로 포맷팅하여 표시
         let formattedDate = dateFormattedString(from: date)
         view.backgroundColor = .white
+    }
+    
+    func setupNoDataLabel() {
+        noDataLabel = UILabel()
+        noDataLabel.text = "정보가 없습니다"
+        noDataLabel.textColor = .gray
+        noDataLabel.textAlignment = .center
+        noDataLabel.isHidden = true  // 초기에는 숨김 상태로 설정
+        noDataLabel.translatesAutoresizingMaskIntoConstraints = false
+        view.addSubview(noDataLabel)
+
+        NSLayoutConstraint.activate([
+            noDataLabel.centerXAnchor.constraint(equalTo: view.centerXAnchor),
+            noDataLabel.centerYAnchor.constraint(equalTo: view.centerYAnchor)
+        ])
     }
 
     func setupSearchBar() {
@@ -66,11 +82,13 @@ class BillModalViewController: UIViewController, UISearchBarDelegate, UICollecti
         layout.sectionInset = UIEdgeInsets(top: 0, left: 20, bottom: 0, right: 20)
         collectionView = UICollectionView(frame: view.bounds, collectionViewLayout: layout)
 
+        
         collectionView.dataSource = self
         collectionView.delegate = self
         collectionView.register(UICollectionViewCell.self, forCellWithReuseIdentifier: "cell")
         collectionView.backgroundColor = .white
         collectionView.translatesAutoresizingMaskIntoConstraints = false
+        
         view.addSubview(collectionView)
 
         NSLayoutConstraint.activate([
@@ -83,8 +101,7 @@ class BillModalViewController: UIViewController, UISearchBarDelegate, UICollecti
         let longPressGesture = UILongPressGestureRecognizer(target: self, action: #selector(handleLongPress(_:)))
         collectionView.addGestureRecognizer(longPressGesture)
     }
-
-
+    
     // 나머지 함수 및 dateFormattedString 등은 동일하게 유지
 
     func dateFormattedString(from date: Date) -> String {
@@ -95,14 +112,22 @@ class BillModalViewController: UIViewController, UISearchBarDelegate, UICollecti
         
         return dateFormatter.string(from: date)
     }
+    
+
+
+    
+    
 
     func collectionView(_ collectionView: UICollectionView, numberOfItemsInSection section: Int) -> Int {
-        return filteredDataRows.count  // 필터링된 데이터 배열의 크기로 반환
+        let count = filteredDataRows.count
+                noDataLabel.isHidden = count != 0  // 데이터가 있을 경우 라벨 숨김
+                return count
     }
+    
 
     func collectionView(_ collectionView: UICollectionView, cellForItemAt indexPath: IndexPath) -> UICollectionViewCell {
         let cell = collectionView.dequeueReusableCell(withReuseIdentifier: "cell", for: indexPath)
-        
+
         // 기존의 셀 하위 뷰들을 제거합니다.
         for subview in cell.contentView.subviews {
             subview.removeFromSuperview()
@@ -164,6 +189,10 @@ class BillModalViewController: UIViewController, UISearchBarDelegate, UICollecti
         filteredDataRows = searchText.isEmpty ? dataRows : dataRows.filter { $0.BILL_NAME.localizedCaseInsensitiveContains(searchText) }
         collectionView.reloadData()
     }
+    
+
+
+
     
     
     func toggleFavoriteStatus(at indexPath: IndexPath) {
