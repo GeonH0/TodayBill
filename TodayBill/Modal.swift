@@ -69,7 +69,6 @@ class BillModalViewController: UIViewController, UISearchBarDelegate, UICollecti
         searchBar.translatesAutoresizingMaskIntoConstraints = false
         searchBar.layer.cornerRadius = 10
         searchBar.clipsToBounds = true
-        searchBar.barTintColor = forestGreenColor
         view.addSubview(searchBar)
 
         NSLayoutConstraint.activate([
@@ -96,7 +95,7 @@ class BillModalViewController: UIViewController, UISearchBarDelegate, UICollecti
         view.addSubview(collectionView)
 
         NSLayoutConstraint.activate([
-            collectionView.topAnchor.constraint(equalTo: searchBar.bottomAnchor),
+            collectionView.topAnchor.constraint(equalTo: searchBar.bottomAnchor, constant: 20),  // 간격을 추가
             collectionView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
             collectionView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
             collectionView.bottomAnchor.constraint(equalTo: view.bottomAnchor)
@@ -151,13 +150,14 @@ class BillModalViewController: UIViewController, UISearchBarDelegate, UICollecti
             label.bottomAnchor.constraint(equalTo: cell.contentView.bottomAnchor)
         ])
         
-        // 경계선 그리기
-        cell.backgroundColor = UIColor.brown
         
-        cell.contentView.layer.borderWidth = 1  // 테두리의 두께
-        cell.contentView.layer.borderColor = UIColor.gray.cgColor  // 테두리의 색상
-        cell.contentView.layer.cornerRadius = 10  // 셀의 모서리를 둥글게 설정
-        cell.contentView.clipsToBounds = true  // 셀의 내용이 모서리를 넘어가지 않도록 설정
+           cell.backgroundColor = UIColor.brown
+           
+           // 경계선 그리기
+           cell.layer.borderWidth = 1  // 테두리의 두께
+           cell.layer.borderColor = UIColor.gray.cgColor  // 테두리의 색상
+           cell.layer.cornerRadius = 10  // 셀의 모서리를 둥글게 설정
+           cell.clipsToBounds = true  // 셀의 내용이 모서리를 넘어가지 않도록 설정
         
         return cell
     }

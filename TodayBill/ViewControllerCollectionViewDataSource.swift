@@ -37,11 +37,13 @@ func collectionView(_ collectionView: UICollectionView, cellForItemAt indexPath:
         label.bottomAnchor.constraint(equalTo: cell.contentView.bottomAnchor)
     ])
     
+    cell.backgroundColor = .brown
+    
     // 경계선 그리기
-    cell.contentView.layer.borderWidth = 1  // 테두리의 두께
-    cell.contentView.layer.borderColor = UIColor.gray.cgColor  // 테두리의 색상
-    cell.contentView.layer.cornerRadius = 10  // 셀의 모서리를 둥글게 설정
-    cell.contentView.clipsToBounds = true  // 셀의 내용이 모서리를 넘어가지 않도록 설정
+    cell.layer.borderWidth = 1  // 테두리의 두께
+    cell.layer.borderColor = UIColor.gray.cgColor  // 테두리의 색상
+    cell.layer.cornerRadius = 10  // 셀의 모서리를 둥글게 설정
+    cell.clipsToBounds = true  // 셀의 내용이 모서리를 넘어가지 않도록 설정
 
     return cell
 }
