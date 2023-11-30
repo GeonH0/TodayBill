@@ -14,6 +14,7 @@ protocol BillModalViewControllerDelegate: AnyObject {
 class BillModalViewController: UIViewController, UISearchBarDelegate, UICollectionViewDataSource,UICollectionViewDelegate,UICollectionViewDelegateFlowLayout {
     
     weak var delegate: BillModalViewControllerDelegate?
+    let forestGreenColor = UIColor(red: 34/255, green: 139/255, blue: 34/255, alpha: 1.0)
 
     var date: Date
     var dataRows = [Row]()
@@ -45,13 +46,13 @@ class BillModalViewController: UIViewController, UISearchBarDelegate, UICollecti
         setupNoDataLabel()
         // date를 한국 표준시(KST) 형식으로 포맷팅하여 표시
         let formattedDate = dateFormattedString(from: date)
-        view.backgroundColor = .white
+        view.backgroundColor = forestGreenColor
     }
     
     func setupNoDataLabel() {
         noDataLabel = UILabel()
         noDataLabel.text = "정보가 없습니다"
-        noDataLabel.textColor = .gray
+        noDataLabel.textColor = .white
         noDataLabel.textAlignment = .center
         noDataLabel.isHidden = true  // 초기에는 숨김 상태로 설정
         noDataLabel.translatesAutoresizingMaskIntoConstraints = false
@@ -68,6 +69,7 @@ class BillModalViewController: UIViewController, UISearchBarDelegate, UICollecti
         searchBar.translatesAutoresizingMaskIntoConstraints = false
         searchBar.layer.cornerRadius = 10
         searchBar.clipsToBounds = true
+        searchBar.barTintColor = forestGreenColor
         view.addSubview(searchBar)
 
         NSLayoutConstraint.activate([
@@ -80,14 +82,16 @@ class BillModalViewController: UIViewController, UISearchBarDelegate, UICollecti
     func setupCollectionView() {
         let layout = UICollectionViewFlowLayout()
         layout.sectionInset = UIEdgeInsets(top: 0, left: 20, bottom: 0, right: 20)
+        
         collectionView = UICollectionView(frame: view.bounds, collectionViewLayout: layout)
-
+        
         
         collectionView.dataSource = self
         collectionView.delegate = self
         collectionView.register(UICollectionViewCell.self, forCellWithReuseIdentifier: "cell")
         collectionView.backgroundColor = .white
         collectionView.translatesAutoresizingMaskIntoConstraints = false
+        collectionView.backgroundColor = forestGreenColor
         
         view.addSubview(collectionView)
 
@@ -148,11 +152,13 @@ class BillModalViewController: UIViewController, UISearchBarDelegate, UICollecti
         ])
         
         // 경계선 그리기
+        cell.backgroundColor = UIColor.brown
+        
         cell.contentView.layer.borderWidth = 1  // 테두리의 두께
         cell.contentView.layer.borderColor = UIColor.gray.cgColor  // 테두리의 색상
         cell.contentView.layer.cornerRadius = 10  // 셀의 모서리를 둥글게 설정
         cell.contentView.clipsToBounds = true  // 셀의 내용이 모서리를 넘어가지 않도록 설정
-
+        
         return cell
     }
     

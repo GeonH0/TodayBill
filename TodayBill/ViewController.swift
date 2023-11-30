@@ -35,12 +35,21 @@ class ViewController: UIViewController, BillModalViewControllerDelegate, UIColle
         
         let longPressGesture = UILongPressGestureRecognizer(target: self, action: #selector(handleLongPress(_:)))
                 favoriteCollectionView.addGestureRecognizer(longPressGesture)
+        
+        let forestGreenColor = UIColor(red: 34/255, green: 139/255, blue: 34/255, alpha: 1.0)
+        view.backgroundColor = forestGreenColor
+        
+
+        
     }
 
     fileprivate func setCalendar() {
         dateView.delegate = self
         let dateSelection = UICalendarSelectionSingleDate(delegate: self)
         dateView.selectionBehavior = dateSelection
+        
+
+
     }
     func loadFavoriteData() {
         if let savedData = UserDefaults.standard.data(forKey: "favoriteData") {
@@ -108,6 +117,8 @@ class ViewController: UIViewController, BillModalViewControllerDelegate, UIColle
         favoriteCollectionView.delegate = self
         favoriteCollectionView.dataSource = self
         favoriteCollectionView.translatesAutoresizingMaskIntoConstraints = false
+        let forestGreenColor = UIColor(red: 34/255, green: 139/255, blue: 34/255, alpha: 1.0)
+        favoriteCollectionView.backgroundColor = forestGreenColor
         view.addSubview(favoriteCollectionView)
     }
     
