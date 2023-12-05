@@ -11,7 +11,7 @@
 ### ⚙️ 개발 환경
 - **Xcode**
 - **Deployment Target: iOS 15.0** 
-- **Architecture: MVVM(리팩토리중)***
+- **Architecture: MVC(리팩토리중)***
 - **프레임워크: UIKit**
 
 
