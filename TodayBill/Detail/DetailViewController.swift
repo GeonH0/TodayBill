@@ -1,16 +1,30 @@
 import Foundation
+import UIKit
 
-extension DetailView {
+class DetailViewController: UIViewController {
     
-    func fetchRepresentatives() {
-        // 1. Load file from the app bundle
+    private var row: Row
+    private var name = [Representative]()
+    
+    init(row: Row) {
+        self.row = row
+        super.init(nibName: nil, bundle: nil)
+        fetchRepresentatives()
+    }
+    
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
+    
+    override func loadView() {
+        self.view = DetailView(row: row, name: name)
+    }
+    
+    private func fetchRepresentatives() {
         if let jsonPath = Bundle.main.path(forResource: "name", ofType: "json"),
            let jsonData = try? Data(contentsOf: URL(fileURLWithPath: jsonPath)) {
-
-            
             do {
                 let representatives = try JSONDecoder().decode([Representative].self, from: jsonData)
-                // Process representatives array here
                 self.name += representatives
             } catch {
                 print("Error decoding JSON from app bundle: \(error)")

@@ -14,12 +14,11 @@ protocol BillModalViewControllerDelegate: AnyObject {
 class BillModalViewController: UIViewController, UISearchBarDelegate, UICollectionViewDataSource,UICollectionViewDelegate,UICollectionViewDelegateFlowLayout {
     
     weak var delegate: BillModalViewControllerDelegate?
-    let forestGreenColor = UIColor(red: 34/255, green: 139/255, blue: 34/255, alpha: 1.0)
-
-    var date: Date
+    
+    private var date: Date
     var dataRows = [Row]()
-    var filteredDataRows = [Row]()  // 필터링된 데이터를 저장할 배열 추가
-    var favoriteData = [Row]() // 즐겨찾기를 저장할 배열 추가
+    var filteredDataRows = [Row]()
+    var favoriteData = [Row]()
 
     var searchBar = UISearchBar()
     var collectionView: UICollectionView!
@@ -46,7 +45,7 @@ class BillModalViewController: UIViewController, UISearchBarDelegate, UICollecti
         setupNoDataLabel()
         // date를 한국 표준시(KST) 형식으로 포맷팅하여 표시
         let formattedDate = dateFormattedString(from: date)
-        view.backgroundColor = forestGreenColor
+        
     }
     
     func setupNoDataLabel() {
@@ -90,12 +89,12 @@ class BillModalViewController: UIViewController, UISearchBarDelegate, UICollecti
         collectionView.register(UICollectionViewCell.self, forCellWithReuseIdentifier: "cell")
         collectionView.backgroundColor = .white
         collectionView.translatesAutoresizingMaskIntoConstraints = false
-        collectionView.backgroundColor = forestGreenColor
+        
         
         view.addSubview(collectionView)
 
         NSLayoutConstraint.activate([
-            collectionView.topAnchor.constraint(equalTo: searchBar.bottomAnchor, constant: 20),  // 간격을 추가
+            collectionView.topAnchor.constraint(equalTo: searchBar.bottomAnchor),  // 간격을 추가
             collectionView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
             collectionView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
             collectionView.bottomAnchor.constraint(equalTo: view.bottomAnchor)
@@ -150,8 +149,7 @@ class BillModalViewController: UIViewController, UISearchBarDelegate, UICollecti
             label.bottomAnchor.constraint(equalTo: cell.contentView.bottomAnchor)
         ])
         
-        
-           cell.backgroundColor = UIColor.brown
+                   
            
            // 경계선 그리기
            cell.layer.borderWidth = 1  // 테두리의 두께
@@ -183,10 +181,11 @@ class BillModalViewController: UIViewController, UISearchBarDelegate, UICollecti
     
     func collectionView(_ collectionView: UICollectionView, didSelectItemAt indexPath: IndexPath) {
         let selectedRow = filteredDataRows[indexPath.item]  // 필터링된 데이터 배열에서 가져옴
-        let detailVC = DetailView(row: selectedRow)
+        let detailVC = DetailView(row: selectedRow)  // DetailViewController를 초기화할 때 init(row:) 사용
         detailVC.modalPresentationStyle = .fullScreen
         self.present(detailVC, animated: true, completion: nil)
     }
+
 
     // MARK: - UISearchBarDelegate
 
