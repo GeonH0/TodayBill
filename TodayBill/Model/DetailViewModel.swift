@@ -6,3 +6,9 @@
 //
 
 import Foundation
+import UIKit
+
+struct DetailViewModel {
+    private let row: Row
+    private let name: [Representative]
+}

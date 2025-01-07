@@ -6,7 +6,7 @@
 //
 import UIKit
 
-class ViewController: UIViewController, BillModalViewControllerDelegate, UICollectionViewDelegateFlowLayout {
+class CalenderViewController: UIViewController, BillModalViewControllerDelegate, UICollectionViewDelegateFlowLayout {
     
     var dataRows = [Row]()
     var favoriteData = [Row]()
@@ -17,10 +17,12 @@ class ViewController: UIViewController, BillModalViewControllerDelegate, UIColle
         var view = UICalendarView()
         view.translatesAutoresizingMaskIntoConstraints = false
         view.wantsDateDecorations = true
+        view.backgroundColor = .white
         return view
     }()
     
     var selectedDate: DateComponents? = nil
+    
     
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -39,10 +41,8 @@ class ViewController: UIViewController, BillModalViewControllerDelegate, UIColle
         dateView.delegate = self
         let dateSelection = UICalendarSelectionSingleDate(delegate: self)
         dateView.selectionBehavior = dateSelection
-        
-        
-        
     }
+    
     private func loadFavoriteData() {
         if let savedData = UserDefaults.standard.data(forKey: "favoriteData") {
             print("Saved Data:", savedData)
