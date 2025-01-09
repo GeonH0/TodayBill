@@ -1,10 +1,8 @@
 import UIKit
 
 class DetailView: UIView {
-    
     private var row: Row
     private var name = [Representative]()
-    
     private let customTopView = UIView()
     private let navBar = UINavigationBar()
     
@@ -30,7 +28,6 @@ class DetailView: UIView {
         customTopView.backgroundColor = .white
         customTopView.translatesAutoresizingMaskIntoConstraints = false
         navBar.translatesAutoresizingMaskIntoConstraints = false
-        
         NSLayoutConstraint.activate([
             customTopView.topAnchor.constraint(equalTo: topAnchor),
             customTopView.leadingAnchor.constraint(equalTo: leadingAnchor),

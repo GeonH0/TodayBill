@@ -6,7 +6,7 @@
 //
 import UIKit
 
-class ViewController: UIViewController, BillModalViewControllerDelegate, UICollectionViewDelegateFlowLayout {
+class CalenderViewController: UIViewController, BillModalViewControllerDelegate, UICollectionViewDelegateFlowLayout {
     
     var dataRows = [Row]()
     var favoriteData = [Row]()
@@ -17,10 +17,12 @@ class ViewController: UIViewController, BillModalViewControllerDelegate, UIColle
         var view = UICalendarView()
         view.translatesAutoresizingMaskIntoConstraints = false
         view.wantsDateDecorations = true
+        view.backgroundColor = .white
         return view
     }()
     
     var selectedDate: DateComponents? = nil
+    
     
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -39,16 +41,13 @@ class ViewController: UIViewController, BillModalViewControllerDelegate, UIColle
         dateView.delegate = self
         let dateSelection = UICalendarSelectionSingleDate(delegate: self)
         dateView.selectionBehavior = dateSelection
-        
-        
-        
     }
+    
     private func loadFavoriteData() {
         if let savedData = UserDefaults.standard.data(forKey: "favoriteData") {
             print("Saved Data:", savedData)
             do {
-                favoriteData = try JSONDecoder().decode([Row].self, from: savedData)
-                print("LOAD")
+                favoriteData = try JSONDecoder().decode([Row].self, from: savedData)                
             } catch {
                 print("Failed to decode favoriteData from UserDefaults: \(error)")
             }
@@ -62,26 +61,19 @@ class ViewController: UIViewController, BillModalViewControllerDelegate, UIColle
         let label = UILabel()
         label.text = "꾹 누르면 즐겨찾기가 됩니다!" // 라벨 텍스트 설정
         label.translatesAutoresizingMaskIntoConstraints = false // Auto Layout 사용 설정
-        view.addSubview(label) // 라벨을 화면에 추가
-        
-        // favoriteCollectionView도 화면에 추가
+        view.addSubview(label)
         view.addSubview(favoriteCollectionView)
         
-        let gap: CGFloat = 20 // 원하는 간격 값
-        let leadingSpace: CGFloat = 10 // 왼쪽 여백 값
+        let gap: CGFloat = 20
+        let leadingSpace: CGFloat = 10
         
         let constraints = [
-            
             dateView.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor),
             dateView.leadingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.leadingAnchor),
             dateView.trailingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.trailingAnchor),
-            
-            
             label.topAnchor.constraint(equalTo: dateView.bottomAnchor),
             label.leadingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.leadingAnchor, constant: leadingSpace), // 왼쪽 여백 추가
             label.trailingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.trailingAnchor),
-            
-            
             favoriteCollectionView.topAnchor.constraint(equalTo: label.bottomAnchor, constant: gap), // 간격 추가
             favoriteCollectionView.leadingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.leadingAnchor),
             favoriteCollectionView.trailingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.trailingAnchor),
@@ -119,8 +111,8 @@ class ViewController: UIViewController, BillModalViewControllerDelegate, UIColle
     }
     
     func collectionView(_ collectionView: UICollectionView, didSelectItemAt indexPath: IndexPath) {
-        let selectedRow = favoriteData[indexPath.item]  // 필터링된 데이터 배열에서 가져옴
-        let detailVC = DetailView(row: selectedRow)
+        let selectedRow = favoriteData[indexPath.item]
+        let detailVC = DetailViewController(row: selectedRow)
         detailVC.modalPresentationStyle = .fullScreen
         self.present(detailVC, animated: true, completion: nil)
     }
@@ -147,8 +139,6 @@ class ViewController: UIViewController, BillModalViewControllerDelegate, UIColle
         // 선택된 인덱스에 해당하는 데이터 및 셀을 삭제
         favoriteData.remove(at: indexPath.item)
         favoriteCollectionView.deleteItems(at: [indexPath])
-        
-        // 저장된 데이터 업데이트
         saveFavoriteData()
     }
 }
