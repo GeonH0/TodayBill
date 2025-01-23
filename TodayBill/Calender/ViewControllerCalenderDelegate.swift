@@ -27,8 +27,7 @@ extension CalenderViewController: UICalendarViewDelegate, UICalendarSelectionSin
         
         if let date = Calendar.current.date(from: dateComponents!) {
             let filteredData = filterDataForSelectedDate(selectedDate: date)
-            let modalViewController = BillModalViewController(date: date, dataRows: filteredData, favoriteData: favoriteData)
-            modalViewController.delegate = self  // delegate 설정
+            let modalViewController = BillModalViewController(date: date, dataRows: filteredData, favoriteData: favoriteData)            
             if let sheet = modalViewController.sheetPresentationController {
                 sheet.detents = [.medium(), .large()]
                 sheet.prefersGrabberVisible = true
@@ -38,7 +37,7 @@ extension CalenderViewController: UICalendarViewDelegate, UICalendarSelectionSin
             present(modalViewController, animated: true)
         }
     }
-    
+        
     func filterDataForSelectedDate(selectedDate: Date) -> [Row] {
         let formattedDate = dateFormattedString(from: selectedDate)
         let filteredData = dataRows.filter {
@@ -58,20 +57,20 @@ extension CalenderViewController: UICalendarViewDelegate, UICalendarSelectionSin
     
     func countOfBillsForSelectedDate(selectedDate: Date) -> Int {
         let formattedDate = dateFormattedString(from: selectedDate)
-        
+
         let billsForSelectedDate = dataRows.filter {
             return $0.PROPOSE_DT == formattedDate
         }
-        
+
         return billsForSelectedDate.count
     }
-    
+
     func dateFormattedString(from date: Date) -> String {
         let dateFormatter = DateFormatter()
         dateFormatter.dateFormat = "yyyy-MM-dd"
         dateFormatter.locale = Locale(identifier: "ko_KR")
         dateFormatter.timeZone = TimeZone(identifier: "Asia/Seoul")
-        
+
         return dateFormatter.string(from: date)
     }
 }
