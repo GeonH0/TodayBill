@@ -27,8 +27,7 @@ class AppInitializer {
         )
         
         // 네비게이션 컨트롤러 설정
-        let navigationController = UINavigationController(rootViewController: tabBarViewController)
-        window?.rootViewController = navigationController
+        window?.rootViewController = tabBarViewController
         window?.makeKeyAndVisible()
     }
 }
