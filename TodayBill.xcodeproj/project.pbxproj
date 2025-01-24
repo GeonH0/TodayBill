@@ -24,10 +24,13 @@
 		1D672B7C2D41D92D000DD244 /* MainTabBarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D672B7B2D41D92D000DD244 /* MainTabBarView.swift */; };
 		1D672B7E2D420327000DD244 /* MainTabBarViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D672B7D2D420327000DD244 /* MainTabBarViewController.swift */; };
 		1D672B802D422E85000DD244 /* AppInitializer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D672B7F2D422E85000DD244 /* AppInitializer.swift */; };
-		1D672B842D422EB6000DD244 /* SearchView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D672B832D422EB6000DD244 /* SearchView.swift */; };
-		1D672B862D422EBE000DD244 /* SearchViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D672B852D422EBE000DD244 /* SearchViewController.swift */; };
 		1D672B882D422EC8000DD244 /* StarBillView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D672B872D422EC8000DD244 /* StarBillView.swift */; };
 		1D672B8A2D422ED2000DD244 /* StarBillViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D672B892D422ED2000DD244 /* StarBillViewController.swift */; };
+		1D69B1A22D43500F00EB70F0 /* SearchView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D69B1A12D43500F00EB70F0 /* SearchView.swift */; };
+		1D69B1A42D43501D00EB70F0 /* SearchViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D69B1A32D43501D00EB70F0 /* SearchViewController.swift */; };
+		1D69B1A82D43990700EB70F0 /* RecentSearchManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D69B1A72D43990700EB70F0 /* RecentSearchManager.swift */; };
+		1D69B1AA2D43A35D00EB70F0 /* SearchBills.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D69B1A92D43A35D00EB70F0 /* SearchBills.swift */; };
+		1D69B1AC2D43A72D00EB70F0 /* BillsService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D69B1AB2D43A72D00EB70F0 /* BillsService.swift */; };
 		1D7B0AF52B142D8900651B03 /* ViewControllerCollectionViewDataSource.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D7B0AF42B142D8900651B03 /* ViewControllerCollectionViewDataSource.swift */; };
 		1D7B0AF72B142FCB00651B03 /* ViewControllerCalenderDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D7B0AF62B142FCB00651B03 /* ViewControllerCalenderDelegate.swift */; };
 		1DACADCC2D2E32B50093E2B5 /* BillModalCollectionViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1DACADCB2D2E32B50093E2B5 /* BillModalCollectionViewController.swift */; };
@@ -54,10 +57,13 @@
 		1D672B7B2D41D92D000DD244 /* MainTabBarView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainTabBarView.swift; sourceTree = "<group>"; };
 		1D672B7D2D420327000DD244 /* MainTabBarViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainTabBarViewController.swift; sourceTree = "<group>"; };
 		1D672B7F2D422E85000DD244 /* AppInitializer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppInitializer.swift; sourceTree = "<group>"; };
-		1D672B832D422EB6000DD244 /* SearchView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SearchView.swift; sourceTree = "<group>"; };
-		1D672B852D422EBE000DD244 /* SearchViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SearchViewController.swift; sourceTree = "<group>"; };
 		1D672B872D422EC8000DD244 /* StarBillView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StarBillView.swift; sourceTree = "<group>"; };
 		1D672B892D422ED2000DD244 /* StarBillViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StarBillViewController.swift; sourceTree = "<group>"; };
+		1D69B1A12D43500F00EB70F0 /* SearchView.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = SearchView.swift; sourceTree = "<group>"; };
+		1D69B1A32D43501D00EB70F0 /* SearchViewController.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = SearchViewController.swift; sourceTree = "<group>"; };
+		1D69B1A72D43990700EB70F0 /* RecentSearchManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecentSearchManager.swift; sourceTree = "<group>"; };
+		1D69B1A92D43A35D00EB70F0 /* SearchBills.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SearchBills.swift; sourceTree = "<group>"; };
+		1D69B1AB2D43A72D00EB70F0 /* BillsService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BillsService.swift; sourceTree = "<group>"; };
 		1D7B0AF42B142D8900651B03 /* ViewControllerCollectionViewDataSource.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ViewControllerCollectionViewDataSource.swift; sourceTree = "<group>"; };
 		1D7B0AF62B142FCB00651B03 /* ViewControllerCalenderDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ViewControllerCalenderDelegate.swift; sourceTree = "<group>"; };
 		1DACADCB2D2E32B50093E2B5 /* BillModalCollectionViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BillModalCollectionViewController.swift; sourceTree = "<group>"; };
@@ -101,13 +107,12 @@
 				1D62EA0C2B1827780011DA14 /* Detail */,
 				1D62EA0B2B18276F0011DA14 /* Calender */,
 				1D62EA0A2B1827610011DA14 /* Model */,
+				1D672B7F2D422E85000DD244 /* AppInitializer.swift */,
 				1D30EB182B0C3156006C1588 /* AppDelegate.swift */,
 				1D30EB1A2B0C3156006C1588 /* SceneDelegate.swift */,
-				1D30EB362B0C7C23006C1588 /* fetchBill.swift */,
 				1D30EB212B0C3157006C1588 /* Assets.xcassets */,
 				1D30EB232B0C3157006C1588 /* LaunchScreen.storyboard */,
 				1D30EB262B0C3157006C1588 /* Info.plist */,
-				1D672B7F2D422E85000DD244 /* AppInitializer.swift */,
 			);
 			path = TodayBill;
 			sourceTree = "<group>";
@@ -115,10 +120,12 @@
 		1D62EA0A2B1827610011DA14 /* Model */ = {
 			isa = PBXGroup;
 			children = (
+				1D30EB362B0C7C23006C1588 /* fetchBill.swift */,
 				1D5438602B10762300136A66 /* name.json */,
 				1D30EB342B0C7557006C1588 /* Bills.swift */,
 				1D0E76662B10668300581776 /* Representative.swift */,
 				1D62EA0D2B1841490011DA14 /* DetailViewModel.swift */,
+				1D69B1AB2D43A72D00EB70F0 /* BillsService.swift */,
 			);
 			path = Model;
 			sourceTree = "<group>";
@@ -163,8 +170,10 @@
 		1D672B822D422EA9000DD244 /* Search */ = {
 			isa = PBXGroup;
 			children = (
-				1D672B832D422EB6000DD244 /* SearchView.swift */,
-				1D672B852D422EBE000DD244 /* SearchViewController.swift */,
+				1D69B1A12D43500F00EB70F0 /* SearchView.swift */,
+				1D69B1A32D43501D00EB70F0 /* SearchViewController.swift */,
+				1D69B1A72D43990700EB70F0 /* RecentSearchManager.swift */,
+				1D69B1A92D43A35D00EB70F0 /* SearchBills.swift */,
 			);
 			path = Search;
 			sourceTree = "<group>";
@@ -256,15 +265,18 @@
 				1D30EB1D2B0C3156006C1588 /* CalenderViewController.swift in Sources */,
 				1D672B802D422E85000DD244 /* AppInitializer.swift in Sources */,
 				1D44C6352B1025C000884C24 /* DetailView.swift in Sources */,
-				1D672B842D422EB6000DD244 /* SearchView.swift in Sources */,
 				1D30EB352B0C7557006C1588 /* Bills.swift in Sources */,
+				1D69B1A82D43990700EB70F0 /* RecentSearchManager.swift in Sources */,
 				1D30EB192B0C3156006C1588 /* AppDelegate.swift in Sources */,
 				1D30EB1B2B0C3156006C1588 /* SceneDelegate.swift in Sources */,
+				1D69B1AA2D43A35D00EB70F0 /* SearchBills.swift in Sources */,
+				1D69B1A22D43500F00EB70F0 /* SearchView.swift in Sources */,
 				1D62EA0E2B1841490011DA14 /* DetailViewModel.swift in Sources */,
 				1D672B8A2D422ED2000DD244 /* StarBillViewController.swift in Sources */,
 				1D30EB2F2B0C4264006C1588 /* BillModalViewController.swift in Sources */,
-				1D672B862D422EBE000DD244 /* SearchViewController.swift in Sources */,
+				1D69B1AC2D43A72D00EB70F0 /* BillsService.swift in Sources */,
 				1D672B7C2D41D92D000DD244 /* MainTabBarView.swift in Sources */,
+				1D69B1A42D43501D00EB70F0 /* SearchViewController.swift in Sources */,
 				1D7B0AF52B142D8900651B03 /* ViewControllerCollectionViewDataSource.swift in Sources */,
 				1D672B882D422EC8000DD244 /* StarBillView.swift in Sources */,
 				1D7B0AF72B142FCB00651B03 /* ViewControllerCalenderDelegate.swift in Sources */,
