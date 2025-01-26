@@ -10,47 +10,122 @@ import UIKit
 final class SearchViewController: UIViewController {
     private let contentView = SearchView()
     private let recentSearchManager = RecentSearchManager()
-
+    private let searchBills = BillsSearchService(billsService: BillsService())
+    private var searchResultsViewController: SearchResultsViewController!
+    private var currentIndex: Int = 1
+    
     override func loadView() {
         view = contentView
     }
-
+    
     override func viewDidLoad() {
         super.viewDidLoad()
         setupUI()
         contentView.delegate = self
         contentView.searchBar.delegate = self
-
-        // 초기 검색 기록 로드
         contentView.updateRecentSearches(recentSearchManager.load())
+        setupSearchResultsView()
     }
-
+    
     private func setupUI() {
         view.backgroundColor = .white
+    }
+    
+    private func setupSearchResultsView() {
+        searchResultsViewController = SearchResultsViewController(searchResults: [])
+        addChild(searchResultsViewController)
+        searchResultsViewController.view.translatesAutoresizingMaskIntoConstraints = false
+        view.addSubview(searchResultsViewController.view)
+        
+        NSLayoutConstraint.activate([
+            searchResultsViewController.view.topAnchor.constraint(equalTo: contentView.searchBar.bottomAnchor),
+            searchResultsViewController.view.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+            searchResultsViewController.view.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+            searchResultsViewController.view.bottomAnchor.constraint(equalTo: view.bottomAnchor, constant: -55)
+        ])
+        
+        searchResultsViewController.didMove(toParent: self)
+        searchResultsViewController.view.isHidden = true
+    }
+    
+    private func performSearch(with searchTerm: String, completion: @escaping (Bool) -> Void) {
+        searchBills.searchBills(pIndex: currentIndex, billName: searchTerm) { [weak self] result in
+            guard let self = self else { return }
+            DispatchQueue.main.async {
+                switch result {
+                case .success(let rows):
+                    let resultTitles = rows.map { $0.BILL_NAME }
+                    self.searchResultsViewController.updateResults(resultTitles)
+                    self.searchResultsViewController.view.isHidden = false
+                    completion(true)
+                    
+                case .failure(let error):
+                    self.showErrorAlert(message: error.localizedDescription)
+                    completion(false)
+                }
+            }
+        }
+    }
+    
+    private func showErrorAlert(message: String) {
+        let alert = UIAlertController(title: "검색 실패", message: message, preferredStyle: .alert)
+        alert.addAction(UIAlertAction(title: "확인", style: .default))
+        present(alert, animated: true)
     }
 }
 
 // MARK: - SearchViewDelegate
+
 extension SearchViewController: SearchViewDelegate {
     func deleteAll() {
         recentSearchManager.deleteAll()
-        contentView.updateRecentSearches([])
+        DispatchQueue.main.async {
+            self.contentView.updateRecentSearches([])
+        }
     }
-
+    
     func didSelectSearchTerm(_ term: String) {
-        print("Performing search for: \(term)")
+        performSearch(with: term) { [weak self] success in
+            guard let self = self else { return }
+            if success {
+                self.recentSearchManager.save(searchTerm: term)
+                DispatchQueue.main.async {
+                    self.contentView.searchBar.text = term
+                    self.contentView.updateRecentSearches(self.recentSearchManager.load())
+                }
+            }
+        }
     }
 }
 
 // MARK: - UISearchBarDelegate
+
 extension SearchViewController: UISearchBarDelegate {
+    func searchBar(_ searchBar: UISearchBar, textDidChange searchText: String) {
+        if searchText.isEmpty {
+            DispatchQueue.main.async {
+                self.searchResultsViewController.view.isHidden = true
+            }
+            
+        }
+    }
+    
     func searchBarSearchButtonClicked(_ searchBar: UISearchBar) {
-        guard let searchTerm = searchBar.text?.trimmingCharacters(in: .whitespacesAndNewlines), !searchTerm.isEmpty else {
+        guard let searchTerm = searchBar.text, !searchTerm.isEmpty else {
+            DispatchQueue.main.async {
+                self.searchResultsViewController.view.isHidden = true
+            }
             return
-        }        
-        recentSearchManager.save(searchTerm: searchTerm)
-        contentView.updateRecentSearches(recentSearchManager.load())
-        print("Performing search for: \(searchTerm)")
+        }
         searchBar.resignFirstResponder()
+        performSearch(with: searchTerm) { [weak self] success in
+            guard let self = self else { return }
+            if success {
+                self.recentSearchManager.save(searchTerm: searchTerm)
+                DispatchQueue.main.async {
+                    self.contentView.updateRecentSearches(self.recentSearchManager.load())
+                }
+            }
+        }
     }
 }
