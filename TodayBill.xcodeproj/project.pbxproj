@@ -15,7 +15,6 @@
 		1D30EB252B0C3157006C1588 /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 1D30EB232B0C3157006C1588 /* LaunchScreen.storyboard */; };
 		1D30EB2F2B0C4264006C1588 /* BillModalViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D30EB2E2B0C4264006C1588 /* BillModalViewController.swift */; };
 		1D30EB352B0C7557006C1588 /* Bills.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D30EB342B0C7557006C1588 /* Bills.swift */; };
-		1D30EB372B0C7C23006C1588 /* fetchBill.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D30EB362B0C7C23006C1588 /* fetchBill.swift */; };
 		1D44C6352B1025C000884C24 /* DetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D44C6342B1025C000884C24 /* DetailView.swift */; };
 		1D44C63B2B1061FE00884C24 /* .gitignore in Resources */ = {isa = PBXBuildFile; fileRef = 1D44C63A2B1061FE00884C24 /* .gitignore */; };
 		1D5438612B10762300136A66 /* name.json in Resources */ = {isa = PBXBuildFile; fileRef = 1D5438602B10762300136A66 /* name.json */; };
@@ -52,7 +51,6 @@
 		1D30EB2D2B0C3B52006C1588 /* ko */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = ko; path = ko.lproj/LaunchScreen.strings; sourceTree = "<group>"; };
 		1D30EB2E2B0C4264006C1588 /* BillModalViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BillModalViewController.swift; sourceTree = "<group>"; };
 		1D30EB342B0C7557006C1588 /* Bills.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Bills.swift; sourceTree = "<group>"; };
-		1D30EB362B0C7C23006C1588 /* fetchBill.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = fetchBill.swift; sourceTree = "<group>"; };
 		1D44C6342B1025C000884C24 /* DetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DetailView.swift; sourceTree = "<group>"; };
 		1D44C63A2B1061FE00884C24 /* .gitignore */ = {isa = PBXFileReference; lastKnownFileType = text; path = .gitignore; sourceTree = "<group>"; };
 		1D5438602B10762300136A66 /* name.json */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.json; path = name.json; sourceTree = "<group>"; };
@@ -129,7 +127,6 @@
 		1D62EA0A2B1827610011DA14 /* Model */ = {
 			isa = PBXGroup;
 			children = (
-				1D30EB362B0C7C23006C1588 /* fetchBill.swift */,
 				1D5438602B10762300136A66 /* name.json */,
 				1D30EB342B0C7557006C1588 /* Bills.swift */,
 				1D0E76662B10668300581776 /* Representative.swift */,
@@ -305,7 +302,6 @@
 				1D7B0AF72B142FCB00651B03 /* ViewControllerCalenderDelegate.swift in Sources */,
 				1DACADCC2D2E32B50093E2B5 /* BillModalCollectionViewController.swift in Sources */,
 				1D6476B92D45283B002A61B3 /* ListViewController.swift in Sources */,
-				1D30EB372B0C7C23006C1588 /* fetchBill.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
