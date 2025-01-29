@@ -30,12 +30,10 @@ final class StarBillManager {
         }
     }
 
-    // 즐겨찾기 제거
     func removeBillFromStarred(by id: String) {
         saveStarredBills(loadStarredBills().filter { $0.ID != id })
     }
 
-    // 캐시된 데이터에 저장
     func cacheBill(_ bill: Row) {
         cachedBills[bill.BILL_ID] = bill
     }
@@ -44,7 +42,6 @@ final class StarBillManager {
         return cachedBills[id]
     }
 
-    // UserDefaults 저장
     private func saveStarredBills(_ bills: [StarredBill]) {
         if let data = try? JSONEncoder().encode(bills) {
             UserDefaults.standard.set(data, forKey: starredBillsKey)
