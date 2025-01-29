@@ -42,7 +42,7 @@ final class StarBillManager {
         return cachedBills[id]
     }
 
-    private func saveStarredBills(_ bills: [StarredBill]) {
+    func saveStarredBills(_ bills: [StarredBill]) {
         if let data = try? JSONEncoder().encode(bills) {
             UserDefaults.standard.set(data, forKey: starredBillsKey)
         }
