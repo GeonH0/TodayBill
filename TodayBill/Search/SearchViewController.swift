@@ -38,13 +38,12 @@ final class SearchViewController: UIViewController {
         view.addSubview(searchResultsViewController.view)
         
         NSLayoutConstraint.activate([
-            searchResultsViewController.view.topAnchor.constraint(equalTo: contentView.searchBar.bottomAnchor),
-            searchResultsViewController.view.leadingAnchor.constraint(equalTo: view.leadingAnchor),
-            searchResultsViewController.view.trailingAnchor.constraint(equalTo: view.trailingAnchor),
-            searchResultsViewController.view.bottomAnchor.constraint(equalTo: view.bottomAnchor, constant: -55)
-        ])
+            searchResultsViewController.collectionView.topAnchor.constraint(equalTo: contentView.searchBar.bottomAnchor),
+            searchResultsViewController.collectionView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+            searchResultsViewController.collectionView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+            searchResultsViewController.collectionView.bottomAnchor.constraint(equalTo: view.bottomAnchor, constant: -55)
         
-        searchResultsViewController.didMove(toParent: self)
+        ])
         searchResultsViewController.view.isHidden = true
     }
     
@@ -54,7 +53,7 @@ final class SearchViewController: UIViewController {
             DispatchQueue.main.async {
                 switch result {
                 case .success(let rows):
-                    let resultTitles = rows.map { $0.BILL_NAME }
+                    let resultTitles: [StarredBill] = rows.map { StarredBill(ID: $0.BILL_ID, name: $0.BILL_NAME) }
                     self.searchResultsViewController.updateResults(resultTitles)
                     self.searchResultsViewController.view.isHidden = false
                     completion(true)
