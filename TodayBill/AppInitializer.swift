@@ -11,10 +11,11 @@ class AppInitializer {
     static func setupRootViewController(for window: UIWindow?) {
         let tabBarViewController = MainTabBarViewController()
         
-        // 각 뷰 컨트롤러 생성 및 이미지 설정
         let calendarViewController = CalenderViewController()
         let searchViewController = SearchViewController()
-        let starViewController = StarViewController()
+        let savedStarBills = StarBillManager.shared.loadStarredBills()
+        let starViewController = StarBillViewController(starBills: savedStarBills)
+        
         
         let homeImage = UIImage(systemName: "house")!
         let searchImage = UIImage(systemName: "magnifyingglass")!

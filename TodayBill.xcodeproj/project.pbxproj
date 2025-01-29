@@ -7,6 +7,8 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		1D0BE6382D48879200B730F2 /* StarBillManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D0BE6372D48879200B730F2 /* StarBillManager.swift */; };
+		1D0BE63C2D4907FA00B730F2 /* StarredBill.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D0BE63B2D4907FA00B730F2 /* StarredBill.swift */; };
 		1D0E76672B10668300581776 /* Representative.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D0E76662B10668300581776 /* Representative.swift */; };
 		1D30EB192B0C3156006C1588 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D30EB182B0C3156006C1588 /* AppDelegate.swift */; };
 		1D30EB1B2B0C3156006C1588 /* SceneDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D30EB1A2B0C3156006C1588 /* SceneDelegate.swift */; };
@@ -40,6 +42,8 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		1D0BE6372D48879200B730F2 /* StarBillManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StarBillManager.swift; sourceTree = "<group>"; };
+		1D0BE63B2D4907FA00B730F2 /* StarredBill.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StarredBill.swift; sourceTree = "<group>"; };
 		1D0E76662B10668300581776 /* Representative.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Representative.swift; sourceTree = "<group>"; };
 		1D30EB152B0C3156006C1588 /* TodayBill.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = TodayBill.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		1D30EB182B0C3156006C1588 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
@@ -132,6 +136,7 @@
 				1D0E76662B10668300581776 /* Representative.swift */,
 				1D62EA0D2B1841490011DA14 /* DetailViewModel.swift */,
 				1D69B1AB2D43A72D00EB70F0 /* BillsService.swift */,
+				1D0BE63B2D4907FA00B730F2 /* StarredBill.swift */,
 			);
 			path = Model;
 			sourceTree = "<group>";
@@ -179,6 +184,7 @@
 			children = (
 				1D672B872D422EC8000DD244 /* StarBillView.swift */,
 				1D672B892D422ED2000DD244 /* StarBillViewController.swift */,
+				1D0BE6372D48879200B730F2 /* StarBillManager.swift */,
 			);
 			path = StarBill;
 			sourceTree = "<group>";
@@ -276,6 +282,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				1D0BE6382D48879200B730F2 /* StarBillManager.swift in Sources */,
 				1D672B7E2D420327000DD244 /* MainTabBarViewController.swift in Sources */,
 				1D62EA102B18419A0011DA14 /* DetailViewController.swift in Sources */,
 				1D0E76672B10668300581776 /* Representative.swift in Sources */,
@@ -295,6 +302,7 @@
 				1D30EB2F2B0C4264006C1588 /* BillModalViewController.swift in Sources */,
 				1D69B1AC2D43A72D00EB70F0 /* BillsService.swift in Sources */,
 				1D6476B72D44C65A002A61B3 /* ListViewCell.swift in Sources */,
+				1D0BE63C2D4907FA00B730F2 /* StarredBill.swift in Sources */,
 				1D672B7C2D41D92D000DD244 /* MainTabBarView.swift in Sources */,
 				1D69B1A42D43501D00EB70F0 /* SearchViewController.swift in Sources */,
 				1D7B0AF52B142D8900651B03 /* ViewControllerCollectionViewDataSource.swift in Sources */,

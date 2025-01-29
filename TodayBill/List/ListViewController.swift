@@ -10,9 +10,10 @@ import Foundation
 import UIKit
 
 class ListViewController: UIViewController {
-    private var items: [String]
+    var items: [StarredBill]
+    var favoriteItems: Set<String> = []
     
-    private lazy var collectionView: ListView = {
+    lazy var collectionView: ListView = {
         let layout = UICollectionViewFlowLayout()
         layout.itemSize = CGSize(width: view.frame.width - 40, height: 60)
         layout.minimumLineSpacing = 16
@@ -22,10 +23,11 @@ class ListViewController: UIViewController {
         collectionView.delegate = self
         return collectionView
     }()
-
-    // MARK: - Initializer
-    init(items: [String]) {
+    
+    init(items: [StarredBill]) {
         self.items = items
+        let starredBills = StarBillManager.shared.loadStarredBills().map { $0.name }
+        self.favoriteItems = Set(starredBills)
         super.init(nibName: nil, bundle: nil)
     }
 
@@ -41,22 +43,42 @@ class ListViewController: UIViewController {
     private func setupUI() {
         view.addSubview(collectionView)
         view.backgroundColor = .white
-
-        NSLayoutConstraint.activate([
-            collectionView.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor),
-            collectionView.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 20),
-            collectionView.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -20),
-            collectionView.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor)
-        ])
     }
     
-    func updateItems(_ newItems: [String]) {
+    func updateItems(_ newItems: [StarredBill]) {
         self.items = newItems
+        collectionView.reloadData()
+    }
+    
+    func favoriteButtonTapped(for itemID: String) {        
+        if favoriteItems.contains(itemID) {
+            favoriteItems.remove(itemID)
+            StarBillManager.shared.removeBillFromStarred(by: itemID)
+            
+            if let index = items.firstIndex(where: { $0.ID == itemID }) {
+                items.remove(at: index)
+                print(index)
+                collectionView.deleteItems(at: [IndexPath(item: index, section: 0)])
+            } else {
+                collectionView.reloadData()
+            }
+        } else {
+            favoriteItems.insert(itemID)
+            if let bill = items.first(where: { $0.ID == itemID }) {
+                StarBillManager.shared.addBillToStarred(bill)
+            }
+            collectionView.reloadData()
+        }
+    }
+    
+    func updateFavoriteItems() {
+        let starredBills = StarBillManager.shared.loadStarredBills().map { $0.ID }
+        self.favoriteItems = Set(starredBills)
         collectionView.reloadData()
     }
 }
 
-extension ListViewController: UICollectionViewDataSource, UICollectionViewDelegate {
+extension ListViewController: UICollectionViewDataSource, UICollectionViewDelegate,ListViewCellDelegate {
     func collectionView(_ collectionView: UICollectionView, numberOfItemsInSection section: Int) -> Int {
         return items.count
     }
@@ -68,11 +90,17 @@ extension ListViewController: UICollectionViewDataSource, UICollectionViewDelega
         ) as? ListViewCell else {
             return UICollectionViewCell()
         }
-        cell.configure(with: items[indexPath.row])
+
+        let item = items[indexPath.row]
+        let isFavorited = favoriteItems.contains(item.ID)
+                
+        cell.configure(with: item, isFavorited: isFavorited)
+        cell.delegate = self
         return cell
     }
 
     func collectionView(_ collectionView: UICollectionView, didSelectItemAt indexPath: IndexPath) {
-        print("Selected: \(items[indexPath.row])")
+        let selectedBill = items[indexPath.row]
+        print("Selected ID: \(selectedBill.ID), Name: \(selectedBill.name)")
     }
 }
