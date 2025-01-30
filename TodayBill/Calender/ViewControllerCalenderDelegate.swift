@@ -9,68 +9,45 @@ import Foundation
 import UIKit
 
 extension CalenderViewController: UICalendarViewDelegate, UICalendarSelectionSingleDateDelegate {
+    // MARK: - 달력 날짜 장식
     func calendarView(_ calendarView: UICalendarView, decorationFor dateComponents: DateComponents) -> UICalendarView.Decoration? {
-        guard let selectedDate = Calendar.current.date(from: dateComponents) else {
-            return nil
-        }
+        guard let selectedDate = Calendar.current.date(from: dateComponents) else { return nil }
+        
+        // 해당 날짜의 법안 수를 계산
         let count = countOfBillsForSelectedDate(selectedDate: selectedDate)
+        if count > 0 {
+            return .image(UIImage(systemName: "doc.text.fill"), color: .systemBlue, size: .medium)
+        }
         return nil
     }
     
-    // 달력에서 날짜 선택했을 경우
     func dateSelection(_ selection: UICalendarSelectionSingleDate, didSelectDate dateComponents: DateComponents?) {
         selection.setSelected(dateComponents, animated: true)
-        currentPIndex += 1
-        fetchBill(pIndex: currentPIndex)
         selectedDate = dateComponents
-        reloadDateView(date: Calendar.current.date(from: dateComponents!))
+
+        // 선택한 날짜를 Date로 변환
+        guard let date = Calendar.current.date(from: dateComponents!) else { return }
         
-        if let date = Calendar.current.date(from: dateComponents!) {
-            let filteredData = filterDataForSelectedDate(selectedDate: date)
-            let modalViewController = BillModalViewController(date: date, dataRows: filteredData, favoriteData: favoriteData)            
-            if let sheet = modalViewController.sheetPresentationController {
-                sheet.detents = [.medium(), .large()]
-                sheet.prefersGrabberVisible = true
-                sheet.preferredCornerRadius = 20
-                sheet.prefersScrollingExpandsWhenScrolledToEdge = false
-            }
-            present(modalViewController, animated: true)
-        }
     }
-        
+
+    // MARK: - 데이터 필터링
     func filterDataForSelectedDate(selectedDate: Date) -> [Row] {
         let formattedDate = dateFormattedString(from: selectedDate)
-        let filteredData = dataRows.filter {
-            return $0.PROPOSE_DT == formattedDate
-        }
-        return filteredData
+        return dataRows.filter { $0.PROPOSE_DT == formattedDate }
     }
-    
-    func favoriteDataUpdated(_ favoriteData: [Row]) {
-        updateFavoriteCollectionView(favoriteData)
-    }
-    
-    func updateFavoriteCollectionView(_ favoriteData: [Row]) {
-        self.favoriteData = favoriteData  // 즐겨찾기 데이터를 업데이트
-        favoriteCollectionView.reloadData()  // 컬렉션 뷰를 업데이트
-    }
-    
+
+    // MARK: - 법안 개수 계산
     func countOfBillsForSelectedDate(selectedDate: Date) -> Int {
         let formattedDate = dateFormattedString(from: selectedDate)
-
-        let billsForSelectedDate = dataRows.filter {
-            return $0.PROPOSE_DT == formattedDate
-        }
-
-        return billsForSelectedDate.count
+        return dataRows.filter { $0.PROPOSE_DT == formattedDate }.count
     }
 
+    // MARK: - 날짜 형식 변환
     func dateFormattedString(from date: Date) -> String {
-        let dateFormatter = DateFormatter()
-        dateFormatter.dateFormat = "yyyy-MM-dd"
-        dateFormatter.locale = Locale(identifier: "ko_KR")
-        dateFormatter.timeZone = TimeZone(identifier: "Asia/Seoul")
-
-        return dateFormatter.string(from: date)
+        let formatter = DateFormatter()
+        formatter.dateFormat = "yyyy-MM-dd"
+        formatter.locale = Locale(identifier: "ko_KR")
+        formatter.timeZone = TimeZone(identifier: "Asia/Seoul")
+        return formatter.string(from: date)
     }
 }
