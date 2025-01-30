@@ -15,7 +15,6 @@
 		1D30EB1D2B0C3156006C1588 /* CalenderViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D30EB1C2B0C3156006C1588 /* CalenderViewController.swift */; };
 		1D30EB222B0C3157006C1588 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 1D30EB212B0C3157006C1588 /* Assets.xcassets */; };
 		1D30EB252B0C3157006C1588 /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 1D30EB232B0C3157006C1588 /* LaunchScreen.storyboard */; };
-		1D30EB2F2B0C4264006C1588 /* BillModalViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D30EB2E2B0C4264006C1588 /* BillModalViewController.swift */; };
 		1D30EB352B0C7557006C1588 /* Bills.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D30EB342B0C7557006C1588 /* Bills.swift */; };
 		1D44C6352B1025C000884C24 /* DetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D44C6342B1025C000884C24 /* DetailView.swift */; };
 		1D44C63B2B1061FE00884C24 /* .gitignore in Resources */ = {isa = PBXBuildFile; fileRef = 1D44C63A2B1061FE00884C24 /* .gitignore */; };
@@ -29,7 +28,6 @@
 		1D672B7C2D41D92D000DD244 /* MainTabBarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D672B7B2D41D92D000DD244 /* MainTabBarView.swift */; };
 		1D672B7E2D420327000DD244 /* MainTabBarViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D672B7D2D420327000DD244 /* MainTabBarViewController.swift */; };
 		1D672B802D422E85000DD244 /* AppInitializer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D672B7F2D422E85000DD244 /* AppInitializer.swift */; };
-		1D672B882D422EC8000DD244 /* StarBillView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D672B872D422EC8000DD244 /* StarBillView.swift */; };
 		1D672B8A2D422ED2000DD244 /* StarBillViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D672B892D422ED2000DD244 /* StarBillViewController.swift */; };
 		1D69B1A22D43500F00EB70F0 /* SearchView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D69B1A12D43500F00EB70F0 /* SearchView.swift */; };
 		1D69B1A42D43501D00EB70F0 /* SearchViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D69B1A32D43501D00EB70F0 /* SearchViewController.swift */; };
@@ -38,7 +36,6 @@
 		1D69B1AC2D43A72D00EB70F0 /* BillsService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D69B1AB2D43A72D00EB70F0 /* BillsService.swift */; };
 		1D7B0AF52B142D8900651B03 /* ViewControllerCollectionViewDataSource.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D7B0AF42B142D8900651B03 /* ViewControllerCollectionViewDataSource.swift */; };
 		1D7B0AF72B142FCB00651B03 /* ViewControllerCalenderDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D7B0AF62B142FCB00651B03 /* ViewControllerCalenderDelegate.swift */; };
-		1DACADCC2D2E32B50093E2B5 /* BillModalCollectionViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1DACADCB2D2E32B50093E2B5 /* BillModalCollectionViewController.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -53,7 +50,6 @@
 		1D30EB242B0C3157006C1588 /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; name = Base; path = Base.lproj/LaunchScreen.storyboard; sourceTree = "<group>"; };
 		1D30EB262B0C3157006C1588 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		1D30EB2D2B0C3B52006C1588 /* ko */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = ko; path = ko.lproj/LaunchScreen.strings; sourceTree = "<group>"; };
-		1D30EB2E2B0C4264006C1588 /* BillModalViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BillModalViewController.swift; sourceTree = "<group>"; };
 		1D30EB342B0C7557006C1588 /* Bills.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Bills.swift; sourceTree = "<group>"; };
 		1D44C6342B1025C000884C24 /* DetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DetailView.swift; sourceTree = "<group>"; };
 		1D44C63A2B1061FE00884C24 /* .gitignore */ = {isa = PBXFileReference; lastKnownFileType = text; path = .gitignore; sourceTree = "<group>"; };
@@ -67,7 +63,6 @@
 		1D672B7B2D41D92D000DD244 /* MainTabBarView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainTabBarView.swift; sourceTree = "<group>"; };
 		1D672B7D2D420327000DD244 /* MainTabBarViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainTabBarViewController.swift; sourceTree = "<group>"; };
 		1D672B7F2D422E85000DD244 /* AppInitializer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppInitializer.swift; sourceTree = "<group>"; };
-		1D672B872D422EC8000DD244 /* StarBillView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StarBillView.swift; sourceTree = "<group>"; };
 		1D672B892D422ED2000DD244 /* StarBillViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StarBillViewController.swift; sourceTree = "<group>"; };
 		1D69B1A12D43500F00EB70F0 /* SearchView.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = SearchView.swift; sourceTree = "<group>"; };
 		1D69B1A32D43501D00EB70F0 /* SearchViewController.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = SearchViewController.swift; sourceTree = "<group>"; };
@@ -76,7 +71,6 @@
 		1D69B1AB2D43A72D00EB70F0 /* BillsService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BillsService.swift; sourceTree = "<group>"; };
 		1D7B0AF42B142D8900651B03 /* ViewControllerCollectionViewDataSource.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ViewControllerCollectionViewDataSource.swift; sourceTree = "<group>"; };
 		1D7B0AF62B142FCB00651B03 /* ViewControllerCalenderDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ViewControllerCalenderDelegate.swift; sourceTree = "<group>"; };
-		1DACADCB2D2E32B50093E2B5 /* BillModalCollectionViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BillModalCollectionViewController.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -114,7 +108,6 @@
 				1D672B822D422EA9000DD244 /* Search */,
 				1D672B812D422E9C000DD244 /* StarBill */,
 				1D672B7A2D41D91B000DD244 /* Tabbar */,
-				1DACADCD2D2E32D30093E2B5 /* BillModal */,
 				1D62EA0C2B1827780011DA14 /* Detail */,
 				1D62EA0B2B18276F0011DA14 /* Calender */,
 				1D62EA0A2B1827610011DA14 /* Model */,
@@ -182,7 +175,6 @@
 		1D672B812D422E9C000DD244 /* StarBill */ = {
 			isa = PBXGroup;
 			children = (
-				1D672B872D422EC8000DD244 /* StarBillView.swift */,
 				1D672B892D422ED2000DD244 /* StarBillViewController.swift */,
 				1D0BE6372D48879200B730F2 /* StarBillManager.swift */,
 			);
@@ -199,15 +191,6 @@
 				1D6476BA2D45292E002A61B3 /* SearchResultsViewController.swift */,
 			);
 			path = Search;
-			sourceTree = "<group>";
-		};
-		1DACADCD2D2E32D30093E2B5 /* BillModal */ = {
-			isa = PBXGroup;
-			children = (
-				1D30EB2E2B0C4264006C1588 /* BillModalViewController.swift */,
-				1DACADCB2D2E32B50093E2B5 /* BillModalCollectionViewController.swift */,
-			);
-			path = BillModal;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -299,16 +282,13 @@
 				1D69B1A22D43500F00EB70F0 /* SearchView.swift in Sources */,
 				1D62EA0E2B1841490011DA14 /* DetailViewModel.swift in Sources */,
 				1D672B8A2D422ED2000DD244 /* StarBillViewController.swift in Sources */,
-				1D30EB2F2B0C4264006C1588 /* BillModalViewController.swift in Sources */,
 				1D69B1AC2D43A72D00EB70F0 /* BillsService.swift in Sources */,
 				1D6476B72D44C65A002A61B3 /* ListViewCell.swift in Sources */,
 				1D0BE63C2D4907FA00B730F2 /* StarredBill.swift in Sources */,
 				1D672B7C2D41D92D000DD244 /* MainTabBarView.swift in Sources */,
 				1D69B1A42D43501D00EB70F0 /* SearchViewController.swift in Sources */,
 				1D7B0AF52B142D8900651B03 /* ViewControllerCollectionViewDataSource.swift in Sources */,
-				1D672B882D422EC8000DD244 /* StarBillView.swift in Sources */,
 				1D7B0AF72B142FCB00651B03 /* ViewControllerCalenderDelegate.swift in Sources */,
-				1DACADCC2D2E32B50093E2B5 /* BillModalCollectionViewController.swift in Sources */,
 				1D6476B92D45283B002A61B3 /* ListViewController.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
