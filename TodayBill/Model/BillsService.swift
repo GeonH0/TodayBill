@@ -11,7 +11,7 @@ final class BillsService {
     private let baseURL = "https://open.assembly.go.kr/portal/openapi/nzmimeepazxkubdpn"
 
     // MARK: - Fetch Bills
-    func fetchBills(pIndex: Int, completion: @escaping (Result<[Row], Error>) -> Void) {
+    func fetchBills(pIndex: Int, age: Int,completion: @escaping (Result<[Row], Error>) -> Void) {
         guard var urlComponents = URLComponents(string: baseURL) else {
             completion(.failure(URLError(.badURL)))
             return
@@ -28,8 +28,8 @@ final class BillsService {
             URLQueryItem(name: "key", value: apiKey),
             URLQueryItem(name: "Type", value: "json"),
             URLQueryItem(name: "pIndex", value: "\(pIndex)"),
-            URLQueryItem(name: "pSize", value: "100"),
-            URLQueryItem(name: "AGE", value: "22")
+            URLQueryItem(name: "pSize", value: "500"),
+            URLQueryItem(name: "AGE", value: "\(age)")
         ]
 
         guard let url = urlComponents.url else {
@@ -53,13 +53,11 @@ final class BillsService {
             }
 
             do {
-                // JSON 디코딩
                 let decodedResponse = try JSONDecoder().decode(Bills.self, from: data)
-                let rows = decodedResponse.nzmimeepazxkubdpn.compactMap { $0.row }.flatMap { $0 }
-                print(rows)
-                completion(.success(rows)) // 성공적으로 `Row` 배열 반환
+                let rows = decodedResponse.nzmimeepazxkubdpn.compactMap { $0.row }.flatMap { $0 }                
+                completion(.success(rows))
             } catch {
-                completion(.failure(error)) // 디코딩 에러
+                completion(.failure(error))
             }
         }.resume()
     }

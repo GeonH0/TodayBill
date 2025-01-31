@@ -18,7 +18,6 @@
 		1D30EB352B0C7557006C1588 /* Bills.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D30EB342B0C7557006C1588 /* Bills.swift */; };
 		1D44C6352B1025C000884C24 /* DetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D44C6342B1025C000884C24 /* DetailView.swift */; };
 		1D44C63B2B1061FE00884C24 /* .gitignore in Resources */ = {isa = PBXBuildFile; fileRef = 1D44C63A2B1061FE00884C24 /* .gitignore */; };
-		1D5438612B10762300136A66 /* name.json in Resources */ = {isa = PBXBuildFile; fileRef = 1D5438602B10762300136A66 /* name.json */; };
 		1D62EA0E2B1841490011DA14 /* DetailViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D62EA0D2B1841490011DA14 /* DetailViewModel.swift */; };
 		1D62EA102B18419A0011DA14 /* DetailViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D62EA0F2B18419A0011DA14 /* DetailViewController.swift */; };
 		1D6476B52D44C637002A61B3 /* ListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D6476B42D44C637002A61B3 /* ListView.swift */; };
@@ -34,8 +33,8 @@
 		1D69B1A82D43990700EB70F0 /* RecentSearchManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D69B1A72D43990700EB70F0 /* RecentSearchManager.swift */; };
 		1D69B1AA2D43A35D00EB70F0 /* SearchBills.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D69B1A92D43A35D00EB70F0 /* SearchBills.swift */; };
 		1D69B1AC2D43A72D00EB70F0 /* BillsService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D69B1AB2D43A72D00EB70F0 /* BillsService.swift */; };
-		1D7B0AF52B142D8900651B03 /* ViewControllerCollectionViewDataSource.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D7B0AF42B142D8900651B03 /* ViewControllerCollectionViewDataSource.swift */; };
-		1D7B0AF72B142FCB00651B03 /* ViewControllerCalenderDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D7B0AF62B142FCB00651B03 /* ViewControllerCalenderDelegate.swift */; };
+		1DB501E32D4C737200D63F2D /* TodayBillsViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1DB501E22D4C737200D63F2D /* TodayBillsViewController.swift */; };
+		1DB501E72D4C763100D63F2D /* CalendarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1DB501E62D4C763100D63F2D /* CalendarView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -53,7 +52,6 @@
 		1D30EB342B0C7557006C1588 /* Bills.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Bills.swift; sourceTree = "<group>"; };
 		1D44C6342B1025C000884C24 /* DetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DetailView.swift; sourceTree = "<group>"; };
 		1D44C63A2B1061FE00884C24 /* .gitignore */ = {isa = PBXFileReference; lastKnownFileType = text; path = .gitignore; sourceTree = "<group>"; };
-		1D5438602B10762300136A66 /* name.json */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.json; path = name.json; sourceTree = "<group>"; };
 		1D62EA0D2B1841490011DA14 /* DetailViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DetailViewModel.swift; sourceTree = "<group>"; };
 		1D62EA0F2B18419A0011DA14 /* DetailViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DetailViewController.swift; sourceTree = "<group>"; };
 		1D6476B42D44C637002A61B3 /* ListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ListView.swift; sourceTree = "<group>"; };
@@ -69,8 +67,8 @@
 		1D69B1A72D43990700EB70F0 /* RecentSearchManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecentSearchManager.swift; sourceTree = "<group>"; };
 		1D69B1A92D43A35D00EB70F0 /* SearchBills.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SearchBills.swift; sourceTree = "<group>"; };
 		1D69B1AB2D43A72D00EB70F0 /* BillsService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BillsService.swift; sourceTree = "<group>"; };
-		1D7B0AF42B142D8900651B03 /* ViewControllerCollectionViewDataSource.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ViewControllerCollectionViewDataSource.swift; sourceTree = "<group>"; };
-		1D7B0AF62B142FCB00651B03 /* ViewControllerCalenderDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ViewControllerCalenderDelegate.swift; sourceTree = "<group>"; };
+		1DB501E22D4C737200D63F2D /* TodayBillsViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TodayBillsViewController.swift; sourceTree = "<group>"; };
+		1DB501E62D4C763100D63F2D /* CalendarView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalendarView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -124,7 +122,6 @@
 		1D62EA0A2B1827610011DA14 /* Model */ = {
 			isa = PBXGroup;
 			children = (
-				1D5438602B10762300136A66 /* name.json */,
 				1D30EB342B0C7557006C1588 /* Bills.swift */,
 				1D0E76662B10668300581776 /* Representative.swift */,
 				1D62EA0D2B1841490011DA14 /* DetailViewModel.swift */,
@@ -137,9 +134,9 @@
 		1D62EA0B2B18276F0011DA14 /* Calender */ = {
 			isa = PBXGroup;
 			children = (
-				1D7B0AF42B142D8900651B03 /* ViewControllerCollectionViewDataSource.swift */,
-				1D7B0AF62B142FCB00651B03 /* ViewControllerCalenderDelegate.swift */,
 				1D30EB1C2B0C3156006C1588 /* CalenderViewController.swift */,
+				1DB501E22D4C737200D63F2D /* TodayBillsViewController.swift */,
+				1DB501E62D4C763100D63F2D /* CalendarView.swift */,
 			);
 			path = Calender;
 			sourceTree = "<group>";
@@ -252,7 +249,6 @@
 			buildActionMask = 2147483647;
 			files = (
 				1D44C63B2B1061FE00884C24 /* .gitignore in Resources */,
-				1D5438612B10762300136A66 /* name.json in Resources */,
 				1D30EB252B0C3157006C1588 /* LaunchScreen.storyboard in Resources */,
 				1D30EB222B0C3157006C1588 /* Assets.xcassets in Resources */,
 			);
@@ -279,6 +275,7 @@
 				1D30EB192B0C3156006C1588 /* AppDelegate.swift in Sources */,
 				1D30EB1B2B0C3156006C1588 /* SceneDelegate.swift in Sources */,
 				1D69B1AA2D43A35D00EB70F0 /* SearchBills.swift in Sources */,
+				1DB501E72D4C763100D63F2D /* CalendarView.swift in Sources */,
 				1D69B1A22D43500F00EB70F0 /* SearchView.swift in Sources */,
 				1D62EA0E2B1841490011DA14 /* DetailViewModel.swift in Sources */,
 				1D672B8A2D422ED2000DD244 /* StarBillViewController.swift in Sources */,
@@ -286,9 +283,8 @@
 				1D6476B72D44C65A002A61B3 /* ListViewCell.swift in Sources */,
 				1D0BE63C2D4907FA00B730F2 /* StarredBill.swift in Sources */,
 				1D672B7C2D41D92D000DD244 /* MainTabBarView.swift in Sources */,
+				1DB501E32D4C737200D63F2D /* TodayBillsViewController.swift in Sources */,
 				1D69B1A42D43501D00EB70F0 /* SearchViewController.swift in Sources */,
-				1D7B0AF52B142D8900651B03 /* ViewControllerCollectionViewDataSource.swift in Sources */,
-				1D7B0AF72B142FCB00651B03 /* ViewControllerCalenderDelegate.swift in Sources */,
 				1D6476B92D45283B002A61B3 /* ListViewController.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
