@@ -6,139 +6,147 @@
 //
 import UIKit
 
-class CalenderViewController: UIViewController, BillModalViewControllerDelegate, UICollectionViewDelegateFlowLayout {
+class CalenderViewController: UIViewController {
+    private let contentView = CalendarView()
+    private let billsService = BillsService()
+    private var todayListViewController: TodayBillsViewController!
     
-    var dataRows = [Row]()
-    var favoriteData = [Row]()
-    var favoriteCollectionView: UICollectionView!
-    var currentPIndex: Int = 1
-    
-    lazy var dateView: UICalendarView = {
-        var view = UICalendarView()
-        view.translatesAutoresizingMaskIntoConstraints = false
-        view.wantsDateDecorations = true
-        view.backgroundColor = .white
-        return view
+    private let emptyLabel: UILabel = {
+        let label = UILabel()
+        label.text = "발의된 법안 없음"
+        label.textColor = .gray
+        label.textAlignment = .center
+        label.font = UIFont.systemFont(ofSize: 16, weight: .medium)
+        label.isHidden = true
+        return label
     }()
     
-    var selectedDate: DateComponents? = nil
+    private var currentPIndex: Int = 1
+    private var age: Int = 22
+    private var billsByDate: [String: [StarredBill]] = [:]
     
+    var selectedDate: String?
+    
+    override func loadView() {
+        view = contentView
+        view.backgroundColor = .white
+    }
     
     override func viewDidLoad() {
         super.viewDidLoad()
-        setupCollectionView()
-        fetchBill(pIndex: currentPIndex)
-        applyConstraints()
-        setCalendar()
-        reloadDateView(date: Date())
-        loadFavoriteData()
-        let longPressGesture = UILongPressGestureRecognizer(target: self, action: #selector(handleLongPress(_:)))
-        favoriteCollectionView.addGestureRecognizer(longPressGesture)
-        
+        todayListViewController = TodayBillsViewController(todayBills: [])
+        setupCalendar()
+        setupConstraints()
     }
     
-    fileprivate func setCalendar() {
-        dateView.delegate = self
+    private func setupConstraints() {
+        addChild(todayListViewController)
+        todayListViewController.view.translatesAutoresizingMaskIntoConstraints = false
+        emptyLabel.translatesAutoresizingMaskIntoConstraints = false
+        
+        view.addSubview(todayListViewController.view)
+        view.addSubview(emptyLabel)
+        
+        NSLayoutConstraint.activate([
+            todayListViewController.collectionView.topAnchor.constraint(equalTo: contentView.dateView.bottomAnchor),
+            todayListViewController.collectionView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+            todayListViewController.collectionView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+            todayListViewController.collectionView.bottomAnchor.constraint(equalTo: view.bottomAnchor, constant: -55),
+            emptyLabel.centerXAnchor.constraint(equalTo: view.centerXAnchor),
+            emptyLabel.centerYAnchor.constraint(equalTo: todayListViewController.view.centerYAnchor)
+            
+        ])
+    }
+    
+    private func setupCalendar() {
+        contentView.dateView.delegate = self
         let dateSelection = UICalendarSelectionSingleDate(delegate: self)
-        dateView.selectionBehavior = dateSelection
+        contentView.dateView.selectionBehavior = dateSelection
     }
     
-    private func loadFavoriteData() {
-        if let savedData = UserDefaults.standard.data(forKey: "favoriteData") {
-            print("Saved Data:", savedData)
-            do {
-                favoriteData = try JSONDecoder().decode([Row].self, from: savedData)                
-            } catch {
-                print("Failed to decode favoriteData from UserDefaults: \(error)")
+    private func fetchBills(for date: Date) {
+        guard let formattedDate = formatDate(date) else {
+            print("날짜 변환 실패")
+            return
+        }
+        
+        selectedDate = formattedDate
+        
+        loadBills { [weak self] result in
+            guard let self = self else { return }
+            DispatchQueue.main.async {
+                switch result {
+                case .success(let rows):
+                    self.processBills(rows)
+                    self.handlePagination(rows, for: date)
+                    
+                case .failure(let error):
+                    self.showErrorAlert(message: error.localizedDescription)
+                }
             }
         }
     }
-    
-    private func applyConstraints() {
-        view.addSubview(dateView)
-        
-        // 새로운 라벨 생성
-        let label = UILabel()
-        label.text = "꾹 누르면 즐겨찾기가 됩니다!" // 라벨 텍스트 설정
-        label.translatesAutoresizingMaskIntoConstraints = false // Auto Layout 사용 설정
-        view.addSubview(label)
-        view.addSubview(favoriteCollectionView)
-        
-        let gap: CGFloat = 20
-        let leadingSpace: CGFloat = 10
-        
-        let constraints = [
-            dateView.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor),
-            dateView.leadingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.leadingAnchor),
-            dateView.trailingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.trailingAnchor),
-            label.topAnchor.constraint(equalTo: dateView.bottomAnchor),
-            label.leadingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.leadingAnchor, constant: leadingSpace), // 왼쪽 여백 추가
-            label.trailingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.trailingAnchor),
-            favoriteCollectionView.topAnchor.constraint(equalTo: label.bottomAnchor, constant: gap), // 간격 추가
-            favoriteCollectionView.leadingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.leadingAnchor),
-            favoriteCollectionView.trailingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.trailingAnchor),
-            favoriteCollectionView.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor)
-        ]
-        NSLayoutConstraint.activate(constraints)
-    }
-    
-    func reloadDateView(date: Date?) {
-        if let date = date {
-            let calendar = Calendar.current
-            let dateComponents = calendar.dateComponents([.day, .month, .year], from: date)
-            selectedDate = dateComponents
-            dateView.reloadDecorations(forDateComponents: [dateComponents], animated: true)
+
+    private func formatDate(_ date: Date) -> String? {
+        let calendar = Calendar.current
+        let components = calendar.dateComponents([.year, .month, .day], from: date)
+        guard let year = components.year, let month = components.month, let day = components.day else {
+            return nil
         }
+        return String(format: "%04d-%02d-%02d", year, month, day)
     }
     
-    private func setupCollectionView() {
-        let layout = UICollectionViewFlowLayout()
-        layout.scrollDirection = .vertical  // 스크롤 방향을 수직으로 설정
-        layout.sectionInset = UIEdgeInsets(top: 0, left: 20, bottom: 0, right: 20)
-        favoriteCollectionView = UICollectionView(frame: view.bounds, collectionViewLayout: layout)
-        favoriteCollectionView.register(UICollectionViewCell.self, forCellWithReuseIdentifier: "FavoriteCell")
-        favoriteCollectionView.backgroundColor = .white
-        favoriteCollectionView.delegate = self
-        favoriteCollectionView.dataSource = self
-        favoriteCollectionView.translatesAutoresizingMaskIntoConstraints = false
-        view.addSubview(favoriteCollectionView)
+    private func loadBills(completion: @escaping (Result<[Row], Error>) -> Void) {
+        billsService.fetchBills(pIndex: currentPIndex, age: age, completion: completion)
     }
-    
-    func collectionView(_ collectionView: UICollectionView, layout collectionViewLayout: UICollectionViewLayout, sizeForItemAt indexPath: IndexPath) -> CGSize {
-        let padding: CGFloat = 10  // sectionInset에서 설정한 왼쪽, 오른쪽 여백
-        let cellWidth = collectionView.bounds.width - padding * 2 - collectionView.contentInset.left - collectionView.contentInset.right
-        return CGSize(width: cellWidth, height: 50)
-    }
-    
-    func collectionView(_ collectionView: UICollectionView, didSelectItemAt indexPath: IndexPath) {
-        let selectedRow = favoriteData[indexPath.item]
-        let detailVC = DetailViewController(row: selectedRow)
-        detailVC.modalPresentationStyle = .fullScreen
-        self.present(detailVC, animated: true, completion: nil)
-    }
-    
-    @objc func handleLongPress(_ gesture: UILongPressGestureRecognizer) {
-        if gesture.state == .began {
-            let point = gesture.location(in: favoriteCollectionView)
-            if let indexPath = favoriteCollectionView.indexPathForItem(at: point) {
-                removeCell(at: indexPath)
+
+    private func processBills(_ rows: [Row]) {
+        for row in rows {
+            let dateKey = row.PROPOSE_DT
+            let starredBill = StarredBill(ID: row.BILL_ID, name: row.BILL_NAME)
+            
+            // 중복 방지: 같은 법안이 두 번 저장되지 않도록 Set 활용
+            if !(billsByDate[dateKey, default: []].contains { $0.ID == starredBill.ID }) {
+                billsByDate[dateKey, default: []].append(starredBill)
             }
         }
+        
+        let todayBills = billsByDate[selectedDate ?? ""] ?? []
+        todayListViewController.updateBills(bills: todayBills)
+        emptyLabel.isHidden = !todayBills.isEmpty
     }
-    private func saveFavoriteData() {
-        do {
-            let encodedData = try JSONEncoder().encode(favoriteData)
-            UserDefaults.standard.set(encodedData, forKey: "favoriteData")
-        } catch {
-            print("Error encoding favoriteData: \(error)")
+
+    private func handlePagination(_ rows: [Row], for date: Date) {
+        guard let oldestDate = rows.map({ $0.PROPOSE_DT }).min() else { return }
+
+        if oldestDate <= "2020-05-30" {
+            return // 2020년 5월 30일 이전의 법안은 요청하지 않음
+        }
+        
+        if oldestDate <= "2024-05-30" {
+            if age == 22 {
+                age = 21
+                currentPIndex = 1
+                fetchBills(for: date)
+            } else {
+                currentPIndex += 1
+            }
+        } else {
+            currentPIndex += 1
         }
     }
     
-    // 셀 제거 로직
-    private func removeCell(at indexPath: IndexPath) {
-        // 선택된 인덱스에 해당하는 데이터 및 셀을 삭제
-        favoriteData.remove(at: indexPath.item)
-        favoriteCollectionView.deleteItems(at: [indexPath])
-        saveFavoriteData()
+    private func showErrorAlert(message: String) {
+        let alert = UIAlertController(title: "법안 불러오기 실패", message: message, preferredStyle: .alert)
+        alert.addAction(UIAlertAction(title: "확인", style: .default))
+        present(alert, animated: true)
+    }    
+}
+
+extension CalenderViewController: UICalendarViewDelegate, UICalendarSelectionSingleDateDelegate {
+    func dateSelection(_ selection: UICalendarSelectionSingleDate, didSelectDate dateComponents: DateComponents?) {
+        guard let dateComponents = dateComponents,
+              let date = Calendar.current.date(from: dateComponents) else { return }
+        fetchBills(for: date)
     }
 }
