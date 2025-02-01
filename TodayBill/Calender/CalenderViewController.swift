@@ -113,7 +113,7 @@ class CalenderViewController: UIViewController {
     private func processBills(_ rows: [Row]) {
         for row in rows {
             let dateKey = row.PROPOSE_DT
-            let starredBill = StarredBill(ID: row.BILL_ID, name: row.BILL_NAME)
+            let starredBill = StarredBill(ID: row.BILL_ID, age: Int(row.AGE)!, name: row.BILL_NAME)
             
             // 중복 방지: 같은 법안이 두 번 저장되지 않도록 Set 활용
             if !(billsByDate[dateKey, default: []].contains { $0.ID == starredBill.ID }) {
