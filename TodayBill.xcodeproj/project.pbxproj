@@ -35,6 +35,7 @@
 		1D69B1AC2D43A72D00EB70F0 /* BillsService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D69B1AB2D43A72D00EB70F0 /* BillsService.swift */; };
 		1DB501E32D4C737200D63F2D /* TodayBillsViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1DB501E22D4C737200D63F2D /* TodayBillsViewController.swift */; };
 		1DB501E72D4C763100D63F2D /* CalendarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1DB501E62D4C763100D63F2D /* CalendarView.swift */; };
+		1DD96EE62D4DFEB0005FD3AF /* DetailBillService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1DD96EE52D4DFEB0005FD3AF /* DetailBillService.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -69,6 +70,7 @@
 		1D69B1AB2D43A72D00EB70F0 /* BillsService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BillsService.swift; sourceTree = "<group>"; };
 		1DB501E22D4C737200D63F2D /* TodayBillsViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TodayBillsViewController.swift; sourceTree = "<group>"; };
 		1DB501E62D4C763100D63F2D /* CalendarView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalendarView.swift; sourceTree = "<group>"; };
+		1DD96EE52D4DFEB0005FD3AF /* DetailBillService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DetailBillService.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -146,6 +148,7 @@
 			children = (
 				1D62EA0F2B18419A0011DA14 /* DetailViewController.swift */,
 				1D44C6342B1025C000884C24 /* DetailView.swift */,
+				1DD96EE52D4DFEB0005FD3AF /* DetailBillService.swift */,
 			);
 			path = Detail;
 			sourceTree = "<group>";
@@ -273,6 +276,7 @@
 				1D69B1A82D43990700EB70F0 /* RecentSearchManager.swift in Sources */,
 				1D6476B52D44C637002A61B3 /* ListView.swift in Sources */,
 				1D30EB192B0C3156006C1588 /* AppDelegate.swift in Sources */,
+				1DD96EE62D4DFEB0005FD3AF /* DetailBillService.swift in Sources */,
 				1D30EB1B2B0C3156006C1588 /* SceneDelegate.swift in Sources */,
 				1D69B1AA2D43A35D00EB70F0 /* SearchBills.swift in Sources */,
 				1DB501E72D4C763100D63F2D /* CalendarView.swift in Sources */,
