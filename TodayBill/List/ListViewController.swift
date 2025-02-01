@@ -12,6 +12,7 @@ import UIKit
 class ListViewController: UIViewController {
     var items: [StarredBill]
     var favoriteItems: Set<String> = []
+    private let detailBillService = DetailBillService()
     
     lazy var collectionView: ListView = {
         let layout = UICollectionViewFlowLayout()
@@ -57,7 +58,6 @@ class ListViewController: UIViewController {
             
             if let index = items.firstIndex(where: { $0.ID == itemID }) {
                 items.remove(at: index)
-                print(index)
                 collectionView.deleteItems(at: [IndexPath(item: index, section: 0)])
             } else {
                 collectionView.reloadData()
@@ -100,7 +100,8 @@ extension ListViewController: UICollectionViewDataSource, UICollectionViewDelega
     }
 
     func collectionView(_ collectionView: UICollectionView, didSelectItemAt indexPath: IndexPath) {
-        let selectedBill = items[indexPath.row]
-        print("Selected ID: \(selectedBill.ID), Name: \(selectedBill.name)")
+        let selectedBill = items[indexPath.row]        
+        let detailVC = DetailViewController(billID: selectedBill.ID, age: selectedBill.age)
+        navigationController?.pushViewController(detailVC, animated: true)
     }
 }
