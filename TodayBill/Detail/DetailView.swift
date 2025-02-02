@@ -1,143 +1,333 @@
+//
+//  DetailView.swift
+//  TodayBill
+//
+//  Created by 김건호 on 2/1/25.
+//
+
+import Foundation
 import UIKit
 
-class DetailView: UIView {
-    private var row: Row
-    private var name = [Representative]()
-    private let customTopView = UIView()
-    private let navBar = UINavigationBar()
+protocol DetailViewDelegate: AnyObject {
+    func backButtonTapped()
+    func detailLinkButtonTapped(with url: URL)    
+}
+
+final class DetailView: UIView {
     
-    init(row: Row, name: [Representative]) {
-        self.row = row
-        self.name = name
-        super.init(frame: .zero)
-        setupView()
-        setupNavigationBar()
-        setupLabels()
-        setupGestureRecognizers()
+    // MARK: - Sticky Header (법안 제목만 고정)
+    private let stickyHeaderView: UIView = {
+        let view = UIView()
+        view.translatesAutoresizingMaskIntoConstraints = false
+        view.backgroundColor = .white
+        return view
+    }()
+    
+    private lazy var backButton: UIButton = {
+        let button = UIButton(type: .system)
+        button.setImage(UIImage(systemName: "chevron.left"), for: .normal)
+        button.tintColor = .black
+        button.addAction(
+            UIAction(
+                handler: { [weak self] _ in
+                    self?.delegate?.backButtonTapped()
+                }
+            ),
+            for: .touchUpInside
+        )
+        button.translatesAutoresizingMaskIntoConstraints = false
+        return button
+    }()
+    
+    private let billNameLabel: UILabel = {
+        let label = UILabel()
+        label.font = UIFont.boldSystemFont(ofSize: 20)
+        label.textAlignment = .center
+        label.numberOfLines = 1
+        label.lineBreakMode = .byClipping
+        label.translatesAutoresizingMaskIntoConstraints = false
+        return label
+    }()
+    
+    // MARK: - ScrollView & Container (나머지 컨텐츠 영역)
+    private let scrollView: UIScrollView = {
+        let scrollView = UIScrollView()
+        scrollView.translatesAutoresizingMaskIntoConstraints = false
+        return scrollView
+    }()
+    
+    private let containerView: UIView = {
+        let view = UIView()
+        view.translatesAutoresizingMaskIntoConstraints = false
+        return view
+    }()
+    
+    // MARK: - Main StackView (스크롤되는 컨텐츠)
+    private let mainStackView: UIStackView = {
+        let stack = UIStackView()
+        stack.axis = .vertical
+        stack.spacing = 24
+        stack.translatesAutoresizingMaskIntoConstraints = false
+        return stack
+    }()
+    
+    // MARK: - 기타 섹션 UI 요소 (고정 헤더 제외)
+    private let proposeDateLabel: UILabel = {
+        let label = UILabel()
+        label.translatesAutoresizingMaskIntoConstraints = false
+        return label
+    }()
+    
+    private let ageLabel: UILabel = {
+        let label = UILabel()
+        label.translatesAutoresizingMaskIntoConstraints = false
+        return label
+    }()
+    
+    // 처리 정보 섹션
+    private let procResultLabel: UILabel = {
+        let label = UILabel()
+        label.translatesAutoresizingMaskIntoConstraints = false
+        return label
+    }()
+    
+    private let procDateLabel: UILabel = {
+        let label = UILabel()
+        label.translatesAutoresizingMaskIntoConstraints = false
+        return label
+    }()
+    
+    // Timeline 섹션
+    private let timelineView: TimelineView = {
+        let view = TimelineView(steps: [])
+        view.translatesAutoresizingMaskIntoConstraints = false
+        return view
+    }()
+    
+    // 위원회 정보 섹션
+    private let committeeLabel: UILabel = {
+        let label = UILabel()
+        label.translatesAutoresizingMaskIntoConstraints = false
+        return label
+    }()
+    private let committeeIdLabel: UILabel = {
+        let label = UILabel()
+        label.translatesAutoresizingMaskIntoConstraints = false
+        return label
+    }()
+    private let committeeProcessDateLabel: UILabel = {
+        let label = UILabel()
+        label.translatesAutoresizingMaskIntoConstraints = false
+        return label
+    }()
+    
+    // 법사위 정보 섹션
+    private let lawProcDateLabel: UILabel = {
+        let label = UILabel()
+        label.translatesAutoresizingMaskIntoConstraints = false
+        return label
+    }()
+    
+    private let lawPresentDateLabel: UILabel = {
+        let label = UILabel()
+        label.translatesAutoresizingMaskIntoConstraints = false
+        return label
+    }()
+    
+    private let lawSubmitDateLabel: UILabel = {
+        let label = UILabel()
+        label.translatesAutoresizingMaskIntoConstraints = false
+        return label
+    }()
+    
+    private lazy var detailLinkButton: UIButton = {
+        let button = UIButton(type: .system)
+        button.setTitle("상세페이지", for: .normal)
+        button.addAction(
+            UIAction(
+                handler: { [weak self] _ in
+                    guard let url = self?.detailLinkURL else { return }
+                    self?.delegate?.detailLinkButtonTapped(with: url)
+                }
+            ),
+            for: .touchUpInside
+        )
+        button.translatesAutoresizingMaskIntoConstraints = false
+        return button
+    }()
+    
+//    private lazy var memberListButton: UIButton = {
+//        let button = UIButton(type: .system)
+//        button.setTitle("제안자목록", for: .normal)
+//        button.addAction(
+//            UIAction(
+//                handler: { [weak self] _ in
+//                    guard let url = self?.memberListURL else { return }
+//                    self?.delegate?.memberListButtonTapped(with: url)
+//                }
+//            ),
+//            for: .touchUpInside
+//        )
+//        button.translatesAutoresizingMaskIntoConstraints = false
+//        return button
+//    }()
+    
+    //MARK: - 추후 MarqueeLabel 도입 예정
+    private let publProposerLabel: UILabel = {
+        let label = UILabel()
+        label.translatesAutoresizingMaskIntoConstraints = false
+        return label
+    }()
+    
+    private var detailLinkURL: URL?
+    private var memberListURL: URL?
+    weak var delegate: DetailViewDelegate?
+    
+    // MARK: - Initializer
+    override init(frame: CGRect) {
+        super.init(frame: frame)
+        setupViewHierarchy()
+        setupConstraints()
+        configureSections()
     }
     
     required init?(coder: NSCoder) {
         fatalError("init(coder:) has not been implemented")
     }
     
-    private func setupView() {
+    // MARK: - View Setup
+    private func setupViewHierarchy() {
         backgroundColor = .white
-        addSubview(customTopView)
-        addSubview(navBar)
         
-        customTopView.backgroundColor = .white
-        customTopView.translatesAutoresizingMaskIntoConstraints = false
-        navBar.translatesAutoresizingMaskIntoConstraints = false
+        // 1. Sticky Header 추가 (법안 제목만)
+        addSubview(stickyHeaderView)
+        stickyHeaderView.addSubview(backButton)
+        stickyHeaderView.addSubview(billNameLabel)
+        
+        
+        // 2. 스크롤 영역 추가 (나머지 컨텐츠)
+        addSubview(scrollView)
+        scrollView.addSubview(containerView)
+        containerView.addSubview(mainStackView)
+        
+        let basicStack = UIStackView(arrangedSubviews: [proposeDateLabel, ageLabel])
+        basicStack.axis = .vertical
+        basicStack.spacing = 8
+        
+        
+        let processingStack = UIStackView(arrangedSubviews: [procResultLabel, procDateLabel])
+        processingStack.axis = .vertical
+        processingStack.spacing = 8
+        
+        
+        let committeeStack = UIStackView(arrangedSubviews: [committeeLabel, committeeIdLabel, committeeProcessDateLabel])
+        committeeStack.axis = .vertical
+        committeeStack.spacing = 8
+        
+        
+        let lawCommitteeStack = UIStackView(arrangedSubviews: [lawProcDateLabel, lawPresentDateLabel, lawSubmitDateLabel])
+        lawCommitteeStack.axis = .vertical
+        lawCommitteeStack.spacing = 8
+        
+        
+        let additionalStack = UIStackView(arrangedSubviews: [detailLinkButton, publProposerLabel])
+        additionalStack.axis = .vertical
+        additionalStack.spacing = 8
+        
+        
+        mainStackView.addArrangedSubview(basicStack)
+        mainStackView.addArrangedSubview(processingStack)
+        mainStackView.addArrangedSubview(timelineView)
+        mainStackView.addArrangedSubview(committeeStack)
+        mainStackView.addArrangedSubview(lawCommitteeStack)
+        mainStackView.addArrangedSubview(additionalStack)
+    }
+    
+    private func setupConstraints() {
         NSLayoutConstraint.activate([
-            customTopView.topAnchor.constraint(equalTo: topAnchor),
-            customTopView.leadingAnchor.constraint(equalTo: leadingAnchor),
-            customTopView.trailingAnchor.constraint(equalTo: trailingAnchor),
-            customTopView.heightAnchor.constraint(equalToConstant: UIApplication.shared.statusBarFrame.height + safeAreaInsets.top),
             
-            navBar.topAnchor.constraint(equalTo: customTopView.bottomAnchor),
-            navBar.leadingAnchor.constraint(equalTo: leadingAnchor),
-            navBar.trailingAnchor.constraint(equalTo: trailingAnchor),
-            navBar.heightAnchor.constraint(equalToConstant: 44)
+            stickyHeaderView.topAnchor.constraint(equalTo: safeAreaLayoutGuide.topAnchor),
+            stickyHeaderView.leadingAnchor.constraint(equalTo: leadingAnchor),
+            stickyHeaderView.trailingAnchor.constraint(equalTo: trailingAnchor),
+            stickyHeaderView.heightAnchor.constraint(equalToConstant: 60),
+            
+            
+            backButton.leadingAnchor.constraint(equalTo: stickyHeaderView.leadingAnchor, constant: 16),
+            backButton.centerYAnchor.constraint(equalTo: stickyHeaderView.centerYAnchor),
+            backButton.widthAnchor.constraint(equalToConstant: 20),
+            backButton.heightAnchor.constraint(equalToConstant: 20),
+            
+            // MARK: MarqueeLabel 도입 예정
+            billNameLabel.leadingAnchor.constraint(equalTo: backButton.trailingAnchor, constant: 8),
+            billNameLabel.trailingAnchor.constraint(equalTo: stickyHeaderView.trailingAnchor, constant: -16),
+            billNameLabel.centerYAnchor.constraint(equalTo: stickyHeaderView.centerYAnchor),
+            
+            scrollView.topAnchor.constraint(equalTo: stickyHeaderView.bottomAnchor),
+            scrollView.leadingAnchor.constraint(equalTo: leadingAnchor),
+            scrollView.trailingAnchor.constraint(equalTo: trailingAnchor),
+            scrollView.bottomAnchor.constraint(equalTo: bottomAnchor, constant: -55),
+            
+            containerView.topAnchor.constraint(equalTo: scrollView.topAnchor),
+            containerView.leadingAnchor.constraint(equalTo: scrollView.leadingAnchor),
+            containerView.trailingAnchor.constraint(equalTo: scrollView.trailingAnchor),
+            containerView.bottomAnchor.constraint(equalTo: scrollView.bottomAnchor),
+            containerView.widthAnchor.constraint(equalTo: scrollView.widthAnchor),
+            
+            mainStackView.topAnchor.constraint(equalTo: containerView.topAnchor, constant: 16),
+            mainStackView.leadingAnchor.constraint(equalTo: containerView.leadingAnchor, constant: 16),
+            mainStackView.trailingAnchor.constraint(equalTo: containerView.trailingAnchor, constant: -16),
+            mainStackView.bottomAnchor.constraint(equalTo: containerView.bottomAnchor, constant: -16)
         ])
+    }
+    
+    private func configureSections() {
+        proposeDateLabel.text = "제안일: "
+        ageLabel.text = "대수: "
         
-        for representative in name {
-            if row.PROPOSER.contains(representative.HG_NM) {
-                setNavigationBarColor(for: representative)
-            }
-        }
+        procResultLabel.text = "본회의심의결과: "
+        procDateLabel.text = "의결일: "
         
-        let backButton = UIBarButtonItem(title: "뒤로", style: .plain, target: self, action: #selector(backButtonTapped))
-        let navItem = UINavigationItem()
-        navItem.leftBarButtonItem = backButton
-        navBar.setItems([navItem], animated: false)
-    }
-    
-    private func setupNavigationBar() {
-        navBar.isTranslucent = false
-        navBar.shadowImage = UIImage()
-    }
-    
-    private func setupLabels() {
-        let billNameLabel = createLabel(text: "법률안명: \(row.BILL_NAME)", topAnchor: navBar.bottomAnchor, constant: 20)
-        billNameLabel.textAlignment = .center
-        billNameLabel.font = .boldSystemFont(ofSize: 17)
+        committeeLabel.text = "소관위원회: "
+        committeeIdLabel.text = "소관위원회ID: "
+        committeeProcessDateLabel.text = "소관위원회 처리일: "
         
-        let detailPageLabel = createLabel(text: "", topAnchor: billNameLabel.bottomAnchor, constant: 20)
-        let attributedString = NSMutableAttributedString(string: "상세페이지 : ", attributes: [NSAttributedString.Key.font: UIFont.systemFont(ofSize: 17)])
-        let linkString = NSAttributedString(string: "바로가기", attributes: [NSAttributedString.Key.font: UIFont.boldSystemFont(ofSize: 17), NSAttributedString.Key.foregroundColor: UIColor.blue])
-        attributedString.append(linkString)
-        detailPageLabel.attributedText = attributedString
+        lawProcDateLabel.text = "법사위처리일: "
+        lawPresentDateLabel.text = "법사위상정일: "
+        lawSubmitDateLabel.text = "법사위회부일: "
         
-        let proposerLabel = createLabel(text: "제안자: \(row.PROPOSER ?? "정보 없음")", topAnchor: detailPageLabel.bottomAnchor, constant: 20)
-        let lawProcDateLabel = createLabel(text: "법사위처리일: \(row.LAW_PROC_DT ?? "정보 없음")", topAnchor: proposerLabel.bottomAnchor, constant: 20)
-        let lawPresentDateLabel = createLabel(text: "법사위상정일: \(row.LAW_PRESENT_DT ?? "정보 없음")", topAnchor: lawProcDateLabel.bottomAnchor, constant: 20)
-        let lawSubmitDateLabel = createLabel(text: "법사위회부일: \(row.LAW_SUBMIT_DT ?? "정보 없음")", topAnchor: lawPresentDateLabel.bottomAnchor, constant: 20)
-        let cmtProcResultLabel = createLabel(text: "소관위처리결과: \(row.CMT_PROC_RESULT_CD ?? "정보 없음")", topAnchor: lawSubmitDateLabel.bottomAnchor, constant: 20)
-        let lawProcResultLabel = createLabel(text: "법사위처리결과: \(row.LAW_PROC_RESULT_CD ?? "정보 없음")", topAnchor: cmtProcResultLabel.bottomAnchor, constant: 20)
-        let proposeDateLabel = createLabel(text: "제안일: \(row.PROPOSE_DT ?? "정보 없음")", topAnchor: lawProcResultLabel.bottomAnchor, constant: 20)
-        let committeeLabel = createLabel(text: "소관위원회: \(row.COMMITTEE ?? "정보 없음")", topAnchor: proposeDateLabel.bottomAnchor, constant: 20)
-        let procResultLabel = createLabel(text: "본회의심의결과: \(row.PROC_RESULT ?? "정보 없음")", topAnchor: committeeLabel.bottomAnchor, constant: 20)
+        publProposerLabel.text = "공동발의자: "
     }
     
-    private func setupGestureRecognizers() {
-        let detailPageLabel = createLabel(text: "", topAnchor: navBar.bottomAnchor, constant: 20)
-        detailPageLabel.isUserInteractionEnabled = true
-        let tapGesture = UITapGestureRecognizer(target: self, action: #selector(openDetailLink))
-        detailPageLabel.addGestureRecognizer(tapGesture)
-    }
-    
-    private func setNavigationBarColor(for representative: Representative) {
-        switch representative.POLY_NM {
-        case "더불어민주당":
-            navBar.barTintColor = .blue
-            customTopView.backgroundColor = .blue
-        case "국민의힘":
-            navBar.barTintColor = .red
-            customTopView.backgroundColor = .red
-        case "정의당":
-            navBar.barTintColor = .yellow
-            customTopView.backgroundColor = .yellow
-        default:
-            break
-        }
-    }
-    
-    private func createLabel(text: String, topAnchor: NSLayoutYAxisAnchor, constant: CGFloat) -> UILabel {
-        let label = UILabel()
-        label.text = text
-        label.translatesAutoresizingMaskIntoConstraints = false
-        addSubview(label)
+    // MARK: - Update Method
+    func update(with bill: Row) {
+        committeeIdLabel.text = bill.BILL_ID
         
-        NSLayoutConstraint.activate([
-            label.topAnchor.constraint(equalTo: topAnchor, constant: constant),
-            label.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 20),
-            label.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -20),
-        ])
-        return label
-    }
-    
-    @objc private func backButtonTapped() {
-        if let viewController = self.parentViewController as? DetailViewController {
-            viewController.dismiss(animated: true, completion: nil)
-        }
-    }
-    
-    @objc private func openDetailLink() {
-        if let url = URL(string: row.DETAIL_LINK), UIApplication.shared.canOpenURL(url) {
-            UIApplication.shared.open(url, options: [:], completionHandler: nil)
-        }
-    }
-}
-
-extension UIView {
-    var parentViewController: UIViewController? {
-        var parentResponder: UIResponder? = self
-        while let nextResponder = parentResponder?.next {
-            parentResponder = nextResponder
-            if let viewController = parentResponder as? UIViewController {
-                return viewController
-            }
-        }
-        return nil
+        billNameLabel.text = bill.BILL_NAME
+        
+        proposeDateLabel.text = "제안일: \(bill.PROPOSE_DT)"
+        ageLabel.text = "대수: \(bill.AGE)"
+        
+        procResultLabel.text = "본회의심의결과: \(bill.PROC_RESULT ?? "정보 없음")"
+        procDateLabel.text = "의결일: \(bill.PROC_DT ?? "정보 없음")"
+        
+        committeeLabel.text = "소관위원회: \(bill.COMMITTEE ?? "정보 없음")"
+        committeeIdLabel.text = "소관위원회ID: \(bill.COMMITTEE_ID ?? "정보 없음")"
+        committeeProcessDateLabel.text = "소관위원회 처리일: \(bill.COMMITTEE_DT ?? "정보 없음")"
+        
+        lawProcDateLabel.text = "법사위처리일: \(bill.LAW_PROC_DT ?? "정보 없음")"
+        lawPresentDateLabel.text = "법사위상정일: \(bill.LAW_PRESENT_DT ?? "정보 없음")"
+        lawSubmitDateLabel.text = "법사위회부일: \(bill.LAW_SUBMIT_DT ?? "정보 없음")"
+        
+        detailLinkURL = URL(string: bill.DETAIL_LINK)
+        publProposerLabel.text = "공동발의자: \(bill.PUBL_PROPOSER ?? "정보 없음")"
+        
+        let timelineSteps: [TimelineStep] = [
+            TimelineStep(title: "제안", date: bill.PROPOSE_DT, isCompleted: true),
+            TimelineStep(title: "위원회 처리", date: bill.COMMITTEE_DT ?? "미처리", isCompleted: bill.COMMITTEE_DT != nil),
+            TimelineStep(title: "법사위 처리", date: bill.LAW_PROC_DT ?? "미처리", isCompleted: bill.LAW_PROC_DT != nil),
+            TimelineStep(title: "본회의 심의", date: bill.PROC_DT ?? "미처리", isCompleted: bill.PROC_DT != nil)
+        ]
+        
+        timelineView.updateSteps(timelineSteps)
     }
 }
