@@ -16,7 +16,6 @@
 		1D30EB222B0C3157006C1588 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 1D30EB212B0C3157006C1588 /* Assets.xcassets */; };
 		1D30EB252B0C3157006C1588 /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 1D30EB232B0C3157006C1588 /* LaunchScreen.storyboard */; };
 		1D30EB352B0C7557006C1588 /* Bills.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D30EB342B0C7557006C1588 /* Bills.swift */; };
-		1D44C6352B1025C000884C24 /* DetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D44C6342B1025C000884C24 /* DetailView.swift */; };
 		1D44C63B2B1061FE00884C24 /* .gitignore in Resources */ = {isa = PBXBuildFile; fileRef = 1D44C63A2B1061FE00884C24 /* .gitignore */; };
 		1D62EA0E2B1841490011DA14 /* DetailViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D62EA0D2B1841490011DA14 /* DetailViewModel.swift */; };
 		1D62EA102B18419A0011DA14 /* DetailViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D62EA0F2B18419A0011DA14 /* DetailViewController.swift */; };
@@ -35,6 +34,11 @@
 		1D69B1AC2D43A72D00EB70F0 /* BillsService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D69B1AB2D43A72D00EB70F0 /* BillsService.swift */; };
 		1DB501E32D4C737200D63F2D /* TodayBillsViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1DB501E22D4C737200D63F2D /* TodayBillsViewController.swift */; };
 		1DB501E72D4C763100D63F2D /* CalendarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1DB501E62D4C763100D63F2D /* CalendarView.swift */; };
+		1DD96EE62D4DFEB0005FD3AF /* DetailBillService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1DD96EE52D4DFEB0005FD3AF /* DetailBillService.swift */; };
+		1DD96EE82D4E6A9A005FD3AF /* TimelineStep.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1DD96EE72D4E6A9A005FD3AF /* TimelineStep.swift */; };
+		1DD96EEA2D4E6AC9005FD3AF /* DetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1DD96EE92D4E6AC9005FD3AF /* DetailView.swift */; };
+		1DD96EEC2D4E6AE0005FD3AF /* TimelineView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1DD96EEB2D4E6AE0005FD3AF /* TimelineView.swift */; };
+		1DD96EEE2D4E6AF4005FD3AF /* TimelineItemView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1DD96EED2D4E6AF4005FD3AF /* TimelineItemView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -50,7 +54,6 @@
 		1D30EB262B0C3157006C1588 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		1D30EB2D2B0C3B52006C1588 /* ko */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = ko; path = ko.lproj/LaunchScreen.strings; sourceTree = "<group>"; };
 		1D30EB342B0C7557006C1588 /* Bills.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Bills.swift; sourceTree = "<group>"; };
-		1D44C6342B1025C000884C24 /* DetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DetailView.swift; sourceTree = "<group>"; };
 		1D44C63A2B1061FE00884C24 /* .gitignore */ = {isa = PBXFileReference; lastKnownFileType = text; path = .gitignore; sourceTree = "<group>"; };
 		1D62EA0D2B1841490011DA14 /* DetailViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DetailViewModel.swift; sourceTree = "<group>"; };
 		1D62EA0F2B18419A0011DA14 /* DetailViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DetailViewController.swift; sourceTree = "<group>"; };
@@ -69,6 +72,11 @@
 		1D69B1AB2D43A72D00EB70F0 /* BillsService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BillsService.swift; sourceTree = "<group>"; };
 		1DB501E22D4C737200D63F2D /* TodayBillsViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TodayBillsViewController.swift; sourceTree = "<group>"; };
 		1DB501E62D4C763100D63F2D /* CalendarView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalendarView.swift; sourceTree = "<group>"; };
+		1DD96EE52D4DFEB0005FD3AF /* DetailBillService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DetailBillService.swift; sourceTree = "<group>"; };
+		1DD96EE72D4E6A9A005FD3AF /* TimelineStep.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TimelineStep.swift; sourceTree = "<group>"; };
+		1DD96EE92D4E6AC9005FD3AF /* DetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DetailView.swift; sourceTree = "<group>"; };
+		1DD96EEB2D4E6AE0005FD3AF /* TimelineView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TimelineView.swift; sourceTree = "<group>"; };
+		1DD96EED2D4E6AF4005FD3AF /* TimelineItemView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TimelineItemView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -82,6 +90,16 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		1D1E27A32D4FC6BF00F10850 /* TimeLine */ = {
+			isa = PBXGroup;
+			children = (
+				1DD96EE72D4E6A9A005FD3AF /* TimelineStep.swift */,
+				1DD96EEB2D4E6AE0005FD3AF /* TimelineView.swift */,
+				1DD96EED2D4E6AF4005FD3AF /* TimelineItemView.swift */,
+			);
+			path = TimeLine;
+			sourceTree = "<group>";
+		};
 		1D30EB0C2B0C3156006C1588 = {
 			isa = PBXGroup;
 			children = (
@@ -102,6 +120,7 @@
 		1D30EB172B0C3156006C1588 /* TodayBill */ = {
 			isa = PBXGroup;
 			children = (
+				1D1E27A32D4FC6BF00F10850 /* TimeLine */,
 				1D6476B32D44C62D002A61B3 /* List */,
 				1D672B822D422EA9000DD244 /* Search */,
 				1D672B812D422E9C000DD244 /* StarBill */,
@@ -145,7 +164,8 @@
 			isa = PBXGroup;
 			children = (
 				1D62EA0F2B18419A0011DA14 /* DetailViewController.swift */,
-				1D44C6342B1025C000884C24 /* DetailView.swift */,
+				1DD96EE92D4E6AC9005FD3AF /* DetailView.swift */,
+				1DD96EE52D4DFEB0005FD3AF /* DetailBillService.swift */,
 			);
 			path = Detail;
 			sourceTree = "<group>";
@@ -265,20 +285,24 @@
 				1D672B7E2D420327000DD244 /* MainTabBarViewController.swift in Sources */,
 				1D62EA102B18419A0011DA14 /* DetailViewController.swift in Sources */,
 				1D0E76672B10668300581776 /* Representative.swift in Sources */,
+				1DD96EEE2D4E6AF4005FD3AF /* TimelineItemView.swift in Sources */,
 				1D30EB1D2B0C3156006C1588 /* CalenderViewController.swift in Sources */,
 				1D672B802D422E85000DD244 /* AppInitializer.swift in Sources */,
-				1D44C6352B1025C000884C24 /* DetailView.swift in Sources */,
 				1D30EB352B0C7557006C1588 /* Bills.swift in Sources */,
 				1D6476BB2D45292E002A61B3 /* SearchResultsViewController.swift in Sources */,
+				1DD96EE82D4E6A9A005FD3AF /* TimelineStep.swift in Sources */,
 				1D69B1A82D43990700EB70F0 /* RecentSearchManager.swift in Sources */,
 				1D6476B52D44C637002A61B3 /* ListView.swift in Sources */,
 				1D30EB192B0C3156006C1588 /* AppDelegate.swift in Sources */,
+				1DD96EE62D4DFEB0005FD3AF /* DetailBillService.swift in Sources */,
 				1D30EB1B2B0C3156006C1588 /* SceneDelegate.swift in Sources */,
 				1D69B1AA2D43A35D00EB70F0 /* SearchBills.swift in Sources */,
+				1DD96EEC2D4E6AE0005FD3AF /* TimelineView.swift in Sources */,
 				1DB501E72D4C763100D63F2D /* CalendarView.swift in Sources */,
 				1D69B1A22D43500F00EB70F0 /* SearchView.swift in Sources */,
 				1D62EA0E2B1841490011DA14 /* DetailViewModel.swift in Sources */,
 				1D672B8A2D422ED2000DD244 /* StarBillViewController.swift in Sources */,
+				1DD96EEA2D4E6AC9005FD3AF /* DetailView.swift in Sources */,
 				1D69B1AC2D43A72D00EB70F0 /* BillsService.swift in Sources */,
 				1D6476B72D44C65A002A61B3 /* ListViewCell.swift in Sources */,
 				1D0BE63C2D4907FA00B730F2 /* StarredBill.swift in Sources */,

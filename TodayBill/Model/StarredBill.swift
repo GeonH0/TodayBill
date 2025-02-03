@@ -9,5 +9,6 @@ import Foundation
 
 struct StarredBill: Codable {
     let ID: String
+    let age: Int
     let name: String
 }

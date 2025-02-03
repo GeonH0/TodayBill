@@ -11,10 +11,10 @@ class AppInitializer {
     static func setupRootViewController(for window: UIWindow?) {
         let tabBarViewController = MainTabBarViewController()
         
-        let calendarViewController = CalenderViewController()
-        let searchViewController = SearchViewController()
+        let calendarViewController = UINavigationController(rootViewController: CalenderViewController())
+        let searchViewController = UINavigationController(rootViewController:SearchViewController())
         let savedStarBills = StarBillManager.shared.loadStarredBills()
-        let starViewController = StarBillViewController(starBills: savedStarBills)
+        let starViewController = UINavigationController(rootViewController:StarBillViewController(starBills: savedStarBills))
         
         
         let homeImage = UIImage(systemName: "house")!

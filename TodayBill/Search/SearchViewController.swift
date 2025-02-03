@@ -27,6 +27,16 @@ final class SearchViewController: UIViewController {
         setupSearchResultsView()
     }
     
+    override func viewWillAppear(_ animated: Bool) {
+        super.viewWillAppear(animated)
+        navigationController?.setNavigationBarHidden(true, animated: animated)
+    }
+
+    override func viewWillDisappear(_ animated: Bool) {
+        super.viewWillDisappear(animated)
+        navigationController?.setNavigationBarHidden(false, animated: animated)
+    }
+    
     private func setupUI() {
         view.backgroundColor = .white
     }
@@ -53,7 +63,7 @@ final class SearchViewController: UIViewController {
             DispatchQueue.main.async {
                 switch result {
                 case .success(let rows):
-                    let resultTitles: [StarredBill] = rows.map { StarredBill(ID: $0.BILL_ID, name: $0.BILL_NAME) }
+                    let resultTitles: [StarredBill] = rows.map { StarredBill(ID: $0.BILL_ID, age: Int($0.AGE)!, name: $0.BILL_NAME) }
                     self.searchResultsViewController.updateResults(resultTitles)
                     self.searchResultsViewController.view.isHidden = false
                     completion(true)

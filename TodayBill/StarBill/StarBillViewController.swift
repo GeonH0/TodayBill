@@ -11,13 +11,6 @@ import UIKit
 final class StarBillViewController: ListViewController {
     private var starBills: [StarredBill]
     
-    private let titleLabel: UILabel = {
-        let label = UILabel()
-        label.text = "즐겨찾기"
-        label.font = .boldSystemFont(ofSize: 24)
-        label.textAlignment = .center
-        return label
-    }()
     
     init(starBills: [StarredBill]) {
         self.starBills = starBills
@@ -38,18 +31,13 @@ final class StarBillViewController: ListViewController {
         super.viewWillAppear(animated)
         let updatedBills = StarBillManager.shared.loadStarredBills()
         updateStarBills(updatedBills)
+        navigationItem.title = "즐겨찾기"
     }
     
-    private func setupTitleOverlay() {
-        view.addSubview(titleLabel)
-        titleLabel.translatesAutoresizingMaskIntoConstraints = false
+    private func setupTitleOverlay() {        
         collectionView.translatesAutoresizingMaskIntoConstraints = false
         NSLayoutConstraint.activate([
-            titleLabel.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor),
-            titleLabel.leadingAnchor.constraint(equalTo: view.leadingAnchor),
-            titleLabel.trailingAnchor.constraint(equalTo: view.trailingAnchor),
-            titleLabel.heightAnchor.constraint(equalToConstant: 60),
-            collectionView.topAnchor.constraint(equalTo: titleLabel.bottomAnchor),
+            collectionView.topAnchor.constraint(equalTo: view.topAnchor),
             collectionView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
             collectionView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
             collectionView.bottomAnchor.constraint(equalTo: view.bottomAnchor, constant: -55)
