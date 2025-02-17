@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		1D09261B2D62FF8C00AE10B9 /* MarqueeLabel in Frameworks */ = {isa = PBXBuildFile; productRef = 1D09261A2D62FF8C00AE10B9 /* MarqueeLabel */; };
 		1D0BE6382D48879200B730F2 /* StarBillManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D0BE6372D48879200B730F2 /* StarBillManager.swift */; };
 		1D0BE63C2D4907FA00B730F2 /* StarredBill.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D0BE63B2D4907FA00B730F2 /* StarredBill.swift */; };
 		1D0E76672B10668300581776 /* Representative.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D0E76662B10668300581776 /* Representative.swift */; };
@@ -84,6 +85,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				1D09261B2D62FF8C00AE10B9 /* MarqueeLabel in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -226,6 +228,9 @@
 			dependencies = (
 			);
 			name = TodayBill;
+			packageProductDependencies = (
+				1D09261A2D62FF8C00AE10B9 /* MarqueeLabel */,
+			);
 			productName = TodayBill;
 			productReference = 1D30EB152B0C3156006C1588 /* TodayBill.app */;
 			productType = "com.apple.product-type.application";
@@ -254,6 +259,9 @@
 				ko,
 			);
 			mainGroup = 1D30EB0C2B0C3156006C1588;
+			packageReferences = (
+				1D0926192D62FF8C00AE10B9 /* XCRemoteSwiftPackageReference "MarqueeLabel" */,
+			);
 			productRefGroup = 1D30EB162B0C3156006C1588 /* Products */;
 			projectDirPath = "";
 			projectRoot = "";
@@ -527,6 +535,25 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		1D0926192D62FF8C00AE10B9 /* XCRemoteSwiftPackageReference "MarqueeLabel" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/cbpowell/MarqueeLabel";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 4.5.0;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		1D09261A2D62FF8C00AE10B9 /* MarqueeLabel */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 1D0926192D62FF8C00AE10B9 /* XCRemoteSwiftPackageReference "MarqueeLabel" */;
+			productName = MarqueeLabel;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = 1D30EB0D2B0C3156006C1588 /* Project object */;
 }
