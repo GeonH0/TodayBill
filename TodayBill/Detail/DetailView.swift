@@ -8,6 +8,8 @@
 import Foundation
 import UIKit
 
+import MarqueeLabel
+
 protocol DetailViewDelegate: AnyObject {
     func backButtonTapped()
     func detailLinkButtonTapped(with url: URL)    
@@ -39,11 +41,13 @@ final class DetailView: UIView {
         return button
     }()
     
-    private let billNameLabel: UILabel = {
-        let label = UILabel()
+    private let billNameLabel: MarqueeLabel = {
+        let label = MarqueeLabel()
+        label.type = .continuous
         label.font = UIFont.boldSystemFont(ofSize: 20)
         label.textAlignment = .center
         label.numberOfLines = 1
+        label.trailingBuffer = 40.0
         label.lineBreakMode = .byClipping
         label.translatesAutoresizingMaskIntoConstraints = false
         return label
@@ -172,9 +176,10 @@ final class DetailView: UIView {
 //        return button
 //    }()
     
-    //MARK: - 추후 MarqueeLabel 도입 예정
-    private let publProposerLabel: UILabel = {
-        let label = UILabel()
+    
+    private let publProposerLabel: MarqueeLabel = {
+        let label = MarqueeLabel()
+        label.speed = .duration(8.0)
         label.translatesAutoresizingMaskIntoConstraints = false
         return label
     }()
@@ -298,6 +303,17 @@ final class DetailView: UIView {
         publProposerLabel.text = "공동발의자: "
     }
     
+    private func updateMarqueeEffect() {
+        let textWidth = billNameLabel.intrinsicContentSize.width
+        let labelWidth = billNameLabel.frame.width
+        
+        if textWidth > labelWidth {
+            billNameLabel.type = .continuous
+        } else {
+            billNameLabel.type = .left
+        }
+    }
+    
     // MARK: - Update Method
     func update(with bill: Row) {
         committeeIdLabel.text = bill.BILL_ID
@@ -329,5 +345,6 @@ final class DetailView: UIView {
         ]
         
         timelineView.updateSteps(timelineSteps)
+        updateMarqueeEffect()
     }
 }
