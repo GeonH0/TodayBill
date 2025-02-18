@@ -33,6 +33,7 @@
 		1D69B1A82D43990700EB70F0 /* RecentSearchManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D69B1A72D43990700EB70F0 /* RecentSearchManager.swift */; };
 		1D69B1AA2D43A35D00EB70F0 /* SearchBills.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D69B1A92D43A35D00EB70F0 /* SearchBills.swift */; };
 		1D69B1AC2D43A72D00EB70F0 /* BillsService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D69B1AB2D43A72D00EB70F0 /* BillsService.swift */; };
+		1DA31D7B2D64C32700EB1552 /* BillsRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1DA31D7A2D64C32700EB1552 /* BillsRepository.swift */; };
 		1DB501E32D4C737200D63F2D /* TodayBillsViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1DB501E22D4C737200D63F2D /* TodayBillsViewController.swift */; };
 		1DB501E72D4C763100D63F2D /* CalendarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1DB501E62D4C763100D63F2D /* CalendarView.swift */; };
 		1DD96EE62D4DFEB0005FD3AF /* DetailBillService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1DD96EE52D4DFEB0005FD3AF /* DetailBillService.swift */; };
@@ -71,6 +72,7 @@
 		1D69B1A72D43990700EB70F0 /* RecentSearchManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecentSearchManager.swift; sourceTree = "<group>"; };
 		1D69B1A92D43A35D00EB70F0 /* SearchBills.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SearchBills.swift; sourceTree = "<group>"; };
 		1D69B1AB2D43A72D00EB70F0 /* BillsService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BillsService.swift; sourceTree = "<group>"; };
+		1DA31D7A2D64C32700EB1552 /* BillsRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BillsRepository.swift; sourceTree = "<group>"; };
 		1DB501E22D4C737200D63F2D /* TodayBillsViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TodayBillsViewController.swift; sourceTree = "<group>"; };
 		1DB501E62D4C763100D63F2D /* CalendarView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalendarView.swift; sourceTree = "<group>"; };
 		1DD96EE52D4DFEB0005FD3AF /* DetailBillService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DetailBillService.swift; sourceTree = "<group>"; };
@@ -158,6 +160,7 @@
 				1D30EB1C2B0C3156006C1588 /* CalenderViewController.swift */,
 				1DB501E22D4C737200D63F2D /* TodayBillsViewController.swift */,
 				1DB501E62D4C763100D63F2D /* CalendarView.swift */,
+				1DA31D7A2D64C32700EB1552 /* BillsRepository.swift */,
 			);
 			path = Calender;
 			sourceTree = "<group>";
@@ -291,6 +294,7 @@
 			files = (
 				1D0BE6382D48879200B730F2 /* StarBillManager.swift in Sources */,
 				1D672B7E2D420327000DD244 /* MainTabBarViewController.swift in Sources */,
+				1DA31D7B2D64C32700EB1552 /* BillsRepository.swift in Sources */,
 				1D62EA102B18419A0011DA14 /* DetailViewController.swift in Sources */,
 				1D0E76672B10668300581776 /* Representative.swift in Sources */,
 				1DD96EEE2D4E6AF4005FD3AF /* TimelineItemView.swift in Sources */,
