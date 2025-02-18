@@ -31,7 +31,7 @@ final class SearchViewController: UIViewController {
         super.viewWillAppear(animated)
         navigationController?.setNavigationBarHidden(true, animated: animated)
     }
-
+    
     override func viewWillDisappear(_ animated: Bool) {
         super.viewWillDisappear(animated)
         navigationController?.setNavigationBarHidden(false, animated: animated)
@@ -52,7 +52,7 @@ final class SearchViewController: UIViewController {
             searchResultsViewController.collectionView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
             searchResultsViewController.collectionView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
             searchResultsViewController.collectionView.bottomAnchor.constraint(equalTo: view.bottomAnchor, constant: -55)
-        
+            
         ])
         searchResultsViewController.view.isHidden = true
     }
@@ -63,7 +63,14 @@ final class SearchViewController: UIViewController {
             DispatchQueue.main.async {
                 switch result {
                 case .success(let rows):
-                    let resultTitles: [StarredBill] = rows.map { StarredBill(ID: $0.BILL_ID, age: Int($0.AGE)!, name: $0.BILL_NAME) }
+                    let resultTitles: [StarredBill] = rows.map {
+                        StarredBill(
+                            ID: $0.BILL_ID,
+                            age: Int($0.AGE)!,
+                            name: $0.BILL_NAME
+                        )
+                    }
+                    
                     self.searchResultsViewController.updateResults(resultTitles)
                     self.searchResultsViewController.view.isHidden = false
                     completion(true)
@@ -115,7 +122,6 @@ extension SearchViewController: UISearchBarDelegate {
             DispatchQueue.main.async {
                 self.searchResultsViewController.view.isHidden = true
             }
-            
         }
     }
     
