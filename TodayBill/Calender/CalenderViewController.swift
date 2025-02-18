@@ -6,10 +6,12 @@
 //
 import UIKit
 
-class CalenderViewController: UIViewController {
+final class CalenderViewController: UIViewController {
     private let contentView = CalendarView()
-    private let billsService = BillsService()
+    private let billsRepository = BillsRepository()
     private var todayListViewController: TodayBillsViewController!
+    private var selectedDate: String?
+    private var isUserSelectingDate = false
     
     private let emptyLabel: UILabel = {
         let label = UILabel()
@@ -21,12 +23,6 @@ class CalenderViewController: UIViewController {
         return label
     }()
     
-    private var currentPIndex: Int = 1
-    private var age: Int = 22
-    private var billsByDate: [String: [StarredBill]] = [:]
-    
-    var selectedDate: String?
-    
     override func loadView() {
         view = contentView
         view.backgroundColor = .white
@@ -37,13 +33,14 @@ class CalenderViewController: UIViewController {
         todayListViewController = TodayBillsViewController(todayBills: [])
         setupCalendar()
         setupConstraints()
+        fetchBills(for: Date(), isInitialLoad: true)
     }
     
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
         navigationController?.setNavigationBarHidden(true, animated: animated)
     }
-
+    
     override func viewWillDisappear(_ animated: Bool) {
         super.viewWillDisappear(animated)
         navigationController?.setNavigationBarHidden(false, animated: animated)
@@ -64,7 +61,6 @@ class CalenderViewController: UIViewController {
             todayListViewController.collectionView.bottomAnchor.constraint(equalTo: view.bottomAnchor, constant: -55),
             emptyLabel.centerXAnchor.constraint(equalTo: view.centerXAnchor),
             emptyLabel.centerYAnchor.constraint(equalTo: todayListViewController.view.centerYAnchor)
-            
         ])
     }
     
@@ -74,21 +70,21 @@ class CalenderViewController: UIViewController {
         contentView.dateView.selectionBehavior = dateSelection
     }
     
-    private func fetchBills(for date: Date) {
-        guard let formattedDate = formatDate(date) else {
-            print("날짜 변환 실패")
-            return
-        }
-        
-        selectedDate = formattedDate
-        
-        loadBills { [weak self] result in
+    /// isInitialLoad가 true이면 앱 최초 실행 시 최신 날짜로 UI를 업데이트합니다.
+    private func fetchBills(for date: Date, isInitialLoad: Bool) {
+        billsRepository.fetchBills(for: date, isUserSelectingDate: !isInitialLoad) { [weak self] result in
             guard let self = self else { return }
             DispatchQueue.main.async {
                 switch result {
-                case .success(let rows):
-                    self.processBills(rows)
-                    self.handlePagination(rows, for: date)
+                case .success(let bills):
+                    
+                    if isInitialLoad, let latest = self.billsRepository.getLatestAvailableDate() {
+                        self.selectedDate = latest
+                        self.updateUICalendarSelection(to: latest)
+                    }
+                    
+                    self.todayListViewController.updateBills(bills: bills)
+                    self.emptyLabel.isHidden = !bills.isEmpty
                     
                 case .failure(let error):
                     self.showErrorAlert(message: error.localizedDescription)
@@ -96,67 +92,30 @@ class CalenderViewController: UIViewController {
             }
         }
     }
-
-    private func formatDate(_ date: Date) -> String? {
-        let calendar = Calendar.current
-        let components = calendar.dateComponents([.year, .month, .day], from: date)
-        guard let year = components.year, let month = components.month, let day = components.day else {
-            return nil
-        }
-        return String(format: "%04d-%02d-%02d", year, month, day)
-    }
-    
-    private func loadBills(completion: @escaping (Result<[Row], Error>) -> Void) {
-        billsService.fetchBills(pIndex: currentPIndex, age: age, completion: completion)
-    }
-
-    private func processBills(_ rows: [Row]) {
-        for row in rows {
-            let dateKey = row.PROPOSE_DT
-            let starredBill = StarredBill(ID: row.BILL_ID, age: Int(row.AGE)!, name: row.BILL_NAME)
-            
-            // 중복 방지: 같은 법안이 두 번 저장되지 않도록 Set 활용
-            if !(billsByDate[dateKey, default: []].contains { $0.ID == starredBill.ID }) {
-                billsByDate[dateKey, default: []].append(starredBill)
-            }
-        }
-        
-        let todayBills = billsByDate[selectedDate ?? ""] ?? []
-        todayListViewController.updateBills(bills: todayBills)
-        emptyLabel.isHidden = !todayBills.isEmpty
-    }
-
-    private func handlePagination(_ rows: [Row], for date: Date) {
-        guard let oldestDate = rows.map({ $0.PROPOSE_DT }).min() else { return }
-
-        if oldestDate <= "2020-05-30" {
-            return // 2020년 5월 30일 이전의 법안은 요청하지 않음
-        }
-        
-        if oldestDate <= "2024-05-30" {
-            if age == 22 {
-                age = 21
-                currentPIndex = 1
-                fetchBills(for: date)
-            } else {
-                currentPIndex += 1
-            }
-        } else {
-            currentPIndex += 1
-        }
-    }
     
     private func showErrorAlert(message: String) {
         let alert = UIAlertController(title: "법안 불러오기 실패", message: message, preferredStyle: .alert)
         alert.addAction(UIAlertAction(title: "확인", style: .default))
         present(alert, animated: true)
-    }    
+    }
+    
+    private func updateUICalendarSelection(to dateString: String) {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "yyyy-MM-dd"
+        
+        guard let date = formatter.date(from: dateString) else { return }
+
+        if let calendarSelection = contentView.dateView.selectionBehavior as? UICalendarSelectionSingleDate {
+            let components = Calendar.current.dateComponents([.year, .month, .day], from: date)
+            calendarSelection.setSelected(components, animated: true)
+        }
+    }
 }
 
 extension CalenderViewController: UICalendarViewDelegate, UICalendarSelectionSingleDateDelegate {
     func dateSelection(_ selection: UICalendarSelectionSingleDate, didSelectDate dateComponents: DateComponents?) {
         guard let dateComponents = dateComponents,
               let date = Calendar.current.date(from: dateComponents) else { return }
-        fetchBills(for: date)
+        fetchBills(for: date, isInitialLoad: false)
     }
 }
