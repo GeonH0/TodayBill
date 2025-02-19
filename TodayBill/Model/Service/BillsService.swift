@@ -28,7 +28,7 @@ final class BillsService {
             URLQueryItem(name: "key", value: apiKey),
             URLQueryItem(name: "Type", value: "json"),
             URLQueryItem(name: "pIndex", value: "\(pIndex)"),
-            URLQueryItem(name: "pSize", value: "500"),
+            URLQueryItem(name: "pSize", value: "1000"),
             URLQueryItem(name: "AGE", value: "\(age)")
         ]
 
