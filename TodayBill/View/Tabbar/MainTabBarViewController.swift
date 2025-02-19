@@ -11,7 +11,8 @@ final class MainTabBarViewController: UIViewController {
     private let customTabBar = MainTabBarView()
     private var viewControllers: [UIViewController] = []
     private var currentViewController: UIViewController?
-
+    private var isTransitioning = false
+    
     override func viewDidLoad() {
         super.viewDidLoad()
         setupTabBar()
@@ -41,9 +42,11 @@ final class MainTabBarViewController: UIViewController {
         
         let selectedViewController = viewControllers[index]
         
-        if currentViewController == selectedViewController {
+        if isTransitioning || currentViewController == selectedViewController {
             return
         }
+        
+        isTransitioning = true
         
         let oldViewController = currentViewController
         currentViewController?.willMove(toParent: nil)
@@ -71,6 +74,7 @@ final class MainTabBarViewController: UIViewController {
             oldViewController?.removeFromParent()
             selectedViewController.didMove(toParent: self)
             self.currentViewController = selectedViewController
+            self.isTransitioning = false
         }
     }
 }
