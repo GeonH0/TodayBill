@@ -10,8 +10,7 @@ import UIKit
 
 final class StarBillViewController: ListViewController {
     private var starBills: [StarredBill]
-    
-    
+        
     init(starBills: [StarredBill]) {
         self.starBills = starBills
         super.init(items: starBills)
