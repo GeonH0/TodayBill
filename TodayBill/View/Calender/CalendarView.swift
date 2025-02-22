@@ -13,7 +13,6 @@ final class CalendarView: UIView {
     lazy var dateView: UICalendarView = {
         var view = UICalendarView()
         view.wantsDateDecorations = true
-        view.backgroundColor = .white
         return view
     }()
     

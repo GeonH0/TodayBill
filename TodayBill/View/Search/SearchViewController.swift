@@ -38,7 +38,7 @@ final class SearchViewController: UIViewController {
     }
     
     private func setupUI() {
-        view.backgroundColor = .white
+        view.backgroundColor = Theme.backgroundColor
     }
     
     private func setupSearchResultsView() {

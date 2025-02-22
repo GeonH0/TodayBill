@@ -16,7 +16,7 @@ final class CalenderViewController: UIViewController {
     private let emptyLabel: UILabel = {
         let label = UILabel()
         label.text = "발의된 법안 없음"
-        label.textColor = .gray
+        label.textColor = Theme.emptyLabelTextColor
         label.textAlignment = .center
         label.font = UIFont.systemFont(ofSize: 16, weight: .medium)
         label.isHidden = true
@@ -25,7 +25,7 @@ final class CalenderViewController: UIViewController {
     
     override func loadView() {
         view = contentView
-        view.backgroundColor = .white
+        view.backgroundColor = Theme.backgroundColor
     }
     
     override func viewDidLoad() {

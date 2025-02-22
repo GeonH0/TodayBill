@@ -21,7 +21,7 @@ final class DetailView: UIView {
     private let stickyHeaderView: UIView = {
         let view = UIView()
         view.translatesAutoresizingMaskIntoConstraints = false
-        view.backgroundColor = .white
+        view.backgroundColor = Theme.cellBackgroundColor
         return view
     }()
     
@@ -202,7 +202,7 @@ final class DetailView: UIView {
     
     // MARK: - View Setup
     private func setupViewHierarchy() {
-        backgroundColor = .white
+        backgroundColor = Theme.backgroundColor
         
         // 1. Sticky Header 추가 (법안 제목만)
         addSubview(stickyHeaderView)

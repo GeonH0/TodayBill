@@ -12,11 +12,10 @@ import UIKit
 final class ListView: UICollectionView {
     
     init(cellType: UICollectionViewCell.Type, layout: UICollectionViewFlowLayout) {
-        super.init(frame: .zero, collectionViewLayout: layout)
-                
+        super.init(frame: .zero, collectionViewLayout: layout)                
         self.register(cellType, forCellWithReuseIdentifier: String(describing: cellType))
         self.translatesAutoresizingMaskIntoConstraints = false
-        self.backgroundColor = .clear
+        self.backgroundColor = Theme.backgroundColor
     }
     
     required init?(coder: NSCoder) {

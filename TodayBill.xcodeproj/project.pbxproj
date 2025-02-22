@@ -40,6 +40,7 @@
 		1DD96EEA2D4E6AC9005FD3AF /* DetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1DD96EE92D4E6AC9005FD3AF /* DetailView.swift */; };
 		1DD96EEC2D4E6AE0005FD3AF /* TimelineView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1DD96EEB2D4E6AE0005FD3AF /* TimelineView.swift */; };
 		1DD96EEE2D4E6AF4005FD3AF /* TimelineItemView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1DD96EED2D4E6AF4005FD3AF /* TimelineItemView.swift */; };
+		1DE634B62D698574007716C8 /* Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1DE634B52D698574007716C8 /* Theme.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -78,6 +79,7 @@
 		1DD96EE92D4E6AC9005FD3AF /* DetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DetailView.swift; sourceTree = "<group>"; };
 		1DD96EEB2D4E6AE0005FD3AF /* TimelineView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TimelineView.swift; sourceTree = "<group>"; };
 		1DD96EED2D4E6AF4005FD3AF /* TimelineItemView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TimelineItemView.swift; sourceTree = "<group>"; };
+		1DE634B52D698574007716C8 /* Theme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Theme.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -240,6 +242,7 @@
 		1DA31D812D64DA9A00EB1552 /* View */ = {
 			isa = PBXGroup;
 			children = (
+				1DE634B42D698566007716C8 /* Theme */,
 				1D672B7A2D41D91B000DD244 /* Tabbar */,
 				1D62EA0B2B18276F0011DA14 /* Calender */,
 				1D6476B32D44C62D002A61B3 /* List */,
@@ -258,6 +261,14 @@
 				1D0BE6372D48879200B730F2 /* StarBillManager.swift */,
 			);
 			path = Manager;
+			sourceTree = "<group>";
+		};
+		1DE634B42D698566007716C8 /* Theme */ = {
+			isa = PBXGroup;
+			children = (
+				1DE634B52D698574007716C8 /* Theme.swift */,
+			);
+			path = Theme;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -364,6 +375,7 @@
 				1D0BE63C2D4907FA00B730F2 /* StarredBill.swift in Sources */,
 				1D672B7C2D41D92D000DD244 /* MainTabBarView.swift in Sources */,
 				1DB501E32D4C737200D63F2D /* TodayBillsViewController.swift in Sources */,
+				1DE634B62D698574007716C8 /* Theme.swift in Sources */,
 				1D69B1A42D43501D00EB70F0 /* SearchViewController.swift in Sources */,
 				1D6476B92D45283B002A61B3 /* ListViewController.swift in Sources */,
 			);

@@ -28,7 +28,7 @@ class TimelineItemView: UIView {
     private let dateLabel: UILabel = {
         let label = UILabel()
         label.font = UIFont.systemFont(ofSize: 14)
-        label.textColor = .gray
+        label.textColor = Theme.textColor
         label.translatesAutoresizingMaskIntoConstraints = false
         return label
     }()
