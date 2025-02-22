@@ -28,7 +28,7 @@ final class MainTabBarViewController: UIViewController {
         customTabBar.translatesAutoresizingMaskIntoConstraints = false
         customTabBar.delegate = self
         view.addSubview(customTabBar)
-        
+        customTabBar.backgroundColor = .white
         NSLayoutConstraint.activate([
             customTabBar.leadingAnchor.constraint(equalTo: view.leadingAnchor),
             customTabBar.trailingAnchor.constraint(equalTo: view.trailingAnchor),

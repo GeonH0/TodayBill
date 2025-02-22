@@ -43,7 +43,7 @@ class ListViewController: UIViewController {
 
     private func setupUI() {
         view.addSubview(collectionView)
-        view.backgroundColor = .white
+        view.backgroundColor = Theme.backgroundColor
     }
     
     func updateItems(_ newItems: [StarredBill]) {

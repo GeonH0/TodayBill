@@ -16,7 +16,7 @@ final class ListViewCell: UICollectionViewCell {
     private let titleLabel: UILabel = {
         let label = UILabel()
         label.font = .boldSystemFont(ofSize: 16)
-        label.textColor = .black
+        label.textColor = Theme.textColor
         label.numberOfLines = 0
         label.translatesAutoresizingMaskIntoConstraints = false
         return label
@@ -50,11 +50,9 @@ final class ListViewCell: UICollectionViewCell {
     }
     
     private func setupUI() {
-        contentView.backgroundColor = .white
+        contentView.backgroundColor = Theme.cellBackgroundColor
         contentView.layer.cornerRadius = 8
         contentView.layer.masksToBounds = true
-        contentView.layer.borderWidth = 1.0
-        contentView.layer.borderColor = UIColor.black.cgColor
         addSubviews()
         setupConstraints()
     }

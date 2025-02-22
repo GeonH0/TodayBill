@@ -68,6 +68,7 @@ final class SearchView: UIView {
         let tableView = UITableView()
         tableView.register(UITableViewCell.self, forCellReuseIdentifier: "SearchCell")
         tableView.separatorStyle = .none
+        tableView.backgroundColor = Theme.backgroundColor
         return tableView
     }()
     
@@ -111,6 +112,7 @@ final class SearchView: UIView {
         addSubview(recentTitleLabel)
         addSubview(recentTableView)
         keywordScrollView.addSubview(keywordStackView)
+        keywordScrollView.backgroundColor = Theme.backgroundColor
     }
 
     private func setupConstraints() {
@@ -186,12 +188,14 @@ final class SearchView: UIView {
             button.addAction(action, for: .touchUpInside)
 
             keywordStackView.addArrangedSubview(button)
+            keywordStackView.backgroundColor = Theme.backgroundColor
         }
     }
 
     private func setupTableView() {
         recentTableView.dataSource = self
         recentTableView.delegate = self
+        recentTableView.backgroundColor = Theme.backgroundColor
     }
 }
 
@@ -205,7 +209,8 @@ extension SearchView: UITableViewDataSource, UITableViewDelegate {
         let cell = tableView.dequeueReusableCell(withIdentifier: "SearchCell", for: indexPath)
         cell.textLabel?.text = recentSearches[indexPath.row]
         cell.textLabel?.font = .systemFont(ofSize: 14)
-        cell.textLabel?.textColor = .darkGray
+        cell.textLabel?.textColor = Theme.textColor
+        cell.backgroundColor = Theme.backgroundColor
         return cell
     }
     
