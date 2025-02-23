@@ -23,6 +23,13 @@ final class CalenderViewController: UIViewController {
         return label
     }()
     
+    private let separator: UIView = {
+        let view = UIView()
+        view.backgroundColor = .lightGray
+        view.translatesAutoresizingMaskIntoConstraints = false
+        return view
+    }()
+    
     override func loadView() {
         view = contentView
         view.backgroundColor = Theme.backgroundColor
@@ -53,9 +60,16 @@ final class CalenderViewController: UIViewController {
         
         view.addSubview(todayListViewController.view)
         view.addSubview(emptyLabel)
+        view.addSubview(separator)
         
         NSLayoutConstraint.activate([
-            todayListViewController.collectionView.topAnchor.constraint(equalTo: contentView.dateView.bottomAnchor),
+            
+            separator.topAnchor.constraint(equalTo: contentView.dateView.bottomAnchor, constant: -8),
+            separator.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+            separator.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+            separator.heightAnchor.constraint(equalToConstant: 1),
+            
+            todayListViewController.collectionView.topAnchor.constraint(equalTo: contentView.dateView.bottomAnchor, constant: 8),
             todayListViewController.collectionView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
             todayListViewController.collectionView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
             todayListViewController.collectionView.bottomAnchor.constraint(equalTo: view.bottomAnchor, constant: -55),

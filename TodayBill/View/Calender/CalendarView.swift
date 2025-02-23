@@ -34,7 +34,7 @@ final class CalendarView: UIView {
             dateView.topAnchor.constraint(equalTo: safeAreaLayoutGuide.topAnchor),
             dateView.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 10),
             dateView.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -10),
-            dateView.heightAnchor.constraint(equalToConstant: 450)
+            dateView.heightAnchor.constraint(equalToConstant: 400)
         ])
     }
     
