@@ -17,6 +17,7 @@
 		1D30EB222B0C3157006C1588 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 1D30EB212B0C3157006C1588 /* Assets.xcassets */; };
 		1D30EB252B0C3157006C1588 /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 1D30EB232B0C3157006C1588 /* LaunchScreen.storyboard */; };
 		1D30EB352B0C7557006C1588 /* Bills.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D30EB342B0C7557006C1588 /* Bills.swift */; };
+		1D3870E12D6B1C3D0068CB3C /* ExpandableLabelView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D3870E02D6B1C3D0068CB3C /* ExpandableLabelView.swift */; };
 		1D44C63B2B1061FE00884C24 /* .gitignore in Resources */ = {isa = PBXBuildFile; fileRef = 1D44C63A2B1061FE00884C24 /* .gitignore */; };
 		1D62EA102B18419A0011DA14 /* DetailViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D62EA0F2B18419A0011DA14 /* DetailViewController.swift */; };
 		1D6476B52D44C637002A61B3 /* ListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D6476B42D44C637002A61B3 /* ListView.swift */; };
@@ -35,6 +36,8 @@
 		1DA31D7B2D64C32700EB1552 /* BillsRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1DA31D7A2D64C32700EB1552 /* BillsRepository.swift */; };
 		1DB501E32D4C737200D63F2D /* TodayBillsViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1DB501E22D4C737200D63F2D /* TodayBillsViewController.swift */; };
 		1DB501E72D4C763100D63F2D /* CalendarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1DB501E62D4C763100D63F2D /* CalendarView.swift */; };
+		1DD017462D69FEB2004B9A92 /* SwiftSoup in Frameworks */ = {isa = PBXBuildFile; productRef = 1DD017452D69FEB2004B9A92 /* SwiftSoup */; };
+		1DD017482D69FED3004B9A92 /* HTMLScraper.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1DD017472D69FED3004B9A92 /* HTMLScraper.swift */; };
 		1DD96EE62D4DFEB0005FD3AF /* DetailBillService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1DD96EE52D4DFEB0005FD3AF /* DetailBillService.swift */; };
 		1DD96EE82D4E6A9A005FD3AF /* TimelineStep.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1DD96EE72D4E6A9A005FD3AF /* TimelineStep.swift */; };
 		1DD96EEA2D4E6AC9005FD3AF /* DetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1DD96EE92D4E6AC9005FD3AF /* DetailView.swift */; };
@@ -56,6 +59,7 @@
 		1D30EB262B0C3157006C1588 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		1D30EB2D2B0C3B52006C1588 /* ko */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = ko; path = ko.lproj/LaunchScreen.strings; sourceTree = "<group>"; };
 		1D30EB342B0C7557006C1588 /* Bills.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Bills.swift; sourceTree = "<group>"; };
+		1D3870E02D6B1C3D0068CB3C /* ExpandableLabelView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExpandableLabelView.swift; sourceTree = "<group>"; };
 		1D44C63A2B1061FE00884C24 /* .gitignore */ = {isa = PBXFileReference; lastKnownFileType = text; path = .gitignore; sourceTree = "<group>"; };
 		1D62EA0F2B18419A0011DA14 /* DetailViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DetailViewController.swift; sourceTree = "<group>"; };
 		1D6476B42D44C637002A61B3 /* ListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ListView.swift; sourceTree = "<group>"; };
@@ -74,6 +78,7 @@
 		1DA31D7A2D64C32700EB1552 /* BillsRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BillsRepository.swift; sourceTree = "<group>"; };
 		1DB501E22D4C737200D63F2D /* TodayBillsViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TodayBillsViewController.swift; sourceTree = "<group>"; };
 		1DB501E62D4C763100D63F2D /* CalendarView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalendarView.swift; sourceTree = "<group>"; };
+		1DD017472D69FED3004B9A92 /* HTMLScraper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HTMLScraper.swift; sourceTree = "<group>"; };
 		1DD96EE52D4DFEB0005FD3AF /* DetailBillService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DetailBillService.swift; sourceTree = "<group>"; };
 		1DD96EE72D4E6A9A005FD3AF /* TimelineStep.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TimelineStep.swift; sourceTree = "<group>"; };
 		1DD96EE92D4E6AC9005FD3AF /* DetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DetailView.swift; sourceTree = "<group>"; };
@@ -88,6 +93,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				1D09261B2D62FF8C00AE10B9 /* MarqueeLabel in Frameworks */,
+				1DD017462D69FEB2004B9A92 /* SwiftSoup in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -160,6 +166,7 @@
 			children = (
 				1D62EA0F2B18419A0011DA14 /* DetailViewController.swift */,
 				1DD96EE92D4E6AC9005FD3AF /* DetailView.swift */,
+				1D3870E02D6B1C3D0068CB3C /* ExpandableLabelView.swift */,
 			);
 			path = Detail;
 			sourceTree = "<group>";
@@ -235,6 +242,7 @@
 				1D69B1A92D43A35D00EB70F0 /* SearchBills.swift */,
 				1D69B1AB2D43A72D00EB70F0 /* BillsService.swift */,
 				1DD96EE52D4DFEB0005FD3AF /* DetailBillService.swift */,
+				1DD017472D69FED3004B9A92 /* HTMLScraper.swift */,
 			);
 			path = Service;
 			sourceTree = "<group>";
@@ -289,6 +297,7 @@
 			name = TodayBill;
 			packageProductDependencies = (
 				1D09261A2D62FF8C00AE10B9 /* MarqueeLabel */,
+				1DD017452D69FEB2004B9A92 /* SwiftSoup */,
 			);
 			productName = TodayBill;
 			productReference = 1D30EB152B0C3156006C1588 /* TodayBill.app */;
@@ -320,6 +329,7 @@
 			mainGroup = 1D30EB0C2B0C3156006C1588;
 			packageReferences = (
 				1D0926192D62FF8C00AE10B9 /* XCRemoteSwiftPackageReference "MarqueeLabel" */,
+				1DD017442D69FEB2004B9A92 /* XCRemoteSwiftPackageReference "SwiftSoup" */,
 			);
 			productRefGroup = 1D30EB162B0C3156006C1588 /* Products */;
 			projectDirPath = "";
@@ -351,6 +361,7 @@
 				1D0BE6382D48879200B730F2 /* StarBillManager.swift in Sources */,
 				1D672B7E2D420327000DD244 /* MainTabBarViewController.swift in Sources */,
 				1DA31D7B2D64C32700EB1552 /* BillsRepository.swift in Sources */,
+				1D3870E12D6B1C3D0068CB3C /* ExpandableLabelView.swift in Sources */,
 				1D62EA102B18419A0011DA14 /* DetailViewController.swift in Sources */,
 				1D0E76672B10668300581776 /* Representative.swift in Sources */,
 				1DD96EEE2D4E6AF4005FD3AF /* TimelineItemView.swift in Sources */,
@@ -369,6 +380,7 @@
 				1DB501E72D4C763100D63F2D /* CalendarView.swift in Sources */,
 				1D69B1A22D43500F00EB70F0 /* SearchView.swift in Sources */,
 				1D672B8A2D422ED2000DD244 /* StarBillViewController.swift in Sources */,
+				1DD017482D69FED3004B9A92 /* HTMLScraper.swift in Sources */,
 				1DD96EEA2D4E6AC9005FD3AF /* DetailView.swift in Sources */,
 				1D69B1AC2D43A72D00EB70F0 /* BillsService.swift in Sources */,
 				1D6476B72D44C65A002A61B3 /* ListViewCell.swift in Sources */,
@@ -605,6 +617,14 @@
 				minimumVersion = 4.5.0;
 			};
 		};
+		1DD017442D69FEB2004B9A92 /* XCRemoteSwiftPackageReference "SwiftSoup" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/scinfu/SwiftSoup";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 2.8.0;
+			};
+		};
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
@@ -612,6 +632,11 @@
 			isa = XCSwiftPackageProductDependency;
 			package = 1D0926192D62FF8C00AE10B9 /* XCRemoteSwiftPackageReference "MarqueeLabel" */;
 			productName = MarqueeLabel;
+		};
+		1DD017452D69FEB2004B9A92 /* SwiftSoup */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 1DD017442D69FEB2004B9A92 /* XCRemoteSwiftPackageReference "SwiftSoup" */;
+			productName = SwiftSoup;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};
