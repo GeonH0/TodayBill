@@ -43,13 +43,15 @@ final class BillsRepository {
                     if !isUserSelectingDate, let latest = self.getLatestAvailableDate(), bills.isEmpty {
                         self.selectedDate = latest
                     }
-                    
-                    
                     completion(.success(self.billsByDate[self.selectedDate ?? ""] ?? []))
                 }
                 
             case .failure(let error):
-                completion(.failure(error))
+                if let cachedBills = self.billsByDate[formattedDate], !cachedBills.isEmpty {
+                    completion(.success(cachedBills))
+                } else {
+                    completion(.failure(error))
+                }                
             }
         }
     }
