@@ -14,7 +14,7 @@ enum BillsRepositoryError: Error {
 final class BillsRepository {
     private let billsService = BillsService()
     private var billsByDate: [String: [StarredBill]] = [:]
-    private var currentPIndex: Int = 1
+    private var pageIndexByAge: [Int: Int] = [22: 1, 21: 1]
     private var age: Int = 22
     var selectedDate: String?
     
@@ -58,6 +58,7 @@ final class BillsRepository {
     
     /// API 호출
     private func loadBills(completion: @escaping (Result<[Row], Error>) -> Void) {
+        let currentPIndex = pageIndexByAge[age] ?? 1
         billsService.fetchBills(pIndex: currentPIndex, age: age, completion: completion)
     }
     
@@ -76,6 +77,7 @@ final class BillsRepository {
     
     /// 페이징 처리를 위한 로직: oldestDate를 기준으로 age나 pIndex를 조정
     private func handlePagination(_ rows: [Row], for date: Date, completion: @escaping () -> Void) {
+        
         guard let oldestDate = rows.map({ $0.PROPOSE_DT }).min() else {
             completion()
             return
@@ -91,17 +93,22 @@ final class BillsRepository {
         if oldestDate <= "2024-05-30" {
             if age == 22 {
                 age = 21
-                currentPIndex = 1
+                let currentPIndex = pageIndexByAge[age] ?? 1
                 // 재귀적으로 다시 fetch
                 fetchBills(for: date, isUserSelectingDate: true) { _ in
                     completion()
                 }
                 return
-            } else {
-                currentPIndex += 1
+            } else if age == 21 {
+                age = 22
+                let currentPIndex = pageIndexByAge[age] ?? 1
+                fetchBills(for: date, isUserSelectingDate: true) { _ in
+                    completion()
+                }
+                return
             }
         } else {
-            currentPIndex += 1
+            pageIndexByAge[age]! += 1
         }
         completion()
     }
