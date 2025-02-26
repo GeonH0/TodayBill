@@ -6,24 +6,28 @@
 
 ## 🕰️ 개발 기간
 * 23.11.21일 - 23.11월28일
-* 25.01.23일 ~ (리팩토링 진행중)
+* 25.01.23일 ~ 25.02.25일
 
 
 ### ⚙️ 개발 환경
 - **Xcode**
-- **Deployment Target: iOS 15.0** 
-- **Architecture: MVC(리팩토리중)***
+- **Deployment Target: iOS 16.4** 
+- **Architecture: MVC***
 - **프레임워크: UIKit**
 
 
 
 
-#### 📲 사용된 기술 및 Pods
+#### 📲 사용된 기술
 
     - URLSession을 이용하여 API 통신을 했습니다.
     
     - UICalendarView를 사용해 각 날짜를 누를떄 마다 해당날에 발의된 법안을 볼수 있게 했습니다.
     
     - UserDefaults를 이용해 즐겨찾기된 셀을 저장하여 앱이 종료후 다시 들어가도 즐겨찾기 셀은 유지가 됩니다.
+    
+    - SwiftSoup을 사용하여 웹 콘텐츠를 크롤링 하여 DetailView에 반영하였습니다.
+
+    - CustomTabbar를 사용하였습니다.
 
 ------
