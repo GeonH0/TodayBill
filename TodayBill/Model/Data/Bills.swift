@@ -1,3 +1,5 @@
+import CoreData
+
 struct Bills: Codable {
     let nzmimeepazxkubdpn: [Nzmimeepazxkubdpn]
 }
@@ -97,4 +99,15 @@ struct Row: Codable {
 
 struct FavoriteInfo: Codable {
     var isFavorite: Bool
+}
+
+extension Row {
+    func toBillEntity(context: NSManagedObjectContext) -> BillEntity {
+        let entity = BillEntity(context: context)
+        entity.id = self.BILL_ID
+        entity.title = self.BILL_NAME
+        entity.age = Int16(self.AGE) ?? 0
+        entity.date = self.PROPOSE_DT // 추가로 날짜 저장하고 싶으면
+        return entity
+    }
 }
