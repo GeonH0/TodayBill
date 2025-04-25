@@ -36,6 +36,7 @@
 		1DA31D7B2D64C32700EB1552 /* BillsRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1DA31D7A2D64C32700EB1552 /* BillsRepository.swift */; };
 		1DB501E32D4C737200D63F2D /* TodayBillsViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1DB501E22D4C737200D63F2D /* TodayBillsViewController.swift */; };
 		1DB501E72D4C763100D63F2D /* CalendarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1DB501E62D4C763100D63F2D /* CalendarView.swift */; };
+		1DBA20F52DBA66CC00A261E7 /* CoreDataManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1DBA20F42DBA66CC00A261E7 /* CoreDataManager.swift */; };
 		1DD017462D69FEB2004B9A92 /* SwiftSoup in Frameworks */ = {isa = PBXBuildFile; productRef = 1DD017452D69FEB2004B9A92 /* SwiftSoup */; };
 		1DD017482D69FED3004B9A92 /* HTMLScraper.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1DD017472D69FED3004B9A92 /* HTMLScraper.swift */; };
 		1DD96EE62D4DFEB0005FD3AF /* DetailBillService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1DD96EE52D4DFEB0005FD3AF /* DetailBillService.swift */; };
@@ -43,6 +44,7 @@
 		1DD96EEA2D4E6AC9005FD3AF /* DetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1DD96EE92D4E6AC9005FD3AF /* DetailView.swift */; };
 		1DD96EEC2D4E6AE0005FD3AF /* TimelineView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1DD96EEB2D4E6AE0005FD3AF /* TimelineView.swift */; };
 		1DD96EEE2D4E6AF4005FD3AF /* TimelineItemView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1DD96EED2D4E6AF4005FD3AF /* TimelineItemView.swift */; };
+		1DDB23322DBBADE600490A1B /* BillEntity.xcdatamodeld in Sources */ = {isa = PBXBuildFile; fileRef = 1DDB23302DBBADE600490A1B /* BillEntity.xcdatamodeld */; };
 		1DE634B62D698574007716C8 /* Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1DE634B52D698574007716C8 /* Theme.swift */; };
 /* End PBXBuildFile section */
 
@@ -78,12 +80,14 @@
 		1DA31D7A2D64C32700EB1552 /* BillsRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BillsRepository.swift; sourceTree = "<group>"; };
 		1DB501E22D4C737200D63F2D /* TodayBillsViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TodayBillsViewController.swift; sourceTree = "<group>"; };
 		1DB501E62D4C763100D63F2D /* CalendarView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalendarView.swift; sourceTree = "<group>"; };
+		1DBA20F42DBA66CC00A261E7 /* CoreDataManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoreDataManager.swift; sourceTree = "<group>"; };
 		1DD017472D69FED3004B9A92 /* HTMLScraper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HTMLScraper.swift; sourceTree = "<group>"; };
 		1DD96EE52D4DFEB0005FD3AF /* DetailBillService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DetailBillService.swift; sourceTree = "<group>"; };
 		1DD96EE72D4E6A9A005FD3AF /* TimelineStep.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TimelineStep.swift; sourceTree = "<group>"; };
 		1DD96EE92D4E6AC9005FD3AF /* DetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DetailView.swift; sourceTree = "<group>"; };
 		1DD96EEB2D4E6AE0005FD3AF /* TimelineView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TimelineView.swift; sourceTree = "<group>"; };
 		1DD96EED2D4E6AF4005FD3AF /* TimelineItemView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TimelineItemView.swift; sourceTree = "<group>"; };
+		1DDB23312DBBADE600490A1B /* BillEntity.xcdatamodel */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcdatamodel; path = BillEntity.xcdatamodel; sourceTree = "<group>"; };
 		1DE634B52D698574007716C8 /* Theme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Theme.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -221,6 +225,7 @@
 		1DA31D7D2D64DA3D00EB1552 /* Data */ = {
 			isa = PBXGroup;
 			children = (
+				1DDB23302DBBADE600490A1B /* BillEntity.xcdatamodeld */,
 				1D30EB342B0C7557006C1588 /* Bills.swift */,
 				1D0E76662B10668300581776 /* Representative.swift */,
 				1D0BE63B2D4907FA00B730F2 /* StarredBill.swift */,
@@ -267,6 +272,7 @@
 			children = (
 				1D69B1A72D43990700EB70F0 /* RecentSearchManager.swift */,
 				1D0BE6372D48879200B730F2 /* StarBillManager.swift */,
+				1DBA20F42DBA66CC00A261E7 /* CoreDataManager.swift */,
 			);
 			path = Manager;
 			sourceTree = "<group>";
@@ -365,6 +371,7 @@
 				1D62EA102B18419A0011DA14 /* DetailViewController.swift in Sources */,
 				1D0E76672B10668300581776 /* Representative.swift in Sources */,
 				1DD96EEE2D4E6AF4005FD3AF /* TimelineItemView.swift in Sources */,
+				1DDB23322DBBADE600490A1B /* BillEntity.xcdatamodeld in Sources */,
 				1D30EB1D2B0C3156006C1588 /* CalenderViewController.swift in Sources */,
 				1D672B802D422E85000DD244 /* AppInitializer.swift in Sources */,
 				1D30EB352B0C7557006C1588 /* Bills.swift in Sources */,
@@ -379,6 +386,7 @@
 				1DD96EEC2D4E6AE0005FD3AF /* TimelineView.swift in Sources */,
 				1DB501E72D4C763100D63F2D /* CalendarView.swift in Sources */,
 				1D69B1A22D43500F00EB70F0 /* SearchView.swift in Sources */,
+				1DBA20F52DBA66CC00A261E7 /* CoreDataManager.swift in Sources */,
 				1D672B8A2D422ED2000DD244 /* StarBillViewController.swift in Sources */,
 				1DD017482D69FED3004B9A92 /* HTMLScraper.swift in Sources */,
 				1DD96EEA2D4E6AC9005FD3AF /* DetailView.swift in Sources */,
@@ -643,6 +651,19 @@
 			productName = SwiftSoup;
 		};
 /* End XCSwiftPackageProductDependency section */
+
+/* Begin XCVersionGroup section */
+		1DDB23302DBBADE600490A1B /* BillEntity.xcdatamodeld */ = {
+			isa = XCVersionGroup;
+			children = (
+				1DDB23312DBBADE600490A1B /* BillEntity.xcdatamodel */,
+			);
+			currentVersion = 1DDB23312DBBADE600490A1B /* BillEntity.xcdatamodel */;
+			path = BillEntity.xcdatamodeld;
+			sourceTree = "<group>";
+			versionGroupType = wrapper.xcdatamodel;
+		};
+/* End XCVersionGroup section */
 	};
 	rootObject = 1D30EB0D2B0C3156006C1588 /* Project object */;
 }
