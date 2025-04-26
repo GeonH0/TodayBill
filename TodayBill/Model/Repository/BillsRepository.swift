@@ -13,7 +13,7 @@ enum BillsRepositoryError: Error {
 
 final class BillsRepository {
     private let billsService = BillsService()
-    private var billsByDate: [String: [StarredBill]] = [:]
+    private let coreDataManager = CoreDataManager.shared
     private var pageIndexByAge: [Int: Int] = [22: 1, 21: 1]
     private var age: Int = 22
     var selectedDate: String?
@@ -24,6 +24,7 @@ final class BillsRepository {
     ///   - isUserSelectingDate: 사용자가 날짜를 선택했는지 여부 (앱 최초 실행 시에는 false)
     ///   - completion: fetch 완료 후 해당 날짜의 법안 배열을 반환
     func fetchBills(for date: Date, isUserSelectingDate: Bool, completion: @escaping (Result<[StarredBill], Error>) -> Void) {
+        
         guard let formattedDate = formatDate(date) else {
             completion(.failure(BillsRepositoryError.dateConversionFailed))
             return
@@ -31,23 +32,36 @@ final class BillsRepository {
         
         selectedDate = formattedDate
         
+        let cachedBills = coreDataManager.fetchBills(for: formattedDate)
+        if !cachedBills.isEmpty {
+            completion(.success(cachedBills))
+            return
+        }
+        
         loadBills { [weak self] result in
             guard let self = self else { return }
             switch result {
             case .success(let rows):
-                self.processBills(rows)
+                let entityBill = rows.map { $0.toBillEntity(context: CoreDataManager.shared.context) }
+                self.coreDataManager.saveAll(entityBill)
+                
                 self.handlePagination(rows, for: date) {
-                    let bills = self.billsByDate[formattedDate] ?? []
+                    var bills = self.coreDataManager.fetchBills(for: formattedDate)
                     
-                    // 만약 사용자가 아직 날짜를 선택하지 않았다면 최신 날짜로 UI를 업데이트
-                    if !isUserSelectingDate, let latest = self.getLatestAvailableDate(), bills.isEmpty {
+                    if !isUserSelectingDate,
+                       let latest = self.getLatestAvailableDate(),
+                       bills.isEmpty {
                         self.selectedDate = latest
+                        let latestBills = self.coreDataManager.fetchBills(for: latest)
+                        completion(.success(latestBills))
+                    } else {
+                        completion(.success(bills))
                     }
-                    completion(.success(self.billsByDate[self.selectedDate ?? ""] ?? []))
                 }
                 
             case .failure(let error):
-                if let cachedBills = self.billsByDate[formattedDate], !cachedBills.isEmpty {
+                let cachedBills = self.coreDataManager.fetchBills(for: formattedDate)
+                if !cachedBills.isEmpty{
                     completion(.success(cachedBills))
                 } else {
                     completion(.failure(error))
@@ -62,18 +76,6 @@ final class BillsRepository {
         billsService.fetchBills(pIndex: currentPIndex, age: age, completion: completion)
     }
     
-    /// API로부터 받아온 행(Row) 데이터를 날짜별로 분류 후, 중복 없이 저장
-    private func processBills(_ rows: [Row]) {
-        for row in rows {
-            let dateKey = row.PROPOSE_DT
-            let starredBill = StarredBill(ID: row.BILL_ID, age: Int(row.AGE) ?? age, name: row.BILL_NAME)
-            
-            // 중복 저장 방지
-            if !(billsByDate[dateKey, default: []].contains { $0.ID == starredBill.ID }) {
-                billsByDate[dateKey, default: []].append(starredBill)
-            }
-        }
-    }
     
     /// 페이징 처리를 위한 로직: oldestDate를 기준으로 age나 pIndex를 조정
     private func handlePagination(_ rows: [Row], for date: Date, completion: @escaping () -> Void) {
@@ -124,6 +126,6 @@ final class BillsRepository {
     
     /// 저장된 법안 중 최신 날짜를 반환
     func getLatestAvailableDate() -> String? {
-        return billsByDate.keys.sorted(by: { $0 > $1 }).first
+        return self.coreDataManager.getLastestAvailableDate()
     }
 }
