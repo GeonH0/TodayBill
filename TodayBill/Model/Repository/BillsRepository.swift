@@ -18,13 +18,7 @@ final class BillsRepository {
     private var age: Int = 22
     var selectedDate: String?
     
-    /// 지정한 날짜에 해당하는 법안들을 fetch합니다.
-    /// - Parameters:
-    ///   - date: 요청할 날짜
-    ///   - isUserSelectingDate: 사용자가 날짜를 선택했는지 여부 (앱 최초 실행 시에는 false)
-    ///   - completion: fetch 완료 후 해당 날짜의 법안 배열을 반환
     func fetchBills(for date: Date, isUserSelectingDate: Bool, completion: @escaping (Result<[StarredBill], Error>) -> Void) {
-        
         guard let formattedDate = formatDate(date) else {
             completion(.failure(BillsRepositoryError.dateConversionFailed))
             return
@@ -32,45 +26,66 @@ final class BillsRepository {
         
         selectedDate = formattedDate
         
-        let cachedBills = coreDataManager.fetchBills(for: formattedDate)
-        if !cachedBills.isEmpty {
-            completion(.success(cachedBills))
+        if let cached = fetchCachedBills(for: formattedDate) {
+            completion(.success(cached))
             return
         }
         
+        fetchBillsFromNetwork(for: date, isUserSelectingDate: isUserSelectingDate, formattedDate: formattedDate, completion: completion)
+    }
+    
+    private func fetchCachedBills(for formattedDate: String) -> [StarredBill]? {
+        let cachedBills = coreDataManager.fetchBills(for: formattedDate)
+        return cachedBills.isEmpty ? nil : cachedBills
+    }
+
+    private func fetchBillsFromNetwork(
+        for date: Date,
+        isUserSelectingDate: Bool,
+        formattedDate: String,
+        completion: @escaping (Result<[StarredBill], Error>) -> Void
+    ) {
         loadBills { [weak self] result in
             guard let self = self else { return }
+            
             switch result {
             case .success(let rows):
-                let entityBill = rows.map { $0.toBillEntity(context: CoreDataManager.shared.context) }
-                self.coreDataManager.saveAll(entityBill)
-                
+                self.processFetchedRows(rows)
                 self.handlePagination(rows, for: date) {
-                    var bills = self.coreDataManager.fetchBills(for: formattedDate)
-                    
-                    if !isUserSelectingDate,
-                       let latest = self.getLatestAvailableDate(),
-                       bills.isEmpty {
-                        self.selectedDate = latest
-                        let latestBills = self.coreDataManager.fetchBills(for: latest)
-                        completion(.success(latestBills))
-                    } else {
-                        completion(.success(bills))
-                    }
+                    self.finalizeFetchedBills(for: formattedDate, isUserSelectingDate: isUserSelectingDate, completion: completion)
                 }
                 
             case .failure(let error):
-                let cachedBills = self.coreDataManager.fetchBills(for: formattedDate)
-                if !cachedBills.isEmpty{
-                    completion(.success(cachedBills))
+                if let cached = self.fetchCachedBills(for: formattedDate) {
+                    completion(.success(cached))
                 } else {
                     completion(.failure(error))
-                }                
+                }
             }
         }
     }
+
+    private func processFetchedRows(_ rows: [Row]) {
+        let entities = rows.map { $0.toBillEntity(context: CoreDataManager.shared.context) }
+        coreDataManager.saveAll(entities)
+    }
+
+    private func finalizeFetchedBills(
+        for formattedDate: String,
+        isUserSelectingDate: Bool,
+        completion: @escaping (Result<[StarredBill], Error>) -> Void
+    ) {
+        var bills = coreDataManager.fetchBills(for: formattedDate)
+        
+        if !isUserSelectingDate, let latest = getLatestAvailableDate(), bills.isEmpty {
+            selectedDate = latest
+            bills = coreDataManager.fetchBills(for: latest)
+        }
+        
+        completion(.success(bills))
+    }
     
-    /// API 호출
+    // API 호출
     private func loadBills(completion: @escaping (Result<[Row], Error>) -> Void) {
         let currentPIndex = pageIndexByAge[age] ?? 1
         billsService.fetchBills(pIndex: currentPIndex, age: age, completion: completion)
