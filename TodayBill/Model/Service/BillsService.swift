@@ -7,7 +7,11 @@
 
 import Foundation
 
-final class BillsService {
+protocol BillsService {
+    func fetchBills(pIndex: Int, age: Int,completion: @escaping (Result<[Row], Error>) -> Void)
+}
+
+final class BillsServiceImpl: BillsService {
     private let baseURL = "https://open.assembly.go.kr/portal/openapi/nzmimeepazxkubdpn"
 
     // MARK: - Fetch Bills

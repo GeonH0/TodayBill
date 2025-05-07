@@ -3,7 +3,7 @@
 	archiveVersion = 1;
 	classes = {
 	};
-	objectVersion = 56;
+	objectVersion = 70;
 	objects = {
 
 /* Begin PBXBuildFile section */
@@ -18,6 +18,9 @@
 		1D30EB252B0C3157006C1588 /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 1D30EB232B0C3157006C1588 /* LaunchScreen.storyboard */; };
 		1D30EB352B0C7557006C1588 /* Bills.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D30EB342B0C7557006C1588 /* Bills.swift */; };
 		1D3870E12D6B1C3D0068CB3C /* ExpandableLabelView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D3870E02D6B1C3D0068CB3C /* ExpandableLabelView.swift */; };
+		1D427F912DCB391D0024482B /* BillsRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1DA31D7A2D64C32700EB1552 /* BillsRepository.swift */; };
+		1D427F922DCB39230024482B /* BillsService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D69B1AB2D43A72D00EB70F0 /* BillsService.swift */; };
+		1D427F952DCB3A9C0024482B /* Bills.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D30EB342B0C7557006C1588 /* Bills.swift */; };
 		1D44C63B2B1061FE00884C24 /* .gitignore in Resources */ = {isa = PBXBuildFile; fileRef = 1D44C63A2B1061FE00884C24 /* .gitignore */; };
 		1D62EA102B18419A0011DA14 /* DetailViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D62EA0F2B18419A0011DA14 /* DetailViewController.swift */; };
 		1D6476B52D44C637002A61B3 /* ListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D6476B42D44C637002A61B3 /* ListView.swift */; };
@@ -48,6 +51,16 @@
 		1DE634B62D698574007716C8 /* Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1DE634B52D698574007716C8 /* Theme.swift */; };
 /* End PBXBuildFile section */
 
+/* Begin PBXContainerItemProxy section */
+		1D427F8C2DCB390F0024482B /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 1D30EB0D2B0C3156006C1588 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 1D30EB142B0C3156006C1588;
+			remoteInfo = TodayBill;
+		};
+/* End PBXContainerItemProxy section */
+
 /* Begin PBXFileReference section */
 		1D0BE6372D48879200B730F2 /* StarBillManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StarBillManager.swift; sourceTree = "<group>"; };
 		1D0BE63B2D4907FA00B730F2 /* StarredBill.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StarredBill.swift; sourceTree = "<group>"; };
@@ -62,6 +75,7 @@
 		1D30EB2D2B0C3B52006C1588 /* ko */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = ko; path = ko.lproj/LaunchScreen.strings; sourceTree = "<group>"; };
 		1D30EB342B0C7557006C1588 /* Bills.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Bills.swift; sourceTree = "<group>"; };
 		1D3870E02D6B1C3D0068CB3C /* ExpandableLabelView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExpandableLabelView.swift; sourceTree = "<group>"; };
+		1D427F882DCB390F0024482B /* TodayBillTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = TodayBillTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		1D44C63A2B1061FE00884C24 /* .gitignore */ = {isa = PBXFileReference; lastKnownFileType = text; path = .gitignore; sourceTree = "<group>"; };
 		1D62EA0F2B18419A0011DA14 /* DetailViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DetailViewController.swift; sourceTree = "<group>"; };
 		1D6476B42D44C637002A61B3 /* ListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ListView.swift; sourceTree = "<group>"; };
@@ -91,6 +105,10 @@
 		1DE634B52D698574007716C8 /* Theme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Theme.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
+/* Begin PBXFileSystemSynchronizedRootGroup section */
+		1D427F892DCB390F0024482B /* TodayBillTests */ = {isa = PBXFileSystemSynchronizedRootGroup; explicitFileTypes = {}; explicitFolders = (); path = TodayBillTests; sourceTree = "<group>"; };
+/* End PBXFileSystemSynchronizedRootGroup section */
+
 /* Begin PBXFrameworksBuildPhase section */
 		1D30EB122B0C3156006C1588 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
@@ -98,6 +116,13 @@
 			files = (
 				1D09261B2D62FF8C00AE10B9 /* MarqueeLabel in Frameworks */,
 				1DD017462D69FEB2004B9A92 /* SwiftSoup in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		1D427F852DCB390F0024482B /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -119,6 +144,7 @@
 			children = (
 				1D44C63A2B1061FE00884C24 /* .gitignore */,
 				1D30EB172B0C3156006C1588 /* TodayBill */,
+				1D427F892DCB390F0024482B /* TodayBillTests */,
 				1D30EB162B0C3156006C1588 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -127,6 +153,7 @@
 			isa = PBXGroup;
 			children = (
 				1D30EB152B0C3156006C1588 /* TodayBill.app */,
+				1D427F882DCB390F0024482B /* TodayBillTests.xctest */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -309,6 +336,29 @@
 			productReference = 1D30EB152B0C3156006C1588 /* TodayBill.app */;
 			productType = "com.apple.product-type.application";
 		};
+		1D427F872DCB390F0024482B /* TodayBillTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 1D427F902DCB390F0024482B /* Build configuration list for PBXNativeTarget "TodayBillTests" */;
+			buildPhases = (
+				1D427F842DCB390F0024482B /* Sources */,
+				1D427F852DCB390F0024482B /* Frameworks */,
+				1D427F862DCB390F0024482B /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				1D427F8D2DCB390F0024482B /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				1D427F892DCB390F0024482B /* TodayBillTests */,
+			);
+			name = TodayBillTests;
+			packageProductDependencies = (
+			);
+			productName = TodayBillTests;
+			productReference = 1D427F882DCB390F0024482B /* TodayBillTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -316,11 +366,15 @@
 			isa = PBXProject;
 			attributes = {
 				BuildIndependentTargetsInParallel = 1;
-				LastSwiftUpdateCheck = 1500;
+				LastSwiftUpdateCheck = 1620;
 				LastUpgradeCheck = 1500;
 				TargetAttributes = {
 					1D30EB142B0C3156006C1588 = {
 						CreatedOnToolsVersion = 15.0;
+					};
+					1D427F872DCB390F0024482B = {
+						CreatedOnToolsVersion = 16.2;
+						TestTargetID = 1D30EB142B0C3156006C1588;
 					};
 				};
 			};
@@ -342,6 +396,7 @@
 			projectRoot = "";
 			targets = (
 				1D30EB142B0C3156006C1588 /* TodayBill */,
+				1D427F872DCB390F0024482B /* TodayBillTests */,
 			);
 		};
 /* End PBXProject section */
@@ -354,6 +409,13 @@
 				1D44C63B2B1061FE00884C24 /* .gitignore in Resources */,
 				1D30EB252B0C3157006C1588 /* LaunchScreen.storyboard in Resources */,
 				1D30EB222B0C3157006C1588 /* Assets.xcassets in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		1D427F862DCB390F0024482B /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -401,7 +463,25 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		1D427F842DCB390F0024482B /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				1D427F922DCB39230024482B /* BillsService.swift in Sources */,
+				1D427F952DCB3A9C0024482B /* Bills.swift in Sources */,
+				1D427F912DCB391D0024482B /* BillsRepository.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		1D427F8D2DCB390F0024482B /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 1D30EB142B0C3156006C1588 /* TodayBill */;
+			targetProxy = 1D427F8C2DCB390F0024482B /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
 
 /* Begin PBXVariantGroup section */
 		1D30EB232B0C3157006C1588 /* LaunchScreen.storyboard */ = {
@@ -597,6 +677,52 @@
 			};
 			name = Release;
 		};
+		1D427F8E2DCB390F0024482B /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 6763324T69;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.2;
+				MACOSX_DEPLOYMENT_TARGET = 15.2;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = GeonH0.TodayBillTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = auto;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx xros xrsimulator";
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2,7";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/TodayBill.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/TodayBill";
+				XROS_DEPLOYMENT_TARGET = 2.2;
+			};
+			name = Debug;
+		};
+		1D427F8F2DCB390F0024482B /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 6763324T69;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.2;
+				MACOSX_DEPLOYMENT_TARGET = 15.2;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = GeonH0.TodayBillTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = auto;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx xros xrsimulator";
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2,7";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/TodayBill.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/TodayBill";
+				XROS_DEPLOYMENT_TARGET = 2.2;
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -614,6 +740,15 @@
 			buildConfigurations = (
 				1D30EB2A2B0C3157006C1588 /* Debug */,
 				1D30EB2B2B0C3157006C1588 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		1D427F902DCB390F0024482B /* Build configuration list for PBXNativeTarget "TodayBillTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				1D427F8E2DCB390F0024482B /* Debug */,
+				1D427F8F2DCB390F0024482B /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;

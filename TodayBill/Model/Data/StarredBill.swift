@@ -12,3 +12,13 @@ struct StarredBill: Codable {
     let age: Int
     let name: String
 }
+
+extension StarredBill {
+    static func dummyStarredBill() -> StarredBill {
+        return StarredBill(
+            ID: "1",
+            age: 22,
+            name: "testname"
+        )
+    }
+}
