@@ -46,6 +46,7 @@ final class CalenderViewController: UIViewController {
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
         navigationController?.setNavigationBarHidden(true, animated: animated)
+        todayListViewController.updateFavoriteItems()
     }
     
     override func viewWillDisappear(_ animated: Bool) {
