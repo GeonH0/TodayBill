@@ -66,8 +66,7 @@ final class BillsRepository {
     }
 
     private func processFetchedRows(_ rows: [Row]) {
-        let entities = rows.map { $0.toBillEntity(context: CoreDataManager.shared.context) }
-        coreDataManager.saveAll(entities)
+        coreDataManager.saveAll(rows)
     }
 
     private func finalizeFetchedBills(

@@ -11,34 +11,41 @@ import Foundation
 final class CoreDataManager {
     static let shared = CoreDataManager()
     
-    private init() {}
+    private let persistentContainer: NSPersistentContainer
     
-    private lazy var persistentContainer: NSPersistentContainer = {
+    private init() {
         let container = NSPersistentContainer(name: "BillEntity")
-        container.loadPersistentStores { _, error in
-            if let error = error {
-                fatalError("CoreData 초기화 실패 \(error)")
-            }
-        }
-        return container
-    }()
+        CoreDataManager.loadPersistentStores(for: container)
+        self.persistentContainer = container
+    }
+    
+    private init(container: NSPersistentContainer) {
+        self.persistentContainer = container
+    }
+    
+    static func makeInMemory() -> CoreDataManager {
+        let container = NSPersistentContainer(name: "BillEntity")
+        let description = NSPersistentStoreDescription()
+        description.type = NSInMemoryStoreType
+        container.persistentStoreDescriptions = [description]
+        loadPersistentStores(for: container)
+        return CoreDataManager(container: container)
+    }
     
     var context: NSManagedObjectContext {
         return persistentContainer.viewContext
     }
     
-    func saveAll(_ bills: [BillEntity]) {
+    func saveAll(_ rows: [Row]) {
         let existingIDs = fetchExistingBillIDs()
-        let newBills = bills.filter{
-            !existingIDs.contains($0.id ?? "")
-        }
+        let newRows = rows.filter { !existingIDs.contains($0.BILL_ID) }
         
-        for bill in newBills {
+        for row in newRows {
             let entity = BillEntity(context: context)
-            entity.id = bill.id
-            entity.title = bill.title
-            entity.date = bill.date
-            entity.age = bill.age
+            entity.id = row.BILL_ID
+            entity.title = row.BILL_NAME
+            entity.date = row.PROPOSE_DT
+            entity.age = Int16(row.AGE) ?? 0
         }
         
         do {
@@ -91,6 +98,14 @@ final class CoreDataManager {
         } catch {
             print("기존 ID 불러오기 실패: \(error)")
             return []
+        }
+    }
+    
+    private static func loadPersistentStores(for container: NSPersistentContainer) {
+        container.loadPersistentStores { _, error in
+            if let error = error {
+                fatalError("CoreData 초기화 실패 \(error)")
+            }
         }
     }
 }
