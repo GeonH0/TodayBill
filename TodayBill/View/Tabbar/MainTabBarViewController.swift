@@ -8,20 +8,36 @@
 import UIKit
 
 final class MainTabBarViewController: UIViewController {
+    private let contentContainerView = UIView()
     private let customTabBar = MainTabBarView()
+    private var tabBarHeightConstraint: NSLayoutConstraint?
     private var viewControllers: [UIViewController] = []
     private var currentViewController: UIViewController?
-    private var isTransitioning = false
+    private let tabBarContentHeight: CGFloat = 50
     
     override func viewDidLoad() {
         super.viewDidLoad()
+        setupContentContainerView()
         setupTabBar()
     }
     
-    func setViewControllers(_ controllers: [UIViewController], images: [UIImage]) {
+    override func viewDidLayoutSubviews() {
+        super.viewDidLayoutSubviews()
+        updateTabBarHeight()
+    }
+    
+    func setViewControllers(_ controllers: [UIViewController], images: [UIImage], titles: [String]) {
         viewControllers = controllers
-        customTabBar.configure(with: images)
+        customTabBar.configure(with: images, titles: titles)
         selectTab(at: 0)
+    }
+    
+    private func setupContentContainerView() {
+        view.backgroundColor = Theme.backgroundColor
+        contentContainerView.translatesAutoresizingMaskIntoConstraints = false
+        contentContainerView.backgroundColor = Theme.backgroundColor
+        contentContainerView.clipsToBounds = true
+        view.addSubview(contentContainerView)
     }
     
     private func setupTabBar() {
@@ -29,12 +45,22 @@ final class MainTabBarViewController: UIViewController {
         customTabBar.delegate = self
         view.addSubview(customTabBar)
         customTabBar.backgroundColor = .white
+        tabBarHeightConstraint = customTabBar.heightAnchor.constraint(equalToConstant: tabBarContentHeight)
         NSLayoutConstraint.activate([
+            contentContainerView.topAnchor.constraint(equalTo: view.topAnchor),
+            contentContainerView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+            contentContainerView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+            contentContainerView.bottomAnchor.constraint(equalTo: customTabBar.topAnchor),
+            
             customTabBar.leadingAnchor.constraint(equalTo: view.leadingAnchor),
             customTabBar.trailingAnchor.constraint(equalTo: view.trailingAnchor),
             customTabBar.bottomAnchor.constraint(equalTo: view.bottomAnchor),
-            customTabBar.heightAnchor.constraint(equalToConstant: 50)
+            tabBarHeightConstraint!
         ])
+    }
+    
+    private func updateTabBarHeight() {
+        tabBarHeightConstraint?.constant = tabBarContentHeight + view.safeAreaInsets.bottom
     }
     
     private func selectTab(at index: Int) {
@@ -42,40 +68,27 @@ final class MainTabBarViewController: UIViewController {
         
         let selectedViewController = viewControllers[index]
         
-        if isTransitioning || currentViewController == selectedViewController {
+        if currentViewController == selectedViewController {
             return
         }
         
-        isTransitioning = true
-        
         let oldViewController = currentViewController
-        currentViewController?.willMove(toParent: nil)
-        
         addChild(selectedViewController)
-        selectedViewController.view.frame = view.bounds.offsetBy(
-            dx: index > (oldViewController.flatMap { viewControllers.firstIndex(of: $0) } ?? 0)
-                ? view.bounds.width
-                : -view.bounds.width,
-            dy: 0
-        )
-        selectedViewController.view.autoresizingMask = [.flexibleWidth, .flexibleHeight]
-        view.insertSubview(selectedViewController.view, belowSubview: customTabBar)
-
-        UIView.animate(withDuration: 0.3, animations: {
-            selectedViewController.view.frame = self.view.bounds
-            oldViewController?.view.frame = oldViewController?.view.frame.offsetBy(
-                dx: index > (oldViewController.flatMap { self.viewControllers.firstIndex(of: $0) } ?? 0)
-                    ? -self.view.bounds.width
-                    : self.view.bounds.width,
-                dy: 0
-            ) ?? CGRect.zero
-        }) { _ in
-            oldViewController?.view.removeFromSuperview()
-            oldViewController?.removeFromParent()
-            selectedViewController.didMove(toParent: self)
-            self.currentViewController = selectedViewController
-            self.isTransitioning = false
-        }
+        selectedViewController.view.translatesAutoresizingMaskIntoConstraints = false
+        contentContainerView.addSubview(selectedViewController.view)
+        NSLayoutConstraint.activate([
+            selectedViewController.view.topAnchor.constraint(equalTo: contentContainerView.topAnchor),
+            selectedViewController.view.leadingAnchor.constraint(equalTo: contentContainerView.leadingAnchor),
+            selectedViewController.view.trailingAnchor.constraint(equalTo: contentContainerView.trailingAnchor),
+            selectedViewController.view.bottomAnchor.constraint(equalTo: contentContainerView.bottomAnchor)
+        ])
+        selectedViewController.didMove(toParent: self)
+        
+        oldViewController?.willMove(toParent: nil)
+        oldViewController?.view.removeFromSuperview()
+        oldViewController?.removeFromParent()
+        
+        currentViewController = selectedViewController
     }
 }
 

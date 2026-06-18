@@ -18,6 +18,7 @@ final class ListViewCell: UICollectionViewCell {
         label.font = .boldSystemFont(ofSize: 16)
         label.textColor = Theme.textColor
         label.numberOfLines = 0
+        label.adjustsFontForContentSizeCategory = true
         label.translatesAutoresizingMaskIntoConstraints = false
         return label
     }()
@@ -79,6 +80,7 @@ final class ListViewCell: UICollectionViewCell {
     func configure(with bill: StarredBill, isFavorited: Bool) {
         titleLabel.text = bill.name
         currentItem = bill
+        contentView.accessibilityLabel = bill.name
         updateFavoriteButton(isFavorited: isFavorited)
     }
     
@@ -86,6 +88,8 @@ final class ListViewCell: UICollectionViewCell {
         let imageName = isFavorited ? "star.fill" : "star"
         favoriteButton.setImage(UIImage(systemName: imageName), for: .normal)
         favoriteButton.tintColor = isFavorited ? .systemYellow : .gray
+        favoriteButton.accessibilityLabel = isFavorited ? "즐겨찾기 해제" : "즐겨찾기 추가"
+        favoriteButton.accessibilityHint = currentItem?.name
     }
     
     private func favoriteButtonAction() {

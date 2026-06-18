@@ -9,6 +9,7 @@ import Foundation
 
 final class BillsService {
     private let baseURL = "https://open.assembly.go.kr/portal/openapi/nzmimeepazxkubdpn"
+    private let userAgent = "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1"
 
     // MARK: - Fetch Bills
     func fetchBills(pIndex: Int, age: Int,completion: @escaping (Result<[Row], Error>) -> Void) {
@@ -39,6 +40,8 @@ final class BillsService {
 
         var request = URLRequest(url: url)
         request.httpMethod = "GET"
+        request.setValue(userAgent, forHTTPHeaderField: "User-Agent")
+        request.setValue("ko-KR,ko;q=0.9,en-US;q=0.8", forHTTPHeaderField: "Accept-Language")
 
         URLSession.shared.dataTask(with: request) { data, response, error in
             if let error = error {

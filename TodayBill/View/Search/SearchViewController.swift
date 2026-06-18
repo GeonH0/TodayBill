@@ -13,6 +13,9 @@ final class SearchViewController: UIViewController {
     private let searchBills = BillsSearchService(billsService: BillsService())
     private var searchResultsViewController: SearchResultsViewController!
     private var currentIndex: Int = 1
+    private var currentSearchTerm: String?
+    private var isLoadingSearch = false
+    private var canLoadMoreResults = true
     
     override func loadView() {
         view = contentView
@@ -25,6 +28,7 @@ final class SearchViewController: UIViewController {
         contentView.searchBar.delegate = self
         contentView.updateRecentSearches(recentSearchManager.load())
         setupSearchResultsView()
+        contentView.showIdleState()
     }
     
     override func viewWillAppear(_ animated: Bool) {
@@ -46,47 +50,94 @@ final class SearchViewController: UIViewController {
         addChild(searchResultsViewController)
         searchResultsViewController.view.translatesAutoresizingMaskIntoConstraints = false
         view.addSubview(searchResultsViewController.view)
+        searchResultsViewController.onReachedEnd = { [weak self] in
+            self?.loadNextPageIfNeeded()
+        }
         
         NSLayoutConstraint.activate([
             searchResultsViewController.collectionView.topAnchor.constraint(equalTo: contentView.searchBar.bottomAnchor),
             searchResultsViewController.collectionView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
             searchResultsViewController.collectionView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
-            searchResultsViewController.collectionView.bottomAnchor.constraint(equalTo: view.bottomAnchor, constant: -55)
+            searchResultsViewController.collectionView.bottomAnchor.constraint(equalTo: view.bottomAnchor)
             
         ])
         searchResultsViewController.view.isHidden = true
     }
     
-    private func performSearch(with searchTerm: String, completion: @escaping (Bool) -> Void) {
-        searchBills.searchBills(pIndex: currentIndex, billName: searchTerm) { [weak self] result in
+    private func performSearch(with searchTerm: String, reset: Bool = true, completion: @escaping (Bool) -> Void) {
+        let normalizedTerm = searchTerm.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !normalizedTerm.isEmpty, !isLoadingSearch else {
+            completion(false)
+            return
+        }
+        
+        if reset {
+            currentIndex = 1
+            currentSearchTerm = normalizedTerm
+            canLoadMoreResults = true
+            searchResultsViewController.view.isHidden = true
+            contentView.setResultsVisible(false)
+            contentView.showLoadingState("검색 중입니다.")
+        }
+        
+        isLoadingSearch = true
+        searchBills.searchBills(pIndex: currentIndex, billName: normalizedTerm) { [weak self] result in
             guard let self = self else { return }
             DispatchQueue.main.async {
+                self.isLoadingSearch = false
                 switch result {
                 case .success(let rows):
                     let resultTitles: [StarredBill] = rows.map {
                         StarredBill(
                             ID: $0.BILL_ID,
-                            age: Int($0.AGE)!,
+                            age: Int($0.AGE) ?? 0,
                             name: $0.BILL_NAME
                         )
                     }
                     
-                    self.searchResultsViewController.updateResults(resultTitles)
+                    if reset {
+                        self.searchResultsViewController.updateResults(resultTitles)
+                    } else {
+                        let mergedResults = self.mergeUniqueBills(self.searchResultsViewController.items + resultTitles)
+                        self.searchResultsViewController.updateResults(mergedResults)
+                    }
+                    
+                    self.canLoadMoreResults = !rows.isEmpty
+                    self.contentView.showIdleState()
+                    self.contentView.setResultsVisible(true)
                     self.searchResultsViewController.view.isHidden = false
                     completion(true)
                     
                 case .failure(let error):
-                    self.showErrorAlert(message: error.localizedDescription)
+                    if reset {
+                        self.contentView.showErrorState("검색에 실패했습니다.\n\(error.localizedDescription)")
+                        self.searchResultsViewController.view.isHidden = true
+                    } else {
+                        self.canLoadMoreResults = false
+                    }
                     completion(false)
                 }
             }
         }
     }
     
-    private func showErrorAlert(message: String) {
-        let alert = UIAlertController(title: "검색 실패", message: message, preferredStyle: .alert)
-        alert.addAction(UIAlertAction(title: "확인", style: .default))
-        present(alert, animated: true)
+    private func loadNextPageIfNeeded() {
+        guard canLoadMoreResults, !isLoadingSearch, let currentSearchTerm = currentSearchTerm else { return }
+        currentIndex += 1
+        performSearch(with: currentSearchTerm, reset: false) { [weak self] success in
+            if !success {
+                self?.currentIndex = max(1, (self?.currentIndex ?? 1) - 1)
+            }
+        }
+    }
+    
+    private func mergeUniqueBills(_ bills: [StarredBill]) -> [StarredBill] {
+        var seenIDs = Set<String>()
+        return bills.filter { bill in
+            guard !seenIDs.contains(bill.ID) else { return false }
+            seenIDs.insert(bill.ID)
+            return true
+        }
     }
 }
 
@@ -112,6 +163,11 @@ extension SearchViewController: SearchViewDelegate {
             }
         }
     }
+    
+    func retrySearch() {
+        let retryTerm = currentSearchTerm ?? contentView.searchBar.text ?? ""
+        performSearch(with: retryTerm) { _ in }
+    }
 }
 
 // MARK: - UISearchBarDelegate
@@ -120,6 +176,10 @@ extension SearchViewController: UISearchBarDelegate {
     func searchBar(_ searchBar: UISearchBar, textDidChange searchText: String) {
         if searchText.isEmpty {
             DispatchQueue.main.async {
+                self.currentSearchTerm = nil
+                self.canLoadMoreResults = true
+                self.contentView.setResultsVisible(false)
+                self.contentView.showIdleState()
                 self.searchResultsViewController.view.isHidden = true
             }
         }

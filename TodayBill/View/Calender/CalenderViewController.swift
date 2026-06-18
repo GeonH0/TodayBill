@@ -72,7 +72,7 @@ final class CalenderViewController: UIViewController {
             todayListViewController.collectionView.topAnchor.constraint(equalTo: contentView.dateView.bottomAnchor, constant: 8),
             todayListViewController.collectionView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
             todayListViewController.collectionView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
-            todayListViewController.collectionView.bottomAnchor.constraint(equalTo: view.bottomAnchor, constant: -55),
+            todayListViewController.collectionView.bottomAnchor.constraint(equalTo: view.bottomAnchor),
             emptyLabel.centerXAnchor.constraint(equalTo: view.centerXAnchor),
             emptyLabel.centerYAnchor.constraint(equalTo: todayListViewController.view.centerYAnchor)
         ])

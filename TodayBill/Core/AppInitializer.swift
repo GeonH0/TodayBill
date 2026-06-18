@@ -24,7 +24,8 @@ class AppInitializer {
         // MainTabBarViewController 구성
         tabBarViewController.setViewControllers(
             [calendarViewController, searchViewController, starViewController],
-            images: [homeImage, searchImage, starImage]
+            images: [homeImage, searchImage, starImage],
+            titles: ["홈", "검색", "즐겨찾기"]
         )
         
         // 네비게이션 컨트롤러 설정

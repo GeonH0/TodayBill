@@ -13,6 +13,7 @@ import MarqueeLabel
 protocol DetailViewDelegate: AnyObject {
     func backButtonTapped()
     func detailLinkButtonTapped(with url: URL)
+    func retryButtonTapped()
 }
 
 final class DetailView: UIView {
@@ -67,6 +68,44 @@ final class DetailView: UIView {
        stack.spacing = 24
        stack.translatesAutoresizingMaskIntoConstraints = false
        return stack
+    }()
+    
+    private let statusStackView: UIStackView = {
+        let stack = UIStackView()
+        stack.axis = .vertical
+        stack.alignment = .center
+        stack.spacing = 12
+        stack.isHidden = true
+        stack.translatesAutoresizingMaskIntoConstraints = false
+        return stack
+    }()
+    
+    private let loadingIndicator: UIActivityIndicatorView = {
+        let indicator = UIActivityIndicatorView(style: .medium)
+        indicator.hidesWhenStopped = true
+        return indicator
+    }()
+    
+    private let statusLabel: UILabel = {
+        let label = UILabel()
+        label.textColor = Theme.emptyLabelTextColor
+        label.font = UIFont.systemFont(ofSize: 16, weight: .medium)
+        label.textAlignment = .center
+        label.numberOfLines = 0
+        return label
+    }()
+    
+    private lazy var retryButton: UIButton = {
+        let button = UIButton(type: .system)
+        var config = UIButton.Configuration.bordered()
+        config.title = "다시 시도"
+        config.baseForegroundColor = .systemBlue
+        config.contentInsets = NSDirectionalEdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16)
+        button.configuration = config
+        button.addAction(UIAction(handler: { [weak self] _ in
+            self?.delegate?.retryButtonTapped()
+        }), for: .touchUpInside)
+        return button
     }()
     
     // MARK: - Basic Info Section
@@ -177,6 +216,10 @@ final class DetailView: UIView {
         addSubview(scrollView)
         scrollView.addSubview(containerView)
         containerView.addSubview(mainStackView)
+        containerView.addSubview(statusStackView)
+        statusStackView.addArrangedSubview(loadingIndicator)
+        statusStackView.addArrangedSubview(statusLabel)
+        statusStackView.addArrangedSubview(retryButton)
         
         // Basic Info Section
         basicInfoStack.addArrangedSubview(proposeDateLabel)
@@ -229,7 +272,7 @@ final class DetailView: UIView {
             scrollView.topAnchor.constraint(equalTo: stickyHeaderView.bottomAnchor),
             scrollView.leadingAnchor.constraint(equalTo: leadingAnchor),
             scrollView.trailingAnchor.constraint(equalTo: trailingAnchor),
-            scrollView.bottomAnchor.constraint(equalTo: bottomAnchor, constant: -55),
+            scrollView.bottomAnchor.constraint(equalTo: bottomAnchor),
             
             containerView.topAnchor.constraint(equalTo: scrollView.topAnchor),
             containerView.leadingAnchor.constraint(equalTo: scrollView.leadingAnchor),
@@ -241,12 +284,17 @@ final class DetailView: UIView {
             mainStackView.leadingAnchor.constraint(equalTo: containerView.leadingAnchor, constant: 16),
             mainStackView.trailingAnchor.constraint(equalTo: containerView.trailingAnchor, constant: -16),
             mainStackView.bottomAnchor.constraint(equalTo: containerView.bottomAnchor, constant: -16),
+            
+            statusStackView.leadingAnchor.constraint(equalTo: containerView.leadingAnchor, constant: 32),
+            statusStackView.trailingAnchor.constraint(equalTo: containerView.trailingAnchor, constant: -32),
+            statusStackView.centerYAnchor.constraint(equalTo: containerView.centerYAnchor)
         ])
     }
     
     // MARK: - Update Method
     /// bill 객체와 함께 HTMLScraper로 추출한 제안 이유, 주요 내용을 받아 업데이트합니다.
     func update(with bill: Row, proposalReason: String, keyContent: String) {
+        showContent()
         billNameLabel.text = bill.BILL_NAME
         proposeDateLabel.text = "제안일: \(bill.PROPOSE_DT)"
         ageLabel.text = "대수: \(bill.AGE)"
@@ -266,6 +314,36 @@ final class DetailView: UIView {
         ]
         
         timelineView.updateSteps(timelineSteps)
+    }
+    
+    func showLoading(_ message: String) {
+        mainStackView.isHidden = true
+        statusStackView.isHidden = false
+        statusLabel.text = message
+        retryButton.isHidden = true
+        loadingIndicator.startAnimating()
+    }
+    
+    func showError(_ message: String) {
+        mainStackView.isHidden = true
+        statusStackView.isHidden = false
+        statusLabel.text = message
+        retryButton.isHidden = false
+        loadingIndicator.stopAnimating()
+    }
+    
+    func showSummaryUnavailable(for bill: Row) {
+        update(
+            with: bill,
+            proposalReason: "원문에서 요약 정보를 가져오지 못했습니다.",
+            keyContent: "상세페이지 보기에서 원문을 확인할 수 있습니다."
+        )
+    }
+    
+    private func showContent() {
+        mainStackView.isHidden = false
+        statusStackView.isHidden = true
+        loadingIndicator.stopAnimating()
     }
     
     private func makeAttributedText(from text: String) -> NSAttributedString {

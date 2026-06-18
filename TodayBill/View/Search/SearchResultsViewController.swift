@@ -10,11 +10,13 @@ import UIKit
 
 final class SearchResultsViewController: ListViewController {
     private var searchResults: [StarredBill]
+    var onReachedEnd: (() -> Void)?
 
     // MARK: - Initializer
     init(searchResults: [StarredBill]) {
         self.searchResults = searchResults
         super.init(items: searchResults)
+        setEmptyMessage("검색 결과가 없습니다.")
     }
 
     required init?(coder: NSCoder) {
@@ -61,5 +63,10 @@ final class SearchResultsViewController: ListViewController {
             }
         }
         collectionView.reloadData()
+    }
+    
+    override func didDisplayItem(at indexPath: IndexPath) {
+        guard !items.isEmpty, indexPath.item >= items.count - 5 else { return }
+        onReachedEnd?()
     }
 }

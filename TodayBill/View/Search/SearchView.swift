@@ -11,6 +11,7 @@ import UIKit
 protocol SearchViewDelegate: AnyObject {
     func deleteAll()
     func didSelectSearchTerm(_ term: String) // 검색어 선택
+    func retrySearch()
 }
 
 final class SearchView: UIView {
@@ -18,6 +19,8 @@ final class SearchView: UIView {
     let searchBar: UISearchBar = {
         let searchbar = UISearchBar()
         searchbar.backgroundImage = UIImage()
+        searchbar.placeholder = "법안명 또는 키워드 검색"
+        searchbar.searchTextField.accessibilityLabel = "법안 검색"
         return searchbar
     }()
     
@@ -38,6 +41,7 @@ final class SearchView: UIView {
             }),
             for: .touchUpInside
         )
+        allDeleteButton.accessibilityLabel = "최근 검색어 전체 삭제"
         return allDeleteButton
     }()
     
@@ -72,11 +76,61 @@ final class SearchView: UIView {
         return tableView
     }()
     
+    private let emptyRecentLabel: UILabel = {
+        let label = UILabel()
+        label.text = "최근 검색어가 없습니다.\n상단 키워드를 누르거나 법안명을 검색해보세요."
+        label.textColor = Theme.emptyLabelTextColor
+        label.font = UIFont.systemFont(ofSize: 16, weight: .medium)
+        label.textAlignment = .center
+        label.numberOfLines = 0
+        label.isHidden = true
+        return label
+    }()
+    
+    private let statusStackView: UIStackView = {
+        let stack = UIStackView()
+        stack.axis = .vertical
+        stack.alignment = .center
+        stack.spacing = 12
+        stack.isHidden = true
+        return stack
+    }()
+    
+    private let loadingIndicator: UIActivityIndicatorView = {
+        let indicator = UIActivityIndicatorView(style: .medium)
+        indicator.hidesWhenStopped = true
+        return indicator
+    }()
+    
+    private let statusLabel: UILabel = {
+        let label = UILabel()
+        label.textColor = Theme.emptyLabelTextColor
+        label.font = UIFont.systemFont(ofSize: 16, weight: .medium)
+        label.textAlignment = .center
+        label.numberOfLines = 0
+        return label
+    }()
+    
+    private lazy var retryButton: UIButton = {
+        let button = UIButton(type: .system)
+        var config = UIButton.Configuration.bordered()
+        config.title = "다시 시도"
+        config.baseForegroundColor = .systemBlue
+        config.contentInsets = NSDirectionalEdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16)
+        button.configuration = config
+        button.addAction(UIAction(handler: { [weak self] _ in
+            self?.delegate?.retrySearch()
+        }), for: .touchUpInside)
+        return button
+    }()
+    
     private var recentSearches: [String] = [] {
         didSet {
             recentTableView.reloadData()
+            updateEmptyState()
         }
     }
+    private var isShowingResults = false
     
     weak var delegate: SearchViewDelegate?
 
@@ -111,8 +165,13 @@ final class SearchView: UIView {
         addSubview(allDeleteButton)
         addSubview(recentTitleLabel)
         addSubview(recentTableView)
+        addSubview(emptyRecentLabel)
+        addSubview(statusStackView)
         keywordScrollView.addSubview(keywordStackView)
         keywordScrollView.backgroundColor = Theme.backgroundColor
+        statusStackView.addArrangedSubview(loadingIndicator)
+        statusStackView.addArrangedSubview(statusLabel)
+        statusStackView.addArrangedSubview(retryButton)
     }
 
     private func setupConstraints() {
@@ -122,6 +181,8 @@ final class SearchView: UIView {
         allDeleteButton.translatesAutoresizingMaskIntoConstraints = false
         recentTitleLabel.translatesAutoresizingMaskIntoConstraints = false
         recentTableView.translatesAutoresizingMaskIntoConstraints = false
+        emptyRecentLabel.translatesAutoresizingMaskIntoConstraints = false
+        statusStackView.translatesAutoresizingMaskIntoConstraints = false
         
         NSLayoutConstraint.activate([
             // SearchBar
@@ -136,10 +197,11 @@ final class SearchView: UIView {
             keywordScrollView.heightAnchor.constraint(equalToConstant: 40),
             
             // Keyword Stack View
-            keywordStackView.topAnchor.constraint(equalTo: keywordScrollView.topAnchor),
-            keywordStackView.leadingAnchor.constraint(equalTo: keywordScrollView.leadingAnchor),
-            keywordStackView.trailingAnchor.constraint(equalTo: keywordScrollView.trailingAnchor),
-            keywordStackView.bottomAnchor.constraint(equalTo: keywordScrollView.bottomAnchor),
+            keywordStackView.topAnchor.constraint(equalTo: keywordScrollView.contentLayoutGuide.topAnchor),
+            keywordStackView.leadingAnchor.constraint(equalTo: keywordScrollView.contentLayoutGuide.leadingAnchor),
+            keywordStackView.trailingAnchor.constraint(equalTo: keywordScrollView.contentLayoutGuide.trailingAnchor),
+            keywordStackView.bottomAnchor.constraint(equalTo: keywordScrollView.contentLayoutGuide.bottomAnchor),
+            keywordStackView.heightAnchor.constraint(equalTo: keywordScrollView.frameLayoutGuide.heightAnchor),
             
             // All Delete Button
             allDeleteButton.topAnchor.constraint(equalTo: keywordScrollView.bottomAnchor, constant: 16),
@@ -153,7 +215,15 @@ final class SearchView: UIView {
             recentTableView.topAnchor.constraint(equalTo: recentTitleLabel.bottomAnchor, constant: 8),
             recentTableView.leadingAnchor.constraint(equalTo: leadingAnchor),
             recentTableView.trailingAnchor.constraint(equalTo: trailingAnchor),
-            recentTableView.bottomAnchor.constraint(equalTo: bottomAnchor)
+            recentTableView.bottomAnchor.constraint(equalTo: bottomAnchor),
+            
+            emptyRecentLabel.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 32),
+            emptyRecentLabel.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -32),
+            emptyRecentLabel.centerYAnchor.constraint(equalTo: recentTableView.centerYAnchor, constant: -40),
+            
+            statusStackView.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 32),
+            statusStackView.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -32),
+            statusStackView.centerYAnchor.constraint(equalTo: recentTableView.centerYAnchor, constant: -40)
         ])
     }
 
@@ -169,6 +239,7 @@ final class SearchView: UIView {
             config.contentInsets = NSDirectionalEdgeInsets(top: 6, leading: 20, bottom: 6, trailing: 20) // 내부 여백
             button.configuration = config
             button.titleLabel?.font = .systemFont(ofSize: 14)
+            button.accessibilityLabel = "\(keyword) 키워드 검색"
 
             button.layer.cornerRadius = 8
             button.layer.masksToBounds = false
@@ -196,6 +267,59 @@ final class SearchView: UIView {
         recentTableView.dataSource = self
         recentTableView.delegate = self
         recentTableView.backgroundColor = Theme.backgroundColor
+    }
+    
+    private func updateEmptyState() {
+        let isEmpty = recentSearches.isEmpty
+        emptyRecentLabel.isHidden = isShowingResults || !isEmpty || !statusStackView.isHidden
+        allDeleteButton.isHidden = isShowingResults || isEmpty || !statusStackView.isHidden
+    }
+    
+    func showIdleState() {
+        statusStackView.isHidden = true
+        loadingIndicator.stopAnimating()
+        updateSupplementalContentVisibility()
+        updateEmptyState()
+    }
+    
+    func showLoadingState(_ message: String) {
+        isShowingResults = false
+        statusStackView.isHidden = false
+        statusLabel.text = message
+        retryButton.isHidden = true
+        loadingIndicator.startAnimating()
+        keywordScrollView.isHidden = false
+        recentTitleLabel.isHidden = false
+        recentTableView.isHidden = false
+        emptyRecentLabel.isHidden = true
+        allDeleteButton.isHidden = true
+    }
+    
+    func showErrorState(_ message: String) {
+        isShowingResults = false
+        statusStackView.isHidden = false
+        statusLabel.text = message
+        retryButton.isHidden = false
+        loadingIndicator.stopAnimating()
+        keywordScrollView.isHidden = false
+        recentTitleLabel.isHidden = false
+        recentTableView.isHidden = false
+        emptyRecentLabel.isHidden = true
+        allDeleteButton.isHidden = true
+    }
+    
+    func setResultsVisible(_ isVisible: Bool) {
+        isShowingResults = isVisible
+        statusStackView.isHidden = true
+        loadingIndicator.stopAnimating()
+        updateSupplementalContentVisibility()
+        updateEmptyState()
+    }
+    
+    private func updateSupplementalContentVisibility() {
+        keywordScrollView.isHidden = isShowingResults
+        recentTitleLabel.isHidden = isShowingResults
+        recentTableView.isHidden = isShowingResults
     }
 }
 

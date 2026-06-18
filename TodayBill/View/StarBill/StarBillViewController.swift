@@ -22,6 +22,7 @@ final class StarBillViewController: ListViewController {
     
     override func viewDidLoad() {
         super.viewDidLoad()
+        setEmptyMessage("즐겨찾기한 법안이 없습니다.\n관심 있는 법안의 별을 눌러 저장해보세요.")
         setupTitleOverlay()
         loadStarredBills()
     }
@@ -39,7 +40,7 @@ final class StarBillViewController: ListViewController {
             collectionView.topAnchor.constraint(equalTo: view.topAnchor),
             collectionView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
             collectionView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
-            collectionView.bottomAnchor.constraint(equalTo: view.bottomAnchor, constant: -55)
+            collectionView.bottomAnchor.constraint(equalTo: view.bottomAnchor)
         ])
     }
     
@@ -64,7 +65,9 @@ final class StarBillViewController: ListViewController {
             collectionView.performBatchUpdates({
                 items.remove(at: index)
                 collectionView.deleteItems(at: [IndexPath(item: index, section: 0)])
-            }, completion: nil)
+            }, completion: { [weak self] _ in
+                self?.updateItems(self?.items ?? [])
+            })
         }
     }
 }

@@ -9,8 +9,16 @@ import Foundation
 
 final class DetailBillService {    
     private let baseURL = "https://open.assembly.go.kr/portal/openapi/nzmimeepazxkubdpn"
+    private let userAgent = "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1"
+    private static var cache: [String: [Row]] = [:]
     
     func fetchBills(ID: String, age: Int, completion: @escaping (Result<[Row], Error>) -> Void) {
+        let cacheKey = "\(age)-\(ID)"
+        if let cachedRows = Self.cache[cacheKey] {
+            completion(.success(cachedRows))
+            return
+        }
+        
         guard var urlComponents = URLComponents(string: baseURL) else {
             completion(.failure(URLError(.badURL)))
             return
@@ -39,6 +47,8 @@ final class DetailBillService {
 
         var request = URLRequest(url: url)
         request.httpMethod = "GET"
+        request.setValue(userAgent, forHTTPHeaderField: "User-Agent")
+        request.setValue("ko-KR,ko;q=0.9,en-US;q=0.8", forHTTPHeaderField: "Accept-Language")
 
         URLSession.shared.dataTask(with: request) { data, response, error in
             if let error = error {
@@ -55,6 +65,7 @@ final class DetailBillService {
             do {
                 let decodedResponse = try JSONDecoder().decode(Bills.self, from: data)
                 let rows = decodedResponse.nzmimeepazxkubdpn.compactMap { $0.row }.flatMap { $0 }
+                Self.cache[cacheKey] = rows
                 completion(.success(rows))
             } catch {
                 completion(.failure(error))

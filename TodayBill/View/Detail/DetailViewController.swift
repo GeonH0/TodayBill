@@ -17,6 +17,7 @@ final class DetailViewController: UIViewController {
     private let contentView = DetailView()
         
     private var currentBill: Row?
+    private var isFetching = false
     
     // MARK: - Initializer
     init(billID: String, age: Int) {
@@ -52,20 +53,29 @@ final class DetailViewController: UIViewController {
     }
     
     private func fetchBillDetails() {
+        guard !isFetching else { return }
+        isFetching = true
+        contentView.showLoading("법안 정보를 불러오는 중입니다.")
+        
         detailBillService.fetchBills(ID: billID, age: age) { [weak self] result in
             guard let self = self else { return }
             DispatchQueue.main.async {
+                self.isFetching = false
                 switch result {
                 case .success(let rows):
                     if let billDetail = rows.first {
                         self.currentBill = billDetail
-                        self.contentView.update(with: billDetail, proposalReason: "", keyContent: "")
+                        self.contentView.update(
+                            with: billDetail,
+                            proposalReason: "요약 정보를 불러오는 중입니다.",
+                            keyContent: "요약 정보를 불러오는 중입니다."
+                        )
                         self.fetchAndDisplaySummaryContent(url: billDetail.DETAIL_LINK, bill: billDetail)
                     } else {
-                        self.showError("해당 법안 정보를 찾을 수 없습니다.")
+                        self.contentView.showError("해당 법안 정보를 찾을 수 없습니다.")
                     }
                 case .failure:
-                    self.showError("법안 정보를 불러오는 데 실패했습니다.")
+                    self.contentView.showError("법안 정보를 불러오는 데 실패했습니다.")
                 }
             }
         }
@@ -97,15 +107,11 @@ final class DetailViewController: UIViewController {
                     }
                 }
             } else {
-                print("스크래핑 실패")
+                DispatchQueue.main.async {
+                    self.contentView.showSummaryUnavailable(for: bill)
+                }
             }
         }
-    }
-    
-    private func showError(_ message: String) {
-        let alert = UIAlertController(title: "검색 실패", message: message, preferredStyle: .alert)
-        alert.addAction(UIAlertAction(title: "확인", style: .default))
-        present(alert, animated: true)
     }
     
     private func openSafariViewController(url: URL) {
@@ -124,6 +130,10 @@ extension DetailViewController: DetailViewDelegate {
     func detailLinkButtonTapped(with url: URL) {
         // 필요 시 SafariViewController 열기
          openSafariViewController(url: url)
+    }
+    
+    func retryButtonTapped() {
+        fetchBillDetails()
     }
 }
 
