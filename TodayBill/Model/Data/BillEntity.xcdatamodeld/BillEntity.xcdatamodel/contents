@@ -2,8 +2,30 @@
 <model type="com.apple.IDECoreDataModeler.DataModel" documentVersion="1.0" lastSavedToolsVersion="23605" systemVersion="24D70" minimumToolsVersion="Automatic" sourceLanguage="Swift" usedWithSwiftData="YES" userDefinedModelVersionIdentifier="">
     <entity name="BillEntity" representedClassName="BillEntity" syncable="YES" codeGenerationType="class">
         <attribute name="age" optional="YES" attributeType="Integer 16" defaultValueString="0" usesScalarValueType="YES"/>
+        <attribute name="billNo" optional="YES" attributeType="String"/>
+        <attribute name="committee" optional="YES" attributeType="String"/>
+        <attribute name="committeeDate" optional="YES" attributeType="String"/>
+        <attribute name="committeePresentDate" optional="YES" attributeType="String"/>
+        <attribute name="committeeProcessDate" optional="YES" attributeType="String"/>
+        <attribute name="committeeResultCode" optional="YES" attributeType="String"/>
         <attribute name="date" optional="YES" attributeType="String"/>
+        <attribute name="detailLink" optional="YES" attributeType="String"/>
+        <attribute name="favoriteCreatedAt" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
         <attribute name="id" optional="YES" attributeType="String"/>
+        <attribute name="isFavorite" optional="YES" attributeType="Boolean" defaultValueString="NO" usesScalarValueType="YES"/>
+        <attribute name="lastSeenStageKey" optional="YES" attributeType="String"/>
+        <attribute name="lawPresentDate" optional="YES" attributeType="String"/>
+        <attribute name="lawProcDate" optional="YES" attributeType="String"/>
+        <attribute name="lawProcResultCode" optional="YES" attributeType="String"/>
+        <attribute name="lawSubmitDate" optional="YES" attributeType="String"/>
+        <attribute name="memberList" optional="YES" attributeType="String"/>
+        <attribute name="plenaryDate" optional="YES" attributeType="String"/>
+        <attribute name="procResult" optional="YES" attributeType="String"/>
+        <attribute name="proposer" optional="YES" attributeType="String"/>
+        <attribute name="summaryFetchedAt" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="summaryKeyContent" optional="YES" attributeType="String"/>
+        <attribute name="summaryProposalReason" optional="YES" attributeType="String"/>
         <attribute name="title" optional="YES" attributeType="String"/>
+        <attribute name="updatedAt" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
     </entity>
 </model>
