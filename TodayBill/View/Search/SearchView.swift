@@ -12,6 +12,7 @@ protocol SearchViewDelegate: AnyObject {
     func deleteAll()
     func didSelectSearchTerm(_ term: String) // 검색어 선택
     func retrySearch()
+    func showFilters()
 }
 
 final class SearchView: UIView {
@@ -43,6 +44,40 @@ final class SearchView: UIView {
         )
         allDeleteButton.accessibilityLabel = "최근 검색어 전체 삭제"
         return allDeleteButton
+    }()
+
+    private lazy var filterButton: UIButton = {
+        let button = UIButton(type: .system)
+        var config = UIButton.Configuration.bordered()
+        config.image = UIImage(systemName: "line.3.horizontal.decrease.circle")
+        config.title = "필터"
+        config.imagePadding = 6
+        config.baseForegroundColor = .systemBlue
+        config.contentInsets = NSDirectionalEdgeInsets(top: 8, leading: 12, bottom: 8, trailing: 12)
+        button.configuration = config
+        button.addAction(UIAction(handler: { [weak self] _ in
+            self?.delegate?.showFilters()
+        }), for: .touchUpInside)
+        button.accessibilityLabel = "검색 필터"
+        return button
+    }()
+
+    private let filterSummaryLabel: UILabel = {
+        let label = UILabel()
+        label.text = "최신순"
+        label.textColor = Theme.emptyLabelTextColor
+        label.font = .systemFont(ofSize: 13, weight: .medium)
+        label.numberOfLines = 1
+        label.lineBreakMode = .byTruncatingTail
+        return label
+    }()
+
+    private let filterStackView: UIStackView = {
+        let stack = UIStackView()
+        stack.axis = .horizontal
+        stack.spacing = 10
+        stack.alignment = .center
+        return stack
     }()
     
     private let keywordScrollView: UIScrollView = {
@@ -134,6 +169,10 @@ final class SearchView: UIView {
     
     weak var delegate: SearchViewDelegate?
 
+    var resultsTopAnchor: NSLayoutYAxisAnchor {
+        filterStackView.bottomAnchor
+    }
+
     // MARK: - Initializer
     override init(frame: CGRect) {
         super.init(frame: frame)
@@ -153,6 +192,10 @@ final class SearchView: UIView {
         self.recentSearches = searches
     }
 
+    func updateFilterSummary(_ summary: String) {
+        filterSummaryLabel.text = summary
+    }
+
     // MARK: - Private Setup Methods
     private func setupUI() {
         addSubviews()
@@ -161,6 +204,7 @@ final class SearchView: UIView {
 
     private func addSubviews() {
         addSubview(searchBar)
+        addSubview(filterStackView)
         addSubview(keywordScrollView)
         addSubview(allDeleteButton)
         addSubview(recentTitleLabel)
@@ -172,10 +216,13 @@ final class SearchView: UIView {
         statusStackView.addArrangedSubview(loadingIndicator)
         statusStackView.addArrangedSubview(statusLabel)
         statusStackView.addArrangedSubview(retryButton)
+        filterStackView.addArrangedSubview(filterButton)
+        filterStackView.addArrangedSubview(filterSummaryLabel)
     }
 
     private func setupConstraints() {
         searchBar.translatesAutoresizingMaskIntoConstraints = false
+        filterStackView.translatesAutoresizingMaskIntoConstraints = false
         keywordScrollView.translatesAutoresizingMaskIntoConstraints = false
         keywordStackView.translatesAutoresizingMaskIntoConstraints = false
         allDeleteButton.translatesAutoresizingMaskIntoConstraints = false
@@ -189,9 +236,14 @@ final class SearchView: UIView {
             searchBar.topAnchor.constraint(equalTo: safeAreaLayoutGuide.topAnchor),
             searchBar.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 8),
             searchBar.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -8),
+
+            filterStackView.topAnchor.constraint(equalTo: searchBar.bottomAnchor, constant: 4),
+            filterStackView.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 16),
+            filterStackView.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -16),
+            filterStackView.heightAnchor.constraint(equalToConstant: 40),
             
             // Keyword Scroll View
-            keywordScrollView.topAnchor.constraint(equalTo: searchBar.bottomAnchor, constant: 8),
+            keywordScrollView.topAnchor.constraint(equalTo: filterStackView.bottomAnchor, constant: 8),
             keywordScrollView.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 16),
             keywordScrollView.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -16),
             keywordScrollView.heightAnchor.constraint(equalToConstant: 40),
@@ -289,6 +341,7 @@ final class SearchView: UIView {
         retryButton.isHidden = true
         loadingIndicator.startAnimating()
         keywordScrollView.isHidden = false
+        filterStackView.isHidden = false
         recentTitleLabel.isHidden = false
         recentTableView.isHidden = false
         emptyRecentLabel.isHidden = true
@@ -302,6 +355,7 @@ final class SearchView: UIView {
         retryButton.isHidden = false
         loadingIndicator.stopAnimating()
         keywordScrollView.isHidden = false
+        filterStackView.isHidden = false
         recentTitleLabel.isHidden = false
         recentTableView.isHidden = false
         emptyRecentLabel.isHidden = true
@@ -318,6 +372,7 @@ final class SearchView: UIView {
     
     private func updateSupplementalContentVisibility() {
         keywordScrollView.isHidden = isShowingResults
+        filterStackView.isHidden = false
         recentTitleLabel.isHidden = isShowingResults
         recentTableView.isHidden = isShowingResults
     }

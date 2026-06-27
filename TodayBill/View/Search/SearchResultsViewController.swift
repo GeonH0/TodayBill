@@ -51,18 +51,14 @@ final class SearchResultsViewController: ListViewController {
         self.favoriteItems = Set(StarBillManager.shared.loadStarredBills().map { $0.ID })
         self.updateItems(searchResults)
     }
+
+    func updateResults(_ snapshots: [BillSnapshot]) {
+        self.searchResults = snapshots.map { $0.toStarredBill() }
+        self.updateSnapshots(snapshots)
+    }
     
     override func favoriteButtonTapped(for itemID: String) {
-        if favoriteItems.contains(itemID) {
-            favoriteItems.remove(itemID)
-            StarBillManager.shared.removeBillFromStarred(by: itemID)
-        } else {
-            favoriteItems.insert(itemID)
-            if let bill = items.first(where: { $0.ID == itemID }) {
-                StarBillManager.shared.addBillToStarred(bill)
-            }
-        }
-        collectionView.reloadData()
+        super.favoriteButtonTapped(for: itemID)
     }
     
     override func didDisplayItem(at indexPath: IndexPath) {

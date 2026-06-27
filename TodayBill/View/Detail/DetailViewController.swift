@@ -10,14 +10,12 @@ import SafariServices
 
 final class DetailViewController: UIViewController {
 
-    private let detailBillService = DetailBillService()
-    private let htmlScraper = HTMLScraper()
     private let billID: String
     private let age: Int
     private let contentView = DetailView()
+    private lazy var viewModel = DetailViewModel(billID: billID, age: age)
         
-    private var currentBill: Row?
-    private var isFetching = false
+    private var currentSnapshot: BillSnapshot?
     
     // MARK: - Initializer
     init(billID: String, age: Int) {
@@ -39,6 +37,7 @@ final class DetailViewController: UIViewController {
         view.backgroundColor = Theme.cellBackgroundColor
         contentView.delegate = self
         contentView.proposalReasonExpandableView.delegate = self
+        bindViewModel()
         fetchBillDetails()
     }
     
@@ -53,65 +52,36 @@ final class DetailViewController: UIViewController {
     }
     
     private func fetchBillDetails() {
-        guard !isFetching else { return }
-        isFetching = true
-        contentView.showLoading("법안 정보를 불러오는 중입니다.")
-        
-        detailBillService.fetchBills(ID: billID, age: age) { [weak self] result in
+        viewModel.load()
+    }
+
+    private func bindViewModel() {
+        viewModel.onStateChange = { [weak self] state in
             guard let self = self else { return }
-            DispatchQueue.main.async {
-                self.isFetching = false
-                switch result {
-                case .success(let rows):
-                    if let billDetail = rows.first {
-                        self.currentBill = billDetail
-                        self.contentView.update(
-                            with: billDetail,
-                            proposalReason: "요약 정보를 불러오는 중입니다.",
-                            keyContent: "요약 정보를 불러오는 중입니다."
-                        )
-                        self.fetchAndDisplaySummaryContent(url: billDetail.DETAIL_LINK, bill: billDetail)
-                    } else {
-                        self.contentView.showError("해당 법안 정보를 찾을 수 없습니다.")
-                    }
-                case .failure:
-                    self.contentView.showError("법안 정보를 불러오는 데 실패했습니다.")
-                }
+
+            switch state {
+            case .idle:
+                break
+            case .loading(let message):
+                self.contentView.showLoading(message)
+            case .loaded(let snapshot):
+                self.currentSnapshot = snapshot
+                self.render(snapshot: snapshot)
+            case .empty(let message), .error(let message):
+                self.contentView.showError(message)
             }
+        }
+
+        viewModel.onSummaryUpdate = { [weak self] snapshot in
+            self?.currentSnapshot = snapshot
+            self?.render(snapshot: snapshot)
         }
     }
-    
-    private func fetchAndDisplaySummaryContent(url: String, bill: Row) {
-        htmlScraper.fetchSummaryContent(from: url) { [weak self] summaryText in
-            guard let self = self else { return }
-            if let text = summaryText {
-                                
-                let processedText = text.replacingOccurrences(
-                    of: "(?<=\\.)\\s+",
-                    with: "\n",
-                    options: .regularExpression
-                )
-                
-                // "주요 내용:"을 기준으로 제안 이유와 주요 내용을 분리
-                if let range = processedText.range(of: "주요내용") {
-                    let proposalReason = String(processedText[..<range.lowerBound])
-                        .trimmingCharacters(in: .whitespacesAndNewlines)
-                    let keyContent = String(processedText[range.upperBound...])
-                        .trimmingCharacters(in: .whitespacesAndNewlines)
-                    DispatchQueue.main.async {
-                        self.contentView.update(with: bill, proposalReason: proposalReason, keyContent: keyContent)
-                    }
-                } else {
-                    DispatchQueue.main.async {
-                        self.contentView.update(with: bill, proposalReason: processedText, keyContent: "내용 없음")
-                    }
-                }
-            } else {
-                DispatchQueue.main.async {
-                    self.contentView.showSummaryUnavailable(for: bill)
-                }
-            }
-        }
+
+    private func render(snapshot: BillSnapshot) {
+        let proposalReason = snapshot.summaryProposalReason ?? "요약 정보를 불러오는 중입니다."
+        let keyContent = snapshot.summaryKeyContent ?? "요약 정보를 불러오는 중입니다."
+        contentView.update(with: snapshot, proposalReason: proposalReason, keyContent: keyContent)
     }
     
     private func openSafariViewController(url: URL) {
@@ -133,7 +103,7 @@ extension DetailViewController: DetailViewDelegate {
     }
     
     func retryButtonTapped() {
-        fetchBillDetails()
+        viewModel.retry()
     }
 }
 

@@ -9,12 +9,13 @@ import UIKit
 
 class AppInitializer {
     static func setupRootViewController(for window: UIWindow?) {
+        CoreDataManager.shared.migrateUserDefaultsFavorites(StarBillManager.shared.loadStarredBills())
+
         let tabBarViewController = MainTabBarViewController()
         
         let calendarViewController = UINavigationController(rootViewController: CalenderViewController())
         let searchViewController = UINavigationController(rootViewController:SearchViewController())
-        let savedStarBills = StarBillManager.shared.loadStarredBills()
-        let starViewController = UINavigationController(rootViewController:StarBillViewController(starBills: savedStarBills))
+        let starViewController = UINavigationController(rootViewController:StarBillViewController())
         
         
         let homeImage = UIImage(systemName: "house")!
@@ -25,7 +26,7 @@ class AppInitializer {
         tabBarViewController.setViewControllers(
             [calendarViewController, searchViewController, starViewController],
             images: [homeImage, searchImage, starImage],
-            titles: ["홈", "검색", "즐겨찾기"]
+            titles: ["홈", "검색", "추적"]
         )
         
         // 네비게이션 컨트롤러 설정

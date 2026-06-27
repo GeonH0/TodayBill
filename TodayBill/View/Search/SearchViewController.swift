@@ -10,12 +10,9 @@ import UIKit
 final class SearchViewController: UIViewController {
     private let contentView = SearchView()
     private let recentSearchManager = RecentSearchManager()
-    private let searchBills = BillsSearchService(billsService: BillsService())
+    private let viewModel = SearchViewModel()
     private var searchResultsViewController: SearchResultsViewController!
-    private var currentIndex: Int = 1
-    private var currentSearchTerm: String?
-    private var isLoadingSearch = false
-    private var canLoadMoreResults = true
+    private var pendingSearchCompletion: ((Bool) -> Void)?
     
     override func loadView() {
         view = contentView
@@ -28,6 +25,8 @@ final class SearchViewController: UIViewController {
         contentView.searchBar.delegate = self
         contentView.updateRecentSearches(recentSearchManager.load())
         setupSearchResultsView()
+        bindViewModel()
+        contentView.updateFilterSummary(viewModel.filter.activeSummary)
         contentView.showIdleState()
     }
     
@@ -55,7 +54,7 @@ final class SearchViewController: UIViewController {
         }
         
         NSLayoutConstraint.activate([
-            searchResultsViewController.collectionView.topAnchor.constraint(equalTo: contentView.searchBar.bottomAnchor),
+            searchResultsViewController.collectionView.topAnchor.constraint(equalTo: contentView.resultsTopAnchor, constant: 8),
             searchResultsViewController.collectionView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
             searchResultsViewController.collectionView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
             searchResultsViewController.collectionView.bottomAnchor.constraint(equalTo: view.bottomAnchor)
@@ -63,72 +62,60 @@ final class SearchViewController: UIViewController {
         ])
         searchResultsViewController.view.isHidden = true
     }
-    
-    private func performSearch(with searchTerm: String, reset: Bool = true, completion: @escaping (Bool) -> Void) {
-        let normalizedTerm = searchTerm.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !normalizedTerm.isEmpty, !isLoadingSearch else {
-            completion(false)
-            return
-        }
-        
-        if reset {
-            currentIndex = 1
-            currentSearchTerm = normalizedTerm
-            canLoadMoreResults = true
-            searchResultsViewController.view.isHidden = true
-            contentView.setResultsVisible(false)
-            contentView.showLoadingState("검색 중입니다.")
-        }
-        
-        isLoadingSearch = true
-        searchBills.searchBills(pIndex: currentIndex, billName: normalizedTerm) { [weak self] result in
+
+    private func bindViewModel() {
+        viewModel.onStateChange = { [weak self] state in
             guard let self = self else { return }
-            DispatchQueue.main.async {
-                self.isLoadingSearch = false
-                switch result {
-                case .success(let rows):
-                    let resultTitles: [StarredBill] = rows.map {
-                        StarredBill(
-                            ID: $0.BILL_ID,
-                            age: Int($0.AGE) ?? 0,
-                            name: $0.BILL_NAME
-                        )
-                    }
-                    
-                    if reset {
-                        self.searchResultsViewController.updateResults(resultTitles)
-                    } else {
-                        let mergedResults = self.mergeUniqueBills(self.searchResultsViewController.items + resultTitles)
-                        self.searchResultsViewController.updateResults(mergedResults)
-                    }
-                    
-                    self.canLoadMoreResults = !rows.isEmpty
-                    self.contentView.showIdleState()
-                    self.contentView.setResultsVisible(true)
-                    self.searchResultsViewController.view.isHidden = false
-                    completion(true)
-                    
-                case .failure(let error):
-                    if reset {
-                        self.contentView.showErrorState("검색에 실패했습니다.\n\(error.localizedDescription)")
-                        self.searchResultsViewController.view.isHidden = true
-                    } else {
-                        self.canLoadMoreResults = false
-                    }
-                    completion(false)
-                }
+
+            switch state {
+            case .idle:
+                self.searchResultsViewController.view.isHidden = true
+                self.contentView.setResultsVisible(false)
+            case .loading(let message):
+                self.searchResultsViewController.view.isHidden = true
+                self.contentView.setResultsVisible(false)
+                self.contentView.showLoadingState(message)
+            case .loaded(let snapshots):
+                self.searchResultsViewController.updateResults(snapshots)
+                self.contentView.showIdleState()
+                self.contentView.setResultsVisible(true)
+                self.searchResultsViewController.view.isHidden = false
+                self.pendingSearchCompletion?(true)
+                self.pendingSearchCompletion = nil
+            case .empty(let message):
+                self.searchResultsViewController.updateResults([BillSnapshot]())
+                self.contentView.showIdleState()
+                self.contentView.setResultsVisible(true)
+                self.searchResultsViewController.setEmptyMessage(message)
+                self.searchResultsViewController.view.isHidden = false
+                self.pendingSearchCompletion?(true)
+                self.pendingSearchCompletion = nil
+            case .error(let message):
+                self.contentView.showErrorState(message)
+                self.searchResultsViewController.view.isHidden = true
+                self.pendingSearchCompletion?(false)
+                self.pendingSearchCompletion = nil
             }
         }
     }
     
-    private func loadNextPageIfNeeded() {
-        guard canLoadMoreResults, !isLoadingSearch, let currentSearchTerm = currentSearchTerm else { return }
-        currentIndex += 1
-        performSearch(with: currentSearchTerm, reset: false) { [weak self] success in
-            if !success {
-                self?.currentIndex = max(1, (self?.currentIndex ?? 1) - 1)
-            }
+    private func performSearch(with searchTerm: String, reset: Bool = true, completion: @escaping (Bool) -> Void) {
+        let normalizedTerm = searchTerm.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !normalizedTerm.isEmpty else {
+            completion(false)
+            return
         }
+
+        pendingSearchCompletion = completion
+        if reset {
+            viewModel.search(query: normalizedTerm, reset: true)
+        } else {
+            viewModel.loadNextPageIfNeeded()
+        }
+    }
+    
+    private func loadNextPageIfNeeded() {
+        viewModel.loadNextPageIfNeeded()
     }
     
     private func mergeUniqueBills(_ bills: [StarredBill]) -> [StarredBill] {
@@ -137,6 +124,17 @@ final class SearchViewController: UIViewController {
             guard !seenIDs.contains(bill.ID) else { return false }
             seenIDs.insert(bill.ID)
             return true
+        }
+    }
+
+    private func updateFilter(_ transform: (inout BillFilter) -> Void) {
+        var filter = viewModel.filter
+        transform(&filter)
+        viewModel.updateFilter(filter)
+        contentView.updateFilterSummary(filter.activeSummary)
+
+        if !filter.normalizedQuery.isEmpty {
+            viewModel.search(reset: true)
         }
     }
 }
@@ -165,8 +163,89 @@ extension SearchViewController: SearchViewDelegate {
     }
     
     func retrySearch() {
-        let retryTerm = currentSearchTerm ?? contentView.searchBar.text ?? ""
+        let retryTerm = viewModel.filter.normalizedQuery.isEmpty ? (contentView.searchBar.text ?? "") : viewModel.filter.normalizedQuery
         performSearch(with: retryTerm) { _ in }
+    }
+
+    func showFilters() {
+        let alert = UIAlertController(title: "검색 필터", message: nil, preferredStyle: .actionSheet)
+
+        let statusActions: [(String, BillStage?)] = [
+            ("전체 상태", nil),
+            ("제안", .proposed),
+            ("위원회", .committee),
+            ("법사위", .lawReview),
+            ("본회의", .plenary),
+            ("완료", .completed)
+        ]
+
+        statusActions.forEach { title, stage in
+            alert.addAction(UIAlertAction(title: title, style: .default) { [weak self] _ in
+                self?.updateFilter { $0.status = stage }
+            })
+        }
+
+        alert.addAction(UIAlertAction(title: "소관 위원회 입력", style: .default) { [weak self] _ in
+            self?.presentCommitteeFilterAlert()
+        })
+
+        if let committee = viewModel.filter.committee, !committee.isEmpty {
+            alert.addAction(UIAlertAction(title: "위원회 필터 해제 (\(committee))", style: .default) { [weak self] _ in
+                self?.updateFilter { $0.committee = nil }
+            })
+        }
+
+        alert.addAction(UIAlertAction(title: viewModel.filter.favoriteOnly ? "즐겨찾기만 해제" : "즐겨찾기만 보기", style: .default) { [weak self] _ in
+            self?.updateFilter { $0.favoriteOnly.toggle() }
+        })
+
+        alert.addAction(UIAlertAction(title: "최근 30일", style: .default) { [weak self] _ in
+            self?.updateFilter { $0.dateRange = BillDateRange.recent(days: 30) }
+        })
+
+        alert.addAction(UIAlertAction(title: "최근 1년", style: .default) { [weak self] _ in
+            self?.updateFilter { $0.dateRange = BillDateRange.recent(days: 365) }
+        })
+
+        alert.addAction(UIAlertAction(title: "전체 기간", style: .default) { [weak self] _ in
+            self?.updateFilter { $0.dateRange = .all }
+        })
+
+        alert.addAction(UIAlertAction(title: viewModel.filter.sortOrder == .latest ? "오래된순" : "최신순", style: .default) { [weak self] _ in
+            self?.updateFilter { $0.sortOrder = $0.sortOrder == .latest ? .oldest : .latest }
+        })
+
+        alert.addAction(UIAlertAction(title: "필터 초기화", style: .destructive) { [weak self] _ in
+            self?.updateFilter {
+                $0.status = nil
+                $0.favoriteOnly = false
+                $0.dateRange = .all
+                $0.sortOrder = .latest
+            }
+        })
+        alert.addAction(UIAlertAction(title: "닫기", style: .cancel))
+
+        if let popover = alert.popoverPresentationController {
+            popover.sourceView = contentView
+            popover.sourceRect = CGRect(x: contentView.bounds.midX, y: contentView.safeAreaInsets.top + 56, width: 1, height: 1)
+        }
+
+        present(alert, animated: true)
+    }
+
+    private func presentCommitteeFilterAlert() {
+        let alert = UIAlertController(title: "소관 위원회", message: "예: 교육, 환경노동, 법제사법", preferredStyle: .alert)
+        alert.addTextField { [weak self] textField in
+            textField.placeholder = "위원회명"
+            textField.text = self?.viewModel.filter.committee
+            textField.clearButtonMode = .whileEditing
+        }
+        alert.addAction(UIAlertAction(title: "적용", style: .default) { [weak self, weak alert] _ in
+            let value = alert?.textFields?.first?.text?.trimmingCharacters(in: .whitespacesAndNewlines)
+            self?.updateFilter { $0.committee = value?.isEmpty == false ? value : nil }
+        })
+        alert.addAction(UIAlertAction(title: "취소", style: .cancel))
+        present(alert, animated: true)
     }
 }
 
@@ -176,8 +255,7 @@ extension SearchViewController: UISearchBarDelegate {
     func searchBar(_ searchBar: UISearchBar, textDidChange searchText: String) {
         if searchText.isEmpty {
             DispatchQueue.main.async {
-                self.currentSearchTerm = nil
-                self.canLoadMoreResults = true
+                self.viewModel.clearResults()
                 self.contentView.setResultsVisible(false)
                 self.contentView.showIdleState()
                 self.searchResultsViewController.view.isHidden = true

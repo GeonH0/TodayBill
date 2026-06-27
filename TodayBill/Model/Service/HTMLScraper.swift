@@ -8,13 +8,23 @@
 import Foundation
 import SwiftSoup
 
-final class HTMLScraper {
-    private static var summaryCache: [String: String] = [:]
-    private let userAgent = "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1"
+final class AssemblySummaryClient {
+    private static var summaryCache: [String: BillSummary] = [:]
+    private let userAgent = OpenAssemblyAPIClient.userAgent
+
+    func fetchSummary(from urlString: String, completion: @escaping (Result<BillSummary, Error>) -> Void) {
+        fetchSummaryContent(from: urlString) { rawText in
+            guard let rawText else {
+                completion(.failure(URLError(.cannotParseResponse)))
+                return
+            }
+            completion(.success(BillSummary.split(rawText: rawText)))
+        }
+    }
     
     func fetchSummaryContent(from urlString: String, completion: @escaping (String?) -> Void) {
         if let cachedSummary = Self.summaryCache[urlString] {
-            completion(cachedSummary)
+            completion(cachedSummary.rawText)
             return
         }
         
@@ -47,7 +57,7 @@ final class HTMLScraper {
             do {
                 let document: Document = try SwiftSoup.parse(htmlString)
                 if let contentText = try self.extractLegacySummary(from: document) {
-                    Self.summaryCache[urlString] = contentText
+                    Self.summaryCache[urlString] = BillSummary.split(rawText: contentText)
                     completion(contentText)
                 } else if let detailURL = response?.url {
                     self.fetchBillInfoFragment(
@@ -125,7 +135,7 @@ final class HTMLScraper {
                         return
                     }
                     
-                    Self.summaryCache[cacheKey] = contentText
+                    Self.summaryCache[cacheKey] = BillSummary.split(rawText: contentText)
                     completion(contentText)
                 } catch {
                     print("❌ Bill info fragment parsing error: \(error.localizedDescription)")
@@ -135,6 +145,26 @@ final class HTMLScraper {
         } catch {
             print("❌ Detail page parsing error: \(error.localizedDescription)")
             completion(nil)
+        }
+    }
+
+    func parseLegacySummaryHTML(_ html: String) -> BillSummary? {
+        do {
+            let document = try SwiftSoup.parse(html)
+            guard let rawText = try extractLegacySummary(from: document) else { return nil }
+            return BillSummary.split(rawText: rawText)
+        } catch {
+            return nil
+        }
+    }
+
+    func parseFragmentSummaryHTML(_ html: String) -> BillSummary? {
+        do {
+            let document = try SwiftSoup.parse(html)
+            guard let rawText = try extractFragmentSummary(from: document) else { return nil }
+            return BillSummary.split(rawText: rawText)
+        } catch {
+            return nil
         }
     }
     
@@ -185,5 +215,13 @@ final class HTMLScraper {
             }
             .joined(separator: "&")
         return body.data(using: .utf8)
+    }
+}
+
+final class HTMLScraper {
+    private let client = AssemblySummaryClient()
+
+    func fetchSummaryContent(from urlString: String, completion: @escaping (String?) -> Void) {
+        client.fetchSummaryContent(from: urlString, completion: completion)
     }
 }

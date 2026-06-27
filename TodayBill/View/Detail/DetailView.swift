@@ -128,6 +128,28 @@ final class DetailView: UIView {
         label.translatesAutoresizingMaskIntoConstraints = false
         return label
     }()
+
+    private let committeeLabel: UILabel = {
+        let label = UILabel()
+        label.numberOfLines = 0
+        label.translatesAutoresizingMaskIntoConstraints = false
+        return label
+    }()
+
+    private let proposerLabel: UILabel = {
+        let label = UILabel()
+        label.numberOfLines = 0
+        label.translatesAutoresizingMaskIntoConstraints = false
+        return label
+    }()
+
+    private let stageLabel: UILabel = {
+        let label = UILabel()
+        label.font = UIFont.boldSystemFont(ofSize: 16)
+        label.textColor = .systemBlue
+        label.translatesAutoresizingMaskIntoConstraints = false
+        return label
+    }()
     
     // MARK: - Proposal Reason Section
     private let proposalReasonTitleLabel: UILabel = {
@@ -224,6 +246,9 @@ final class DetailView: UIView {
         // Basic Info Section
         basicInfoStack.addArrangedSubview(proposeDateLabel)
         basicInfoStack.addArrangedSubview(ageLabel)
+        basicInfoStack.addArrangedSubview(committeeLabel)
+        basicInfoStack.addArrangedSubview(proposerLabel)
+        basicInfoStack.addArrangedSubview(stageLabel)
         mainStackView.addArrangedSubview(basicInfoStack)
         
         // Proposal Reason Section
@@ -294,23 +319,30 @@ final class DetailView: UIView {
     // MARK: - Update Method
     /// bill 객체와 함께 HTMLScraper로 추출한 제안 이유, 주요 내용을 받아 업데이트합니다.
     func update(with bill: Row, proposalReason: String, keyContent: String) {
+        update(with: BillSnapshot(row: bill), proposalReason: proposalReason, keyContent: keyContent)
+    }
+
+    func update(with snapshot: BillSnapshot, proposalReason: String, keyContent: String) {
         showContent()
-        billNameLabel.text = bill.BILL_NAME
-        proposeDateLabel.text = "제안일: \(bill.PROPOSE_DT)"
-        ageLabel.text = "대수: \(bill.AGE)"
+        billNameLabel.text = snapshot.title
+        proposeDateLabel.attributedText = makeMetadataText(title: "제안일", value: snapshot.proposedDate.isEmpty ? "미확인" : snapshot.proposedDate)
+        ageLabel.attributedText = makeMetadataText(title: "대수", value: "\(snapshot.age)대")
+        committeeLabel.attributedText = makeMetadataText(title: "위원회", value: snapshot.displayCommittee)
+        proposerLabel.attributedText = makeMetadataText(title: "제안자", value: snapshot.displayProposer)
+        stageLabel.text = "현재 단계: \(snapshot.stage.title)"
         
         // 가독성을 위해 라인 스페이싱 적용
         proposalReasonExpandableView.configure(with: proposalReason)
         keyContentLabel.attributedText = makeAttributedText(from: keyContent)
         
-        detailLinkURL = URL(string: bill.DETAIL_LINK)
+        detailLinkURL = URL(string: snapshot.detailLink)
         
         // 타임라인 업데이트 예시 (실제 데이터에 따라 수정 필요)
         let timelineSteps: [TimelineStep] = [
-            TimelineStep(title: "제안", date: bill.PROPOSE_DT, isCompleted: true),
-            TimelineStep(title: "위원회 처리", date: bill.COMMITTEE_DT ?? "미처리", isCompleted: bill.COMMITTEE_DT != nil),
-            TimelineStep(title: "법사위 처리", date: bill.LAW_PROC_DT ?? "미처리", isCompleted: bill.LAW_PROC_DT != nil),
-            TimelineStep(title: "본회의 심의", date: bill.PROC_DT ?? "미처리", isCompleted: bill.PROC_DT != nil)
+            TimelineStep(title: "제안", date: snapshot.proposedDate.isEmpty ? "미확인" : snapshot.proposedDate, isCompleted: !snapshot.proposedDate.isEmpty),
+            TimelineStep(title: "위원회 처리", date: snapshot.committeeProcessDate ?? snapshot.committeeDate ?? "미처리", isCompleted: snapshot.committeeProcessDate != nil || snapshot.committeeDate != nil),
+            TimelineStep(title: "법사위 처리", date: snapshot.lawProcDate ?? snapshot.lawPresentDate ?? "미처리", isCompleted: snapshot.lawProcDate != nil || snapshot.lawPresentDate != nil),
+            TimelineStep(title: "본회의 심의", date: snapshot.plenaryDate ?? snapshot.procResult ?? "미처리", isCompleted: snapshot.plenaryDate != nil || snapshot.procResult != nil)
         ]
         
         timelineView.updateSteps(timelineSteps)
@@ -339,6 +371,14 @@ final class DetailView: UIView {
             keyContent: "상세페이지 보기에서 원문을 확인할 수 있습니다."
         )
     }
+
+    func showSummaryUnavailable(for snapshot: BillSnapshot) {
+        update(
+            with: snapshot,
+            proposalReason: "원문에서 요약 정보를 가져오지 못했습니다.",
+            keyContent: "상세페이지 보기에서 원문을 확인할 수 있습니다."
+        )
+    }
     
     private func showContent() {
         mainStackView.isHidden = false
@@ -355,5 +395,24 @@ final class DetailView: UIView {
             .foregroundColor: UIColor.darkText
         ]
         return NSAttributedString(string: text, attributes: attributes)
+    }
+
+    private func makeMetadataText(title: String, value: String) -> NSAttributedString {
+        let text = "\(title): \(value)"
+        let attributed = NSMutableAttributedString(
+            string: text,
+            attributes: [
+                .font: UIFont.systemFont(ofSize: 15),
+                .foregroundColor: UIColor.darkText
+            ]
+        )
+        attributed.addAttributes(
+            [
+                .font: UIFont.boldSystemFont(ofSize: 15),
+                .foregroundColor: UIColor.black
+            ],
+            range: NSRange(location: 0, length: title.count + 1)
+        )
+        return attributed
     }
 }
