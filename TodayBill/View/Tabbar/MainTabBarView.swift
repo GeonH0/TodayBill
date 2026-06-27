@@ -20,15 +20,17 @@ final class MainTabBarView: UIView {
     private var buttons: [UIButton] = []
     private var titles: [String] = []
     private let contentHeight: CGFloat = 50
-    private let indicatorView: UIView = {
-        let indicatorView = UIView()
-        indicatorView.backgroundColor = .systemBlue
-        return indicatorView
+    private let selectionBackgroundView: UIView = {
+        let view = UIView()
+        view.backgroundColor = UIColor.systemBlue.withAlphaComponent(0.12)
+        view.layer.cornerRadius = 17
+        view.isUserInteractionEnabled = false
+        return view
     }()
     
     private let separatorView: UIView = {
         let separatorView = UIView()
-        separatorView.backgroundColor = .lightGray
+        separatorView.backgroundColor = UIColor.black.withAlphaComponent(0.08)
         return separatorView
     }()
     
@@ -44,7 +46,8 @@ final class MainTabBarView: UIView {
     }
     
     private func addsubviews(){
-        addSubview(indicatorView)
+        backgroundColor = Theme.cellBackgroundColor
+        addSubview(selectionBackgroundView)
         addSubview(separatorView)
     }
     
@@ -59,17 +62,21 @@ final class MainTabBarView: UIView {
             config.image = image.withRenderingMode(.alwaysTemplate)
             config.imagePadding = 0
             config.baseForegroundColor = .gray
-            config.contentInsets = NSDirectionalEdgeInsets(top: 6, leading: 0, bottom: 6, trailing: 0)
+            config.contentInsets = NSDirectionalEdgeInsets(top: 7, leading: 0, bottom: 7, trailing: 0)
             
             button.configuration = config
             button.tintColor = .gray
             button.tag = index
+            button.setPreferredSymbolConfiguration(
+                UIImage.SymbolConfiguration(pointSize: 21, weight: .medium),
+                forImageIn: .normal
+            )
             button.accessibilityLabel = titles.indices.contains(index) ? titles[index] : nil
             button.addAction(
                 UIAction { [weak self] _ in
                     guard let self = self else { return }
                     self.currentSelectedIndex = index
-                    self.updateIndicatorPosition(animated: true)
+                    self.updateSelectionBackgroundPosition(animated: true)
                     self.updateButtonAppearance()
                     self.delegate?.tabBarView(self, didSelectTabAt: index)
                 },
@@ -82,7 +89,7 @@ final class MainTabBarView: UIView {
         
         setNeedsLayout()
         layoutIfNeeded()
-        updateIndicatorPosition(animated: false)
+        updateSelectionBackgroundPosition(animated: false)
         updateButtonAppearance()
     }
     
@@ -104,27 +111,27 @@ final class MainTabBarView: UIView {
             button.imageView?.contentMode = .scaleAspectFit
         }
 
-        updateIndicatorPosition(animated: false)
+        updateSelectionBackgroundPosition(animated: false)
     }
     
-    private func updateIndicatorPosition(animated: Bool) {
+    private func updateSelectionBackgroundPosition(animated: Bool) {
         guard !buttons.isEmpty else { return }
         
         let buttonWidth = bounds.width / CGFloat(buttons.count)
-        let targetX = CGFloat(currentSelectedIndex) * buttonWidth
-        let indicatorFrame = CGRect(
-            x: targetX,
-            y: 0,
-            width: buttonWidth,
-            height: 3
+        let selectedCenterX = CGFloat(currentSelectedIndex) * buttonWidth + buttonWidth / 2
+        let selectionFrame = CGRect(
+            x: selectedCenterX - 24,
+            y: 8,
+            width: 48,
+            height: 34
         )
         
         if animated {
-            UIView.animate(withDuration: 0.3) {
-                self.indicatorView.frame = indicatorFrame
+            UIView.animate(withDuration: 0.22, delay: 0, options: [.curveEaseInOut]) {
+                self.selectionBackgroundView.frame = selectionFrame
             }
         } else {
-            indicatorView.frame = indicatorFrame
+            selectionBackgroundView.frame = selectionFrame
         }
     }
     

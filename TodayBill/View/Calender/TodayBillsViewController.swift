@@ -22,6 +22,8 @@ final class TodayBillsViewController: ListViewController {
     
     override func viewDidLoad() {
         super.viewDidLoad()
+        setHorizontalContentInset(0)
+        setShowsSnapshotProposedDate(false)
         setupCollectionViewConstraints()
     }
     
@@ -40,17 +42,13 @@ final class TodayBillsViewController: ListViewController {
         self.favoriteItems = Set(StarBillManager.shared.loadStarredBills().map { $0.ID })
         self.updateItems(todayBills)
     }
+
+    func updateBills(snapshots: [BillSnapshot]) {
+        todayBills = snapshots.map { $0.toStarredBill() }
+        self.updateSnapshots(snapshots)
+    }
     
     override func favoriteButtonTapped(for itemID: String) {
-        if favoriteItems.contains(itemID) {
-            favoriteItems.remove(itemID)
-            StarBillManager.shared.removeBillFromStarred(by: itemID)
-        } else {
-            favoriteItems.insert(itemID)
-            if let bill = items.first(where: { $0.ID == itemID }) {
-                StarBillManager.shared.addBillToStarred(bill)
-            }
-        }
-        collectionView.reloadData()
+        super.favoriteButtonTapped(for: itemID)
     }
 }

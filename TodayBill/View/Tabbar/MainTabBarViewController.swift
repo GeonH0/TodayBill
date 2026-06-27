@@ -44,7 +44,7 @@ final class MainTabBarViewController: UIViewController {
         customTabBar.translatesAutoresizingMaskIntoConstraints = false
         customTabBar.delegate = self
         view.addSubview(customTabBar)
-        customTabBar.backgroundColor = .white
+        customTabBar.backgroundColor = Theme.cellBackgroundColor
         tabBarHeightConstraint = customTabBar.heightAnchor.constraint(equalToConstant: tabBarContentHeight)
         NSLayoutConstraint.activate([
             contentContainerView.topAnchor.constraint(equalTo: view.topAnchor),
