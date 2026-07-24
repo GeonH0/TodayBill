@@ -22,6 +22,7 @@ final class DetailViewController: UIViewController {
         self.billID = billID
         self.age = age
         super.init(nibName: nil, bundle: nil)
+        hidesBottomBarWhenPushed = true
     }
     
     required init?(coder: NSCoder) {
@@ -79,9 +80,11 @@ final class DetailViewController: UIViewController {
     }
 
     private func render(snapshot: BillSnapshot) {
-        let proposalReason = snapshot.summaryProposalReason ?? "요약 정보를 불러오는 중입니다."
-        let keyContent = snapshot.summaryKeyContent ?? "요약 정보를 불러오는 중입니다."
-        contentView.update(with: snapshot, proposalReason: proposalReason, keyContent: keyContent)
+        contentView.update(
+            with: snapshot,
+            proposalReason: snapshot.summaryProposalReason,
+            keyContent: snapshot.summaryKeyContent
+        )
     }
     
     private func openSafariViewController(url: URL) {
@@ -96,10 +99,13 @@ extension DetailViewController: DetailViewDelegate {
     func backButtonTapped() {
         navigationController?.popViewController(animated: true)
     }
+
+    func favoriteButtonTapped() {
+        viewModel.toggleFavorite()
+    }
     
     func detailLinkButtonTapped(with url: URL) {
-        // 필요 시 SafariViewController 열기
-         openSafariViewController(url: url)
+        openSafariViewController(url: url)
     }
     
     func retryButtonTapped() {

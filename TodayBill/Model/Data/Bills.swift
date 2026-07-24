@@ -588,6 +588,8 @@ enum LawBillMatcher {
 }
 
 struct BillSummary: Codable, Equatable {
+    static let unableToSeparateKeyContentText = "원문에서 주요 내용을 분리하지 못했습니다."
+
     var proposalReason: String
     var keyContent: String
     var rawText: String
@@ -597,7 +599,7 @@ struct BillSummary: Codable, Equatable {
             .replacingOccurrences(of: "(?<=\\.)\\s+", with: "\n", options: .regularExpression)
             .trimmingCharacters(in: .whitespacesAndNewlines)
 
-        if let range = processedText.range(of: "주요내용") {
+        if let range = primaryContentMarkerRange(in: processedText) {
             let proposalReason = String(processedText[..<range.lowerBound])
                 .trimmingCharacters(in: .whitespacesAndNewlines)
             let keyContent = String(processedText[range.upperBound...])
@@ -609,11 +611,79 @@ struct BillSummary: Codable, Equatable {
             )
         }
 
+        if let inferred = inferKeyContent(from: processedText) {
+            return inferred
+        }
+
         return BillSummary(
             proposalReason: processedText.isEmpty ? "요약 정보가 없습니다." : processedText,
-            keyContent: "원문에서 주요 내용을 분리하지 못했습니다.",
+            keyContent: unableToSeparateKeyContentText,
             rawText: processedText
         )
+    }
+
+    private static func primaryContentMarkerRange(in text: String) -> Range<String.Index>? {
+        let markerPatterns = [
+            #"주요\s*내용"#,
+            #"주요\s*골자"#,
+            #"주요\s*사항"#
+        ]
+
+        for pattern in markerPatterns {
+            if let range = text.range(of: pattern, options: .regularExpression) {
+                return range
+            }
+        }
+        return nil
+    }
+
+    private static func inferKeyContent(from text: String) -> BillSummary? {
+        let mainText = text.components(separatedBy: "참고사항").first?
+            .trimmingCharacters(in: .whitespacesAndNewlines) ?? text
+        guard !mainText.isEmpty else { return nil }
+
+        let candidatePatterns = [
+            #"(?m)^이에\s+.+$"#,
+            #"(?m)^따라서\s+.+$"#,
+            #"(?m)^이를\s+.+$"#,
+            #"(?m)^이와\s+같은\s+.+$"#
+        ]
+
+        for pattern in candidatePatterns {
+            guard let regex = try? NSRegularExpression(pattern: pattern) else { continue }
+            let range = NSRange(mainText.startIndex..<mainText.endIndex, in: mainText)
+            let matches = regex.matches(in: mainText, range: range)
+            guard let match = matches.last,
+                  let candidateRange = Range(match.range, in: mainText) else {
+                continue
+            }
+
+            let keyContent = String(mainText[candidateRange]).trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !keyContent.isEmpty else { continue }
+
+            let proposalReason = String(mainText[..<candidateRange.lowerBound])
+                .trimmingCharacters(in: .whitespacesAndNewlines)
+            return BillSummary(
+                proposalReason: proposalReason.isEmpty ? mainText : proposalReason,
+                keyContent: keyContent,
+                rawText: text
+            )
+        }
+
+        let lines = mainText
+            .components(separatedBy: .newlines)
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { !$0.isEmpty }
+
+        if let keyContent = lines.last(where: { $0.contains("(안 ") || $0.contains("(안 제") }) {
+            return BillSummary(
+                proposalReason: mainText,
+                keyContent: keyContent,
+                rawText: text
+            )
+        }
+
+        return nil
     }
 }
 
@@ -730,6 +800,10 @@ struct BillSnapshot: Codable, Equatable, Identifiable {
     }
 
     init(entity: BillEntity) {
+        let repairedSummary = Self.repairedCachedSummary(
+            proposalReason: entity.summaryProposalReason,
+            keyContent: entity.summaryKeyContent
+        )
         self.init(
             billID: entity.id ?? "",
             age: Int(entity.age),
@@ -750,14 +824,30 @@ struct BillSnapshot: Codable, Equatable, Identifiable {
             plenaryDate: entity.plenaryDate,
             lawProcResultCode: entity.lawProcResultCode,
             committeeResultCode: entity.committeeResultCode,
-            summaryProposalReason: entity.summaryProposalReason,
-            summaryKeyContent: entity.summaryKeyContent,
+            summaryProposalReason: repairedSummary.proposalReason,
+            summaryKeyContent: repairedSummary.keyContent,
             summaryFetchedAt: entity.summaryFetchedAt,
             isFavorite: entity.isFavorite,
             favoriteCreatedAt: entity.favoriteCreatedAt,
             lastSeenStageKey: entity.lastSeenStageKey,
             updatedAt: entity.updatedAt
         )
+    }
+
+    private static func repairedCachedSummary(
+        proposalReason: String?,
+        keyContent: String?
+    ) -> (proposalReason: String?, keyContent: String?) {
+        guard keyContent == BillSummary.unableToSeparateKeyContentText,
+              let rawText = nonEmpty(proposalReason) else {
+            return (proposalReason, keyContent)
+        }
+
+        let repaired = BillSummary.split(rawText: rawText)
+        guard repaired.keyContent != BillSummary.unableToSeparateKeyContentText else {
+            return (proposalReason, keyContent)
+        }
+        return (repaired.proposalReason, repaired.keyContent)
     }
 
     var stage: BillStage {
@@ -806,6 +896,60 @@ struct BillSnapshot: Codable, Equatable, Identifiable {
     var hasUnseenStageChange: Bool {
         guard isFavorite, let lastSeenStageKey, !lastSeenStageKey.isEmpty else { return false }
         return lastSeenStageKey != stageKey
+    }
+
+    var detailTimelineSteps: [TimelineStep] {
+        let currentIndex: Int
+        switch stage {
+        case .proposed, .unknown:
+            currentIndex = 0
+        case .committee:
+            currentIndex = 1
+        case .lawReview:
+            currentIndex = 2
+        case .plenary:
+            currentIndex = 3
+        case .completed:
+            currentIndex = 4
+        }
+
+        let values: [(title: String, dateText: String)] = [
+            ("제안", Self.nonEmpty(proposedDate) ?? "미확인"),
+            ("위원회", Self.nonEmpty(committeeProcessDate) ?? Self.nonEmpty(committeePresentDate) ?? Self.nonEmpty(committeeDate) ?? "일정 미정"),
+            ("법사위", Self.nonEmpty(lawProcDate) ?? Self.nonEmpty(lawPresentDate) ?? Self.nonEmpty(lawSubmitDate) ?? "일정 미정"),
+            ("본회의", Self.nonEmpty(plenaryDate) ?? "일정 미정"),
+            ("처리 결과", Self.nonEmpty(procResult) ?? "대기")
+        ]
+
+        return values.enumerated().map { index, value in
+            let status: TimelineStepStatus
+            if index < currentIndex {
+                status = .completed
+            } else if index == currentIndex {
+                status = .current
+            } else {
+                status = .pending
+            }
+            return TimelineStep(title: value.title, dateText: value.dateText, status: status)
+        }
+    }
+
+    func detailInsightReasons(now: Date = Date()) -> [HotBillReason] {
+        let allowedReasons: [HotBillReason] = [
+            .recentlyProposed,
+            .manyCosponsors,
+            .plenarySoon,
+            .fastProgress
+        ]
+        let scored = HotBillScorer.score(
+            self,
+            context: HotBillScoringContext(now: now),
+            calendar: Calendar(identifier: .gregorian)
+        )
+        return scored.reasons
+            .filter { allowedReasons.contains($0) }
+            .prefix(3)
+            .map { $0 }
     }
 
     var proposedDateValue: Date? {

@@ -23,6 +23,8 @@ protocol BillRepositoryProtocol {
     func toggleFavorite(id: String, completion: @escaping (Result<BillSnapshot, Error>) -> Void)
     func refreshFavoriteSnapshots(completion: @escaping (Result<[BillSnapshot], Error>) -> Void)
     func markStageSeen(id: String)
+    func fetchSummary(for snapshot: BillSnapshot, completion: @escaping (Result<BillSnapshot, Error>) -> Void)
+    func cachedSnapshot(id: String) -> BillSnapshot?
 }
 
 final class HomeDashboardCache {
@@ -552,13 +554,14 @@ final class FavoritesViewModel {
 }
 
 final class DetailViewModel {
-    private let repository: BillRepository
+    private let repository: BillRepositoryProtocol
     private let billID: String
     private let age: Int
+    private var currentSnapshot: BillSnapshot?
     var onStateChange: ((ViewState<BillSnapshot>) -> Void)?
     var onSummaryUpdate: ((BillSnapshot) -> Void)?
 
-    init(billID: String, age: Int, repository: BillRepository = .shared) {
+    init(billID: String, age: Int, repository: BillRepositoryProtocol = BillRepository.shared) {
         self.billID = billID
         self.age = age
         self.repository = repository
@@ -566,6 +569,7 @@ final class DetailViewModel {
 
     func load() {
         if let cached = repository.cachedSnapshot(id: billID) {
+            currentSnapshot = cached
             onStateChange?(.loaded(cached))
         } else {
             onStateChange?(.loading("법안 정보를 불러오는 중입니다."))
@@ -577,8 +581,11 @@ final class DetailViewModel {
                 switch result {
                 case .success(let snapshot):
                     self.repository.markStageSeen(id: snapshot.billID)
-                    self.onStateChange?(.loaded(snapshot))
-                    self.refreshSummaryIfNeeded(snapshot: snapshot)
+                    var visibleSnapshot = snapshot
+                    visibleSnapshot.lastSeenStageKey = snapshot.stageKey
+                    self.currentSnapshot = visibleSnapshot
+                    self.onStateChange?(.loaded(visibleSnapshot))
+                    self.refreshSummaryIfNeeded(snapshot: visibleSnapshot)
                 case .failure:
                     self.onStateChange?(.error("법안 정보를 불러오는 데 실패했습니다."))
                 }
@@ -590,11 +597,38 @@ final class DetailViewModel {
         load()
     }
 
+    func toggleFavorite() {
+        guard let previousSnapshot = currentSnapshot else { return }
+
+        var optimisticSnapshot = previousSnapshot
+        optimisticSnapshot.isFavorite.toggle()
+        optimisticSnapshot.favoriteCreatedAt = optimisticSnapshot.isFavorite ? (optimisticSnapshot.favoriteCreatedAt ?? Date()) : nil
+        optimisticSnapshot.lastSeenStageKey = optimisticSnapshot.isFavorite ? optimisticSnapshot.stageKey : nil
+
+        currentSnapshot = optimisticSnapshot
+        onStateChange?(.loaded(optimisticSnapshot))
+
+        repository.toggleFavorite(id: billID) { [weak self] result in
+            guard let self = self else { return }
+            DispatchQueue.main.async {
+                switch result {
+                case .success(let updatedSnapshot):
+                    self.currentSnapshot = updatedSnapshot
+                    self.onStateChange?(.loaded(updatedSnapshot))
+                case .failure:
+                    self.currentSnapshot = previousSnapshot
+                    self.onStateChange?(.loaded(previousSnapshot))
+                }
+            }
+        }
+    }
+
     private func refreshSummaryIfNeeded(snapshot: BillSnapshot) {
         repository.fetchSummary(for: snapshot) { [weak self] result in
             guard let self = self else { return }
             DispatchQueue.main.async {
                 if case let .success(updated) = result {
+                    self.currentSnapshot = updated
                     self.onSummaryUpdate?(updated)
                 }
             }

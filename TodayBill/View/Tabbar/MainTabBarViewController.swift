@@ -11,8 +11,11 @@ final class MainTabBarViewController: UIViewController {
     private let contentContainerView = UIView()
     private let customTabBar = MainTabBarView()
     private var tabBarHeightConstraint: NSLayoutConstraint?
+    private var contentBottomToTabBarConstraint: NSLayoutConstraint?
+    private var contentBottomToViewConstraint: NSLayoutConstraint?
     private var viewControllers: [UIViewController] = []
     private var currentViewController: UIViewController?
+    private var isCustomTabBarHidden = false
     private let tabBarContentHeight: CGFloat = 50
     
     override func viewDidLoad() {
@@ -28,6 +31,7 @@ final class MainTabBarViewController: UIViewController {
     
     func setViewControllers(_ controllers: [UIViewController], images: [UIImage], titles: [String]) {
         viewControllers = controllers
+        controllers.compactMap { $0 as? UINavigationController }.forEach { $0.delegate = self }
         customTabBar.configure(with: images, titles: titles)
         selectTab(at: 0)
     }
@@ -46,17 +50,20 @@ final class MainTabBarViewController: UIViewController {
         view.addSubview(customTabBar)
         customTabBar.backgroundColor = Theme.cellBackgroundColor
         tabBarHeightConstraint = customTabBar.heightAnchor.constraint(equalToConstant: tabBarContentHeight)
+        contentBottomToTabBarConstraint = contentContainerView.bottomAnchor.constraint(equalTo: customTabBar.topAnchor)
+        contentBottomToViewConstraint = contentContainerView.bottomAnchor.constraint(equalTo: view.bottomAnchor)
         NSLayoutConstraint.activate([
             contentContainerView.topAnchor.constraint(equalTo: view.topAnchor),
             contentContainerView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
             contentContainerView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
-            contentContainerView.bottomAnchor.constraint(equalTo: customTabBar.topAnchor),
+            contentBottomToTabBarConstraint!,
             
             customTabBar.leadingAnchor.constraint(equalTo: view.leadingAnchor),
             customTabBar.trailingAnchor.constraint(equalTo: view.trailingAnchor),
             customTabBar.bottomAnchor.constraint(equalTo: view.bottomAnchor),
             tabBarHeightConstraint!
         ])
+        contentBottomToViewConstraint?.isActive = false
     }
     
     private func updateTabBarHeight() {
@@ -89,11 +96,58 @@ final class MainTabBarViewController: UIViewController {
         oldViewController?.removeFromParent()
         
         currentViewController = selectedViewController
+        updateCustomTabBarVisibility(for: selectedViewController, animated: false)
+    }
+
+    private func updateCustomTabBarVisibility(for viewController: UIViewController, animated: Bool) {
+        let navigationController = viewController as? UINavigationController
+        let topViewController = navigationController?.topViewController ?? viewController
+        let isRoot = navigationController?.viewControllers.first === topViewController
+        let shouldHide = topViewController.hidesBottomBarWhenPushed && !isRoot
+        setCustomTabBarHidden(shouldHide, animated: animated)
+    }
+
+    private func setCustomTabBarHidden(_ hidden: Bool, animated: Bool) {
+        guard hidden != isCustomTabBarHidden else { return }
+        isCustomTabBarHidden = hidden
+
+        contentBottomToTabBarConstraint?.isActive = !hidden
+        contentBottomToViewConstraint?.isActive = hidden
+
+        if !hidden {
+            customTabBar.isHidden = false
+        }
+
+        let changes = {
+            self.customTabBar.alpha = hidden ? 0 : 1
+            self.view.layoutIfNeeded()
+        }
+
+        let completion: (Bool) -> Void = { _ in
+            self.customTabBar.isHidden = hidden
+        }
+
+        if animated {
+            UIView.animate(withDuration: 0.22, delay: 0, options: [.curveEaseInOut], animations: changes, completion: completion)
+        } else {
+            changes()
+            completion(true)
+        }
     }
 }
 
 extension MainTabBarViewController: MainTabBarViewDelegate {
     func tabBarView(_ tabBarView: MainTabBarView, didSelectTabAt index: Int) {
         selectTab(at: index)
+    }
+}
+
+extension MainTabBarViewController: UINavigationControllerDelegate {
+    func navigationController(
+        _ navigationController: UINavigationController,
+        willShow viewController: UIViewController,
+        animated: Bool
+    ) {
+        updateCustomTabBarVisibility(for: navigationController, animated: animated)
     }
 }

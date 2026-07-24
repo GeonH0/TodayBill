@@ -64,6 +64,125 @@ final class CoreDataManagerTests: XCTestCase {
         XCTAssertTrue(lawReview.hasUnseenStageChange)
     }
 
+    func testDetailTimelineStepsReflectCurrentStage() {
+        let proposed = BillSnapshot(billID: "TL-1", age: 22, title: "제안", proposedDate: "2026-01-01")
+        XCTAssertEqual(proposed.detailTimelineSteps.map(\.title), ["제안", "위원회", "법사위", "본회의", "처리 결과"])
+        XCTAssertEqual(proposed.detailTimelineSteps.map(\.status), [.current, .pending, .pending, .pending, .pending])
+
+        let committee = BillSnapshot(
+            billID: "TL-2",
+            age: 22,
+            title: "위원회",
+            proposedDate: "2026-01-01",
+            committeeDate: "2026-01-10"
+        )
+        XCTAssertEqual(committee.detailTimelineSteps.map(\.status), [.completed, .current, .pending, .pending, .pending])
+        XCTAssertEqual(committee.detailTimelineSteps[1].dateText, "2026-01-10")
+
+        let lawReview = BillSnapshot(
+            billID: "TL-3",
+            age: 22,
+            title: "법사위",
+            proposedDate: "2026-01-01",
+            lawProcDate: "2026-01-20"
+        )
+        XCTAssertEqual(lawReview.detailTimelineSteps.map(\.status), [.completed, .completed, .current, .pending, .pending])
+
+        let plenary = BillSnapshot(
+            billID: "TL-4",
+            age: 22,
+            title: "본회의",
+            proposedDate: "2026-01-01",
+            plenaryDate: "2026-02-01"
+        )
+        XCTAssertEqual(plenary.detailTimelineSteps.map(\.status), [.completed, .completed, .completed, .current, .pending])
+
+        let completed = BillSnapshot(
+            billID: "TL-5",
+            age: 22,
+            title: "처리",
+            proposedDate: "2026-01-01",
+            procResult: "가결"
+        )
+        XCTAssertEqual(completed.detailTimelineSteps.map(\.status), [.completed, .completed, .completed, .completed, .current])
+        XCTAssertEqual(completed.detailTimelineSteps[4].dateText, "가결")
+    }
+
+    func testDetailTimelineStepsUseQuietFallbacks() {
+        let unknown = BillSnapshot(billID: "TF-1", age: 22, title: "날짜 없음")
+        XCTAssertEqual(unknown.detailTimelineSteps[0].dateText, "미확인")
+
+        let committeeWithoutDate = BillSnapshot(
+            billID: "TF-2",
+            age: 22,
+            title: "위원회 날짜 없음",
+            proposedDate: "2026-01-01",
+            committee: "교육위원회"
+        )
+        XCTAssertEqual(committeeWithoutDate.detailTimelineSteps[1].status, .current)
+        XCTAssertEqual(committeeWithoutDate.detailTimelineSteps[1].dateText, "일정 미정")
+
+        let resultOnly = BillSnapshot(
+            billID: "TF-3",
+            age: 22,
+            title: "결과만 있음",
+            procResult: "폐기"
+        )
+        XCTAssertEqual(resultOnly.detailTimelineSteps[0].dateText, "미확인")
+        XCTAssertEqual(resultOnly.detailTimelineSteps[1].dateText, "일정 미정")
+        XCTAssertEqual(resultOnly.detailTimelineSteps[4].dateText, "폐기")
+        XCTAssertEqual(resultOnly.detailTimelineSteps[4].status, .current)
+    }
+
+    func testDetailInsightReasonsReturnReasonChipsWithoutScores() throws {
+        let now = try XCTUnwrap(Self.dateFormatter.date(from: "2026-06-27"))
+        let lawReview = BillSnapshot(
+            billID: "INSIGHT-1",
+            age: 22,
+            title: "진행 빠른 법안",
+            proposedDate: "2026-06-20",
+            memberList: (1...12).map { "의원\($0)" }.joined(separator: ","),
+            lawProcDate: "2026-06-24"
+        )
+
+        let lawReviewReasons = lawReview.detailInsightReasons(now: now)
+        XCTAssertEqual(lawReviewReasons.count, 3)
+        XCTAssertTrue(lawReviewReasons.contains(.recentlyProposed))
+        XCTAssertTrue(lawReviewReasons.contains(.manyCosponsors))
+        XCTAssertTrue(lawReviewReasons.contains(.fastProgress))
+        XCTAssertFalse(lawReviewReasons.contains(.keywordMatch))
+        XCTAssertFalse(lawReviewReasons.contains(.trackedCommittee))
+
+        let plenary = BillSnapshot(
+            billID: "INSIGHT-2",
+            age: 22,
+            title: "본회의 법안",
+            proposedDate: "2026-05-01",
+            plenaryDate: "2026-06-27"
+        )
+        XCTAssertEqual(plenary.detailInsightReasons(now: now), [.plenarySoon])
+    }
+
+    func testFavoriteToggleUpdatesFavoriteAndLastSeenStageKey() {
+        let manager = CoreDataManager.makeInMemory()
+        let snapshot = BillSnapshot(
+            billID: "FAV-1",
+            age: 22,
+            title: "추적 법안",
+            proposedDate: "2026-06-01",
+            lawProcDate: "2026-06-10"
+        )
+        manager.saveSnapshots([snapshot])
+
+        let favorite = manager.toggleFavorite(id: snapshot.billID)
+        XCTAssertTrue(favorite?.isFavorite == true)
+        XCTAssertEqual(favorite?.lastSeenStageKey, favorite?.stageKey)
+
+        let removed = manager.toggleFavorite(id: snapshot.billID)
+        XCTAssertTrue(removed?.isFavorite == false)
+        XCTAssertNil(removed?.lastSeenStageKey)
+    }
+
     func testBillFilterMatchesFavoritesStatusAndSortOrder() throws {
         let manager = CoreDataManager.makeInMemory()
         let oldRow = try makeRow(id: "OLD", date: "2025-01-01", committee: "교육위원회")
@@ -97,6 +216,50 @@ final class CoreDataManagerTests: XCTestCase {
 
         XCTAssertEqual(summary?.proposalReason, "이 법안은 테스트를 위한 제안이유입니다.")
         XCTAssertEqual(summary?.keyContent, "주요 조항을 정비합니다.")
+    }
+
+    func testBillSummarySplitsSpacedPrimaryContentMarker() {
+        let summary = BillSummary.split(
+            rawText: "제안이유 현행 제도를 정비할 필요가 있음. 주요 내용 관련 조항을 명확히 함."
+        )
+
+        XCTAssertEqual(summary.proposalReason, "제안이유 현행 제도를 정비할 필요가 있음.")
+        XCTAssertEqual(summary.keyContent, "관련 조항을 명확히 함.")
+    }
+
+    func testBillSummaryInfersKeyContentWhenMarkerIsMissing() {
+        let summary = BillSummary.split(
+            rawText: """
+            현행법은 관련 제도를 운영하고 있음. 그러나 제도적 공백이 있다는 지적이 있음.
+            이에 관련 행위에 대한 제재처분 근거를 마련하려는 것임(안 제35조제2항제6호 신설 등).
+            참고사항 이 법률안은 다른 법률안의 의결을 전제로 함.
+            """
+        )
+
+        XCTAssertEqual(summary.proposalReason, "현행법은 관련 제도를 운영하고 있음.\n그러나 제도적 공백이 있다는 지적이 있음.")
+        XCTAssertEqual(summary.keyContent, "이에 관련 행위에 대한 제재처분 근거를 마련하려는 것임(안 제35조제2항제6호 신설 등).")
+        XCTAssertFalse(summary.keyContent.contains("분리하지 못했습니다"))
+    }
+
+    func testCachedFallbackSummaryIsRepairedWhenSnapshotIsLoaded() {
+        let manager = CoreDataManager.makeInMemory()
+        let rawText = """
+        현행법은 관련 제도를 운영하고 있음. 그러나 보완이 필요하다는 지적이 있음.
+        이에 관련 조항을 정비하려는 것임(안 제3조).
+        """
+        let snapshot = BillSnapshot(
+            billID: "SUMMARY-REPAIR",
+            age: 22,
+            title: "요약 보정 법안",
+            summaryProposalReason: rawText,
+            summaryKeyContent: BillSummary.unableToSeparateKeyContentText
+        )
+
+        manager.saveSnapshots([snapshot])
+        let repaired = manager.fetchSnapshot(id: "SUMMARY-REPAIR")
+
+        XCTAssertEqual(repaired?.summaryProposalReason, "현행법은 관련 제도를 운영하고 있음.\n그러나 보완이 필요하다는 지적이 있음.")
+        XCTAssertEqual(repaired?.summaryKeyContent, "이에 관련 조항을 정비하려는 것임(안 제3조).")
     }
 
     func testHotBillScoringUsesInternalSignals() throws {
@@ -335,5 +498,13 @@ private final class MockBillRepository: BillRepositoryProtocol {
     }
 
     func markStageSeen(id: String) {
+    }
+
+    func fetchSummary(for snapshot: BillSnapshot, completion: @escaping (Result<BillSnapshot, Error>) -> Void) {
+        completion(.failure(BillsRepositoryError.missingSnapshot))
+    }
+
+    func cachedSnapshot(id: String) -> BillSnapshot? {
+        nil
     }
 }
