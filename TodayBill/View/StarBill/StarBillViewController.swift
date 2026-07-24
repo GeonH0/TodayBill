@@ -39,7 +39,7 @@ final class StarBillViewController: UIViewController {
     private let statusLabel: UILabel = {
         let label = UILabel()
         label.textColor = Theme.emptyLabelTextColor
-        label.font = .systemFont(ofSize: 16, weight: .medium)
+        label.font = Theme.Font.statusMessage
         label.textAlignment = .center
         label.numberOfLines = 0
         return label
@@ -176,7 +176,7 @@ private final class TrackingBillCell: UITableViewCell {
 
     private let titleLabel: UILabel = {
         let label = UILabel()
-        label.font = .boldSystemFont(ofSize: 16)
+        label.font = Theme.Font.cardTitle
         label.textColor = Theme.textColor
         label.numberOfLines = 2
         return label
@@ -184,7 +184,7 @@ private final class TrackingBillCell: UITableViewCell {
 
     private let metaLabel: UILabel = {
         let label = UILabel()
-        label.font = .systemFont(ofSize: 13, weight: .medium)
+        label.font = Theme.Font.metaText
         label.textColor = Theme.emptyLabelTextColor
         label.numberOfLines = 1
         label.lineBreakMode = .byTruncatingTail
@@ -193,7 +193,7 @@ private final class TrackingBillCell: UITableViewCell {
 
     private let stageLabel: UILabel = {
         let label = UILabel()
-        label.font = .systemFont(ofSize: 13, weight: .semibold)
+        label.font = Theme.Font.metaTextStrong
         label.textColor = .systemBlue
         return label
     }()
@@ -201,11 +201,11 @@ private final class TrackingBillCell: UITableViewCell {
     private let changeBadgeLabel: UILabel = {
         let label = UILabel()
         label.text = "변경"
-        label.font = .systemFont(ofSize: 12, weight: .bold)
+        label.font = Theme.Font.smallStrongBold
         label.textColor = .white
         label.backgroundColor = .systemRed
         label.textAlignment = .center
-        label.layer.cornerRadius = 6
+        label.layer.cornerRadius = Theme.Radius.small
         label.layer.masksToBounds = true
         label.isHidden = true
         return label
@@ -264,7 +264,7 @@ private final class TrackingBillCell: UITableViewCell {
         backgroundColor = .clear
         selectionStyle = .default
         contentView.backgroundColor = Theme.cellBackgroundColor
-        contentView.layer.cornerRadius = 8
+        contentView.layer.cornerRadius = Theme.Radius.small
         contentView.layer.masksToBounds = true
 
         favoriteButton.translatesAutoresizingMaskIntoConstraints = false

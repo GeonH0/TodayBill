@@ -23,7 +23,7 @@ class ListViewController: UIViewController {
     private let emptyLabel: UILabel = {
         let label = UILabel()
         label.textColor = Theme.emptyLabelTextColor
-        label.font = UIFont.systemFont(ofSize: 16, weight: .medium)
+        label.font = Theme.Font.statusMessage
         label.textAlignment = .center
         label.numberOfLines = 0
         label.isHidden = true
@@ -188,7 +188,7 @@ class ListViewController: UIViewController {
             let textHeight = billName.boundingRect(
                 with: CGSize(width: textWidth, height: .greatestFiniteMagnitude),
                 options: [.usesLineFragmentOrigin, .usesFontLeading],
-                attributes: [.font: UIFont.boldSystemFont(ofSize: 16)],
+                attributes: [.font: Theme.Font.cardTitle],
                 context: nil
             ).height
             return max(112, ceil(textHeight) + 74)
@@ -252,7 +252,7 @@ extension ListViewController: UICollectionViewDataSource, UICollectionViewDelega
         let textHeight = billName.boundingRect(
             with: CGSize(width: textWidth, height: .greatestFiniteMagnitude),
             options: [.usesLineFragmentOrigin, .usesFontLeading],
-            attributes: [.font: UIFont.boldSystemFont(ofSize: 16)],
+            attributes: [.font: Theme.Font.cardTitle],
             context: nil
         ).height
         return CGSize(width: width, height: max(112, ceil(textHeight) + 74))

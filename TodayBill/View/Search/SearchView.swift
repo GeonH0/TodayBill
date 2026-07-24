@@ -30,8 +30,8 @@ final class SearchView: UIView {
         let attributedText = NSAttributedString(
             string: "전체 삭제",
             attributes: [
-                .font: UIFont.systemFont(ofSize: 15),
-                .foregroundColor: UIColor.black,
+                .font: Theme.Font.linkAction,
+                .foregroundColor: Theme.textColor,
                 .underlineStyle: NSUnderlineStyle.single.rawValue
             ]
         )
@@ -66,7 +66,7 @@ final class SearchView: UIView {
         let label = UILabel()
         label.text = "최신순"
         label.textColor = Theme.emptyLabelTextColor
-        label.font = .systemFont(ofSize: 13, weight: .medium)
+        label.font = Theme.Font.metaText
         label.numberOfLines = 1
         label.lineBreakMode = .byTruncatingTail
         return label
@@ -82,7 +82,7 @@ final class SearchView: UIView {
     
     private let keywordScrollView: UIScrollView = {
         let scrollView = UIScrollView()
-        scrollView.backgroundColor = .white
+        scrollView.backgroundColor = Theme.surfaceElevated
         scrollView.showsHorizontalScrollIndicator = false
         return scrollView
     }()
@@ -115,7 +115,7 @@ final class SearchView: UIView {
         let label = UILabel()
         label.text = "최근 검색어가 없습니다.\n상단 키워드를 누르거나 법안명을 검색해보세요."
         label.textColor = Theme.emptyLabelTextColor
-        label.font = UIFont.systemFont(ofSize: 16, weight: .medium)
+        label.font = Theme.Font.statusMessage
         label.textAlignment = .center
         label.numberOfLines = 0
         label.isHidden = true
@@ -140,7 +140,7 @@ final class SearchView: UIView {
     private let statusLabel: UILabel = {
         let label = UILabel()
         label.textColor = Theme.emptyLabelTextColor
-        label.font = UIFont.systemFont(ofSize: 16, weight: .medium)
+        label.font = Theme.Font.statusMessage
         label.textAlignment = .center
         label.numberOfLines = 0
         return label
@@ -286,14 +286,14 @@ final class SearchView: UIView {
             // 버튼 스타일 설정
             var config = UIButton.Configuration.plain()
             config.title = keyword
-            config.baseBackgroundColor = .white
-            config.baseForegroundColor = UIColor.black // 텍스트 색상 검정
+            config.baseBackgroundColor = Theme.surfaceElevated
+            config.baseForegroundColor = Theme.textColor
             config.contentInsets = NSDirectionalEdgeInsets(top: 6, leading: 20, bottom: 6, trailing: 20) // 내부 여백
             button.configuration = config
-            button.titleLabel?.font = .systemFont(ofSize: 14)
+            button.titleLabel?.font = Theme.Font.buttonLabel
             button.accessibilityLabel = "\(keyword) 키워드 검색"
 
-            button.layer.cornerRadius = 8
+            button.layer.cornerRadius = Theme.Radius.small
             button.layer.masksToBounds = false
             button.layer.borderWidth = 1
             button.layer.borderColor = UIColor.systemGray5.cgColor
@@ -387,7 +387,7 @@ extension SearchView: UITableViewDataSource, UITableViewDelegate {
     func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
         let cell = tableView.dequeueReusableCell(withIdentifier: "SearchCell", for: indexPath)
         cell.textLabel?.text = recentSearches[indexPath.row]
-        cell.textLabel?.font = .systemFont(ofSize: 14)
+        cell.textLabel?.font = Theme.Font.buttonLabel
         cell.textLabel?.textColor = Theme.textColor
         cell.backgroundColor = Theme.backgroundColor
         return cell

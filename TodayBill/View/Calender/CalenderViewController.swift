@@ -20,7 +20,7 @@ final class CalenderViewController: UIViewController {
         label.text = "발의된 법안 없음"
         label.textColor = Theme.emptyLabelTextColor
         label.textAlignment = .center
-        label.font = UIFont.systemFont(ofSize: 16, weight: .medium)
+        label.font = Theme.Font.statusMessage
         label.isHidden = true
         return label
     }()

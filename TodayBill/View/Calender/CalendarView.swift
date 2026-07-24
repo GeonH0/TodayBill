@@ -36,7 +36,7 @@ final class CalendarView: UIView {
     private let calendarTitleLabel: UILabel = {
         let label = UILabel()
         label.text = "날짜별 법안"
-        label.font = .systemFont(ofSize: 20, weight: .bold)
+        label.font = Theme.Font.screenTitle
         label.textColor = Theme.textColor
         label.translatesAutoresizingMaskIntoConstraints = false
         return label
@@ -46,7 +46,7 @@ final class CalendarView: UIView {
         var view = UICalendarView()
         view.wantsDateDecorations = true
         view.backgroundColor = Theme.cellBackgroundColor
-        view.layer.cornerRadius = 12
+        view.layer.cornerRadius = Theme.Radius.medium
         view.layer.masksToBounds = true
         view.translatesAutoresizingMaskIntoConstraints = false
         return view
@@ -55,7 +55,7 @@ final class CalendarView: UIView {
     private let selectedDateTitleLabel: UILabel = {
         let label = UILabel()
         label.text = "선택 날짜 법안"
-        label.font = .systemFont(ofSize: 20, weight: .bold)
+        label.font = Theme.Font.screenTitle
         label.textColor = Theme.textColor
         label.translatesAutoresizingMaskIntoConstraints = false
         return label
@@ -151,7 +151,7 @@ final class HomeDashboardPanelView: UIView {
     private let titleLabel: UILabel = {
         let label = UILabel()
         label.text = "오늘의 법안"
-        label.font = .systemFont(ofSize: 28, weight: .bold)
+        label.font = Theme.Font.heroTitle
         label.textColor = Theme.textColor
         label.numberOfLines = 1
         return label
@@ -324,7 +324,7 @@ final class HomeDashboardPanelView: UIView {
 private final class DashboardStatView: UIView {
     private let countLabel: UILabel = {
         let label = UILabel()
-        label.font = .systemFont(ofSize: 26, weight: .bold)
+        label.font = Theme.Font.statNumber
         label.textColor = Theme.textColor
         label.adjustsFontSizeToFitWidth = true
         label.minimumScaleFactor = 0.75
@@ -333,7 +333,7 @@ private final class DashboardStatView: UIView {
 
     private let titleLabel: UILabel = {
         let label = UILabel()
-        label.font = .systemFont(ofSize: 12, weight: .semibold)
+        label.font = Theme.Font.smallStrong
         label.textColor = Theme.emptyLabelTextColor
         label.numberOfLines = 1
         return label
@@ -364,10 +364,10 @@ private final class DashboardStatView: UIView {
     }
 
     private func setupView() {
-        backgroundColor = UIColor.white.withAlphaComponent(0.78)
-        layer.cornerRadius = 8
+        backgroundColor = Theme.surfaceElevated
+        layer.cornerRadius = Theme.Radius.small
         layer.borderWidth = 1
-        layer.borderColor = UIColor.black.withAlphaComponent(0.06).cgColor
+        layer.borderColor = Theme.separator.cgColor
 
         addSubview(accentView)
         addSubview(stackView)
@@ -406,7 +406,7 @@ private final class DashboardSectionStackView: UIView {
 
     private let titleLabel: UILabel = {
         let label = UILabel()
-        label.font = .systemFont(ofSize: 18, weight: .bold)
+        label.font = Theme.Font.sectionTitle
         label.textColor = Theme.textColor
         return label
     }()
@@ -487,7 +487,7 @@ private final class DashboardSectionStackView: UIView {
 private final class DashboardEmptyStateView: UIView {
     private let label: UILabel = {
         let label = UILabel()
-        label.font = .systemFont(ofSize: 14, weight: .medium)
+        label.font = Theme.Font.emptyMessage
         label.textColor = Theme.emptyLabelTextColor
         label.numberOfLines = 0
         label.translatesAutoresizingMaskIntoConstraints = false
@@ -505,8 +505,8 @@ private final class DashboardEmptyStateView: UIView {
     }
 
     private func setupView() {
-        backgroundColor = UIColor.white.withAlphaComponent(0.55)
-        layer.cornerRadius = 8
+        backgroundColor = Theme.surfaceElevated
+        layer.cornerRadius = Theme.Radius.small
         addSubview(label)
 
         NSLayoutConstraint.activate([
@@ -522,8 +522,8 @@ private final class DashboardBillRowControl: UIControl {
     var onActivate: (() -> Void)?
 
     private let stageLabel = DashboardPillLabel()
-    private let titleLabel = DashboardTextLabel(font: .systemFont(ofSize: 15, weight: .semibold), color: Theme.textColor)
-    private let metadataLabel = DashboardTextLabel(font: .systemFont(ofSize: 12, weight: .medium), color: Theme.emptyLabelTextColor)
+    private let titleLabel = DashboardTextLabel(font: Theme.Font.rowTitle, color: Theme.textColor)
+    private let metadataLabel = DashboardTextLabel(font: Theme.Font.captionText, color: Theme.emptyLabelTextColor)
 
     private let stackView: UIStackView = {
         let stackView = UIStackView()
@@ -546,10 +546,10 @@ private final class DashboardBillRowControl: UIControl {
         isAccessibilityElement = true
         accessibilityTraits = .button
         addGestureRecognizer(UITapGestureRecognizer(target: self, action: #selector(handleActivation)))
-        backgroundColor = UIColor.white.withAlphaComponent(0.72)
-        layer.cornerRadius = 8
+        backgroundColor = Theme.surfaceElevated
+        layer.cornerRadius = Theme.Radius.small
         layer.borderWidth = 1
-        layer.borderColor = UIColor.black.withAlphaComponent(0.05).cgColor
+        layer.borderColor = Theme.separator.cgColor
 
         addSubview(stackView)
         stackView.addArrangedSubview(stageLabel)
@@ -588,8 +588,8 @@ private final class DashboardBillRowControl: UIControl {
 private final class HotBillCardControl: UIControl {
     var onActivate: (() -> Void)?
 
-    private let titleLabel = DashboardTextLabel(font: .systemFont(ofSize: 16, weight: .bold), color: Theme.textColor)
-    private let metadataLabel = DashboardTextLabel(font: .systemFont(ofSize: 12, weight: .medium), color: Theme.emptyLabelTextColor)
+    private let titleLabel = DashboardTextLabel(font: Theme.Font.cardTitle, color: Theme.textColor)
+    private let metadataLabel = DashboardTextLabel(font: Theme.Font.captionText, color: Theme.emptyLabelTextColor)
 
     private let reasonStackView: UIStackView = {
         let stackView = UIStackView()
@@ -620,8 +620,8 @@ private final class HotBillCardControl: UIControl {
         isAccessibilityElement = true
         accessibilityTraits = .button
         addGestureRecognizer(UITapGestureRecognizer(target: self, action: #selector(handleActivation)))
-        backgroundColor = UIColor.white.withAlphaComponent(0.82)
-        layer.cornerRadius = 8
+        backgroundColor = Theme.surfaceElevated
+        layer.cornerRadius = Theme.Radius.small
         layer.borderWidth = 1
         layer.borderColor = UIColor.systemBlue.withAlphaComponent(0.18).cgColor
 
@@ -681,9 +681,9 @@ private final class LawTimelineRowControl: UIControl {
     var onActivate: (() -> Void)?
 
     private let dateLabel = DashboardPillLabel()
-    private let titleLabel = DashboardTextLabel(font: .systemFont(ofSize: 15, weight: .semibold), color: Theme.textColor)
-    private let metadataLabel = DashboardTextLabel(font: .systemFont(ofSize: 12, weight: .medium), color: Theme.emptyLabelTextColor)
-    private let linkLabel = DashboardTextLabel(font: .systemFont(ofSize: 12, weight: .semibold), color: .systemBlue)
+    private let titleLabel = DashboardTextLabel(font: Theme.Font.rowTitle, color: Theme.textColor)
+    private let metadataLabel = DashboardTextLabel(font: Theme.Font.captionText, color: Theme.emptyLabelTextColor)
+    private let linkLabel = DashboardTextLabel(font: Theme.Font.smallStrong, color: .systemBlue)
 
     private let stackView: UIStackView = {
         let stackView = UIStackView()
@@ -706,10 +706,10 @@ private final class LawTimelineRowControl: UIControl {
         isAccessibilityElement = true
         accessibilityTraits = .button
         addGestureRecognizer(UITapGestureRecognizer(target: self, action: #selector(handleActivation)))
-        backgroundColor = UIColor.white.withAlphaComponent(0.72)
-        layer.cornerRadius = 8
+        backgroundColor = Theme.surfaceElevated
+        layer.cornerRadius = Theme.Radius.small
         layer.borderWidth = 1
-        layer.borderColor = UIColor.black.withAlphaComponent(0.05).cgColor
+        layer.borderColor = Theme.separator.cgColor
 
         addSubview(stackView)
         stackView.addArrangedSubview(dateLabel)
@@ -765,7 +765,7 @@ private final class DashboardPillLabel: UILabel {
         font = .systemFont(ofSize: fontSize, weight: .semibold)
         numberOfLines = 1
         textAlignment = .center
-        layer.cornerRadius = 7
+        layer.cornerRadius = Theme.Radius.small
         layer.masksToBounds = true
         setContentHuggingPriority(.required, for: .horizontal)
         setContentCompressionResistancePriority(.required, for: .horizontal)
@@ -799,12 +799,12 @@ private final class DashboardStatusBadgeLabel: UILabel {
 
     override init(frame: CGRect) {
         super.init(frame: frame)
-        font = .systemFont(ofSize: 10, weight: .semibold)
+        font = Theme.Font.tinyBadge
         textColor = .systemRed
         backgroundColor = UIColor.systemRed.withAlphaComponent(0.12)
         textAlignment = .center
         numberOfLines = 1
-        layer.cornerRadius = 7
+        layer.cornerRadius = Theme.Radius.small
         layer.masksToBounds = true
         setContentHuggingPriority(.required, for: .horizontal)
         setContentCompressionResistancePriority(.required, for: .horizontal)

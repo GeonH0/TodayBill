@@ -30,7 +30,7 @@ final class MainTabBarView: UIView {
     
     private let separatorView: UIView = {
         let separatorView = UIView()
-        separatorView.backgroundColor = UIColor.black.withAlphaComponent(0.08)
+        separatorView.backgroundColor = Theme.separator
         return separatorView
     }()
     

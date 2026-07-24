@@ -15,7 +15,7 @@ protocol ListViewCellDelegate: AnyObject {
 final class ListViewCell: UICollectionViewCell {
     private let titleLabel: UILabel = {
         let label = UILabel()
-        label.font = .boldSystemFont(ofSize: 16)
+        label.font = Theme.Font.cardTitle
         label.textColor = Theme.textColor
         label.numberOfLines = 0
         label.adjustsFontForContentSizeCategory = true
@@ -44,11 +44,11 @@ final class ListViewCell: UICollectionViewCell {
 
     private let stageLabel: UILabel = {
         let label = UILabel()
-        label.font = .systemFont(ofSize: 12, weight: .semibold)
+        label.font = Theme.Font.smallStrong
         label.textColor = .systemBlue
         label.backgroundColor = UIColor.systemBlue.withAlphaComponent(0.1)
         label.textAlignment = .center
-        label.layer.cornerRadius = 6
+        label.layer.cornerRadius = Theme.Radius.small
         label.layer.masksToBounds = true
         label.setContentHuggingPriority(.required, for: .horizontal)
         label.translatesAutoresizingMaskIntoConstraints = false
@@ -83,7 +83,7 @@ final class ListViewCell: UICollectionViewCell {
 
     private func setupUI() {
         contentView.backgroundColor = Theme.cellBackgroundColor
-        contentView.layer.cornerRadius = 8
+        contentView.layer.cornerRadius = Theme.Radius.small
         contentView.layer.masksToBounds = true
         addSubviews()
         setupConstraints()
@@ -161,7 +161,7 @@ final class ListViewCell: UICollectionViewCell {
 
     private static func makeMetadataLabel() -> UILabel {
         let label = UILabel()
-        label.font = .systemFont(ofSize: 12, weight: .medium)
+        label.font = Theme.Font.captionText
         label.textColor = Theme.emptyLabelTextColor
         label.numberOfLines = 1
         label.lineBreakMode = .byTruncatingTail

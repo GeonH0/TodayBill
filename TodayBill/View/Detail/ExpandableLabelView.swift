@@ -27,8 +27,8 @@ final class ExpandableLabelView: UIView {
         let lbl = UILabel()
         lbl.numberOfLines = 3
         lbl.translatesAutoresizingMaskIntoConstraints = false
-        lbl.font = UIFont.systemFont(ofSize: 16)
-        lbl.textColor = UIColor.darkText
+        lbl.font = Theme.Font.bodyText
+        lbl.textColor = Theme.textColor
         return lbl
     }()
     
