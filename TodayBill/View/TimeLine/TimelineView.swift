@@ -54,7 +54,7 @@ class TimelineView: UIView {
             
             if index < newSteps.count - 1 {
                 let divider = UIView()
-                divider.backgroundColor = .lightGray
+                divider.backgroundColor = Theme.separator
                 divider.translatesAutoresizingMaskIntoConstraints = false
                 divider.heightAnchor.constraint(equalToConstant: 1).isActive = true
                 stackView.addArrangedSubview(divider)

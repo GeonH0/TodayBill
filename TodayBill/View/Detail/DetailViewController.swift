@@ -10,19 +10,19 @@ import SafariServices
 
 final class DetailViewController: UIViewController {
 
-    private let detailBillService = DetailBillService()
-    private let htmlScraper = HTMLScraper()
     private let billID: String
     private let age: Int
     private let contentView = DetailView()
+    private lazy var viewModel = DetailViewModel(billID: billID, age: age)
         
-    private var currentBill: Row?
+    private var currentSnapshot: BillSnapshot?
     
     // MARK: - Initializer
     init(billID: String, age: Int) {
         self.billID = billID
         self.age = age
         super.init(nibName: nil, bundle: nil)
+        hidesBottomBarWhenPushed = true
     }
     
     required init?(coder: NSCoder) {
@@ -38,6 +38,7 @@ final class DetailViewController: UIViewController {
         view.backgroundColor = Theme.cellBackgroundColor
         contentView.delegate = self
         contentView.proposalReasonExpandableView.delegate = self
+        bindViewModel()
         fetchBillDetails()
     }
     
@@ -52,60 +53,38 @@ final class DetailViewController: UIViewController {
     }
     
     private func fetchBillDetails() {
-        detailBillService.fetchBills(ID: billID, age: age) { [weak self] result in
+        viewModel.load()
+    }
+
+    private func bindViewModel() {
+        viewModel.onStateChange = { [weak self] state in
             guard let self = self else { return }
-            DispatchQueue.main.async {
-                switch result {
-                case .success(let rows):
-                    if let billDetail = rows.first {
-                        self.currentBill = billDetail
-                        self.contentView.update(with: billDetail, proposalReason: "", keyContent: "")
-                        self.fetchAndDisplaySummaryContent(url: billDetail.DETAIL_LINK, bill: billDetail)
-                    } else {
-                        self.showError("해당 법안 정보를 찾을 수 없습니다.")
-                    }
-                case .failure:
-                    self.showError("법안 정보를 불러오는 데 실패했습니다.")
-                }
+
+            switch state {
+            case .idle:
+                break
+            case .loading(let message):
+                self.contentView.showLoading(message)
+            case .loaded(let snapshot):
+                self.currentSnapshot = snapshot
+                self.render(snapshot: snapshot)
+            case .empty(let message), .error(let message):
+                self.contentView.showError(message)
             }
         }
-    }
-    
-    private func fetchAndDisplaySummaryContent(url: String, bill: Row) {
-        htmlScraper.fetchSummaryContent(from: url) { [weak self] summaryText in
-            guard let self = self else { return }
-            if let text = summaryText {
-                                
-                let processedText = text.replacingOccurrences(
-                    of: "(?<=\\.)\\s+",
-                    with: "\n",
-                    options: .regularExpression
-                )
-                
-                // "주요 내용:"을 기준으로 제안 이유와 주요 내용을 분리
-                if let range = processedText.range(of: "주요내용") {
-                    let proposalReason = String(processedText[..<range.lowerBound])
-                        .trimmingCharacters(in: .whitespacesAndNewlines)
-                    let keyContent = String(processedText[range.upperBound...])
-                        .trimmingCharacters(in: .whitespacesAndNewlines)
-                    DispatchQueue.main.async {
-                        self.contentView.update(with: bill, proposalReason: proposalReason, keyContent: keyContent)
-                    }
-                } else {
-                    DispatchQueue.main.async {
-                        self.contentView.update(with: bill, proposalReason: processedText, keyContent: "내용 없음")
-                    }
-                }
-            } else {
-                print("스크래핑 실패")
-            }
+
+        viewModel.onSummaryUpdate = { [weak self] snapshot in
+            self?.currentSnapshot = snapshot
+            self?.render(snapshot: snapshot)
         }
     }
-    
-    private func showError(_ message: String) {
-        let alert = UIAlertController(title: "검색 실패", message: message, preferredStyle: .alert)
-        alert.addAction(UIAlertAction(title: "확인", style: .default))
-        present(alert, animated: true)
+
+    private func render(snapshot: BillSnapshot) {
+        contentView.update(
+            with: snapshot,
+            proposalReason: snapshot.summaryProposalReason,
+            keyContent: snapshot.summaryKeyContent
+        )
     }
     
     private func openSafariViewController(url: URL) {
@@ -120,10 +99,17 @@ extension DetailViewController: DetailViewDelegate {
     func backButtonTapped() {
         navigationController?.popViewController(animated: true)
     }
+
+    func favoriteButtonTapped() {
+        viewModel.toggleFavorite()
+    }
     
     func detailLinkButtonTapped(with url: URL) {
-        // 필요 시 SafariViewController 열기
-         openSafariViewController(url: url)
+        openSafariViewController(url: url)
+    }
+    
+    func retryButtonTapped() {
+        viewModel.retry()
     }
 }
 

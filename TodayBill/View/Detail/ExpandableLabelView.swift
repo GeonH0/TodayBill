@@ -14,12 +14,21 @@ protocol ExpandableLabelViewDelegate: AnyObject {
 }
 
 final class ExpandableLabelView: UIView {
+    private let stackView: UIStackView = {
+        let stack = UIStackView()
+        stack.axis = .vertical
+        stack.alignment = .fill
+        stack.spacing = 4
+        stack.translatesAutoresizingMaskIntoConstraints = false
+        return stack
+    }()
+    
     private let label: UILabel = {
         let lbl = UILabel()
         lbl.numberOfLines = 3
         lbl.translatesAutoresizingMaskIntoConstraints = false
-        lbl.font = UIFont.systemFont(ofSize: 16)
-        lbl.textColor = UIColor.darkText
+        lbl.font = Theme.Font.bodyText
+        lbl.textColor = Theme.textColor
         return lbl
     }()
     
@@ -34,6 +43,7 @@ final class ExpandableLabelView: UIView {
     weak var delegate: ExpandableLabelViewDelegate?
     
     private var isExpanded = false
+    private var textNeedsExpansion = false
     
     override init(frame: CGRect) {
         super.init(frame: frame)
@@ -46,21 +56,15 @@ final class ExpandableLabelView: UIView {
     }
     
     private func setupViews() {
-        addSubview(label)
-        addSubview(toggleButton)
-        
-        // label 제약조건
+        addSubview(stackView)
+        stackView.addArrangedSubview(label)
+        stackView.addArrangedSubview(toggleButton)
+
         NSLayoutConstraint.activate([
-            label.topAnchor.constraint(equalTo: topAnchor),
-            label.leadingAnchor.constraint(equalTo: leadingAnchor),
-            label.trailingAnchor.constraint(equalTo: trailingAnchor)
-        ])
-        
-        // toggleButton 제약조건 (label 바로 아래)
-        NSLayoutConstraint.activate([
-            toggleButton.topAnchor.constraint(equalTo: label.bottomAnchor, constant: 4),
-            toggleButton.leadingAnchor.constraint(equalTo: leadingAnchor),
-            toggleButton.bottomAnchor.constraint(equalTo: bottomAnchor)
+            stackView.topAnchor.constraint(equalTo: topAnchor),
+            stackView.leadingAnchor.constraint(equalTo: leadingAnchor),
+            stackView.trailingAnchor.constraint(equalTo: trailingAnchor),
+            stackView.bottomAnchor.constraint(equalTo: bottomAnchor)
         ])
         
         toggleButton.addAction(
@@ -71,9 +75,16 @@ final class ExpandableLabelView: UIView {
             ),
             for: .touchUpInside
         )
+        updateToggleVisibility()
+    }
+    
+    override func layoutSubviews() {
+        super.layoutSubviews()
+        updateToggleVisibility()
     }
     
     func toggleExpanded() {
+        guard textNeedsExpansion else { return }
         isExpanded.toggle()
         label.numberOfLines = isExpanded ? 0 : 3
         let title = isExpanded ? "접기" : "더 보기"
@@ -85,5 +96,29 @@ final class ExpandableLabelView: UIView {
     
     func configure(with text: String) {
         label.text = text
+        isExpanded = false
+        label.numberOfLines = 3
+        toggleButton.setTitle("더 보기", for: .normal)
+        setNeedsLayout()
+        layoutIfNeeded()
+        updateToggleVisibility()
+    }
+    
+    private func updateToggleVisibility() {
+        guard label.bounds.width > 0 else {
+            toggleButton.isHidden = true
+            return
+        }
+        
+        let originalNumberOfLines = label.numberOfLines
+        label.numberOfLines = 0
+        let fullSize = label.sizeThatFits(
+            CGSize(width: label.bounds.width, height: .greatestFiniteMagnitude)
+        )
+        label.numberOfLines = originalNumberOfLines
+        
+        let collapsedHeight = ceil(label.font.lineHeight * 3)
+        textNeedsExpansion = fullSize.height > collapsedHeight + 1
+        toggleButton.isHidden = !textNeedsExpansion
     }
 }
