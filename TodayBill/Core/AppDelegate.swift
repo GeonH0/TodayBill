@@ -49,12 +49,22 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     private func handleStageCheck(task: BGAppRefreshTask) {
         scheduleStageCheckIfNeeded()
 
+        let lock = NSLock()
+        var isFinished = false
+        func finish(success: Bool) {
+            lock.lock()
+            defer { lock.unlock() }
+            guard !isFinished else { return }
+            isFinished = true
+            task.setTaskCompleted(success: success)
+        }
+
         task.expirationHandler = {
-            task.setTaskCompleted(success: false)
+            finish(success: false)
         }
 
         StageChangeNotifier.run {
-            task.setTaskCompleted(success: true)
+            finish(success: true)
         }
     }
 
