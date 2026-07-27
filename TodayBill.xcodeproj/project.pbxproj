@@ -47,6 +47,8 @@
 		1DD96EEE2D4E6AF4005FD3AF /* TimelineItemView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1DD96EED2D4E6AF4005FD3AF /* TimelineItemView.swift */; };
 		1DDB23322DBBADE600490A1B /* BillEntity.xcdatamodeld in Sources */ = {isa = PBXBuildFile; fileRef = 1DDB23302DBBADE600490A1B /* BillEntity.xcdatamodeld */; };
 		1DE634B62D698574007716C8 /* Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1DE634B52D698574007716C8 /* Theme.swift */; };
+		634D012B8A6592A994EA3AE6 /* StageChangeNotifier.swift in Sources */ = {isa = PBXBuildFile; fileRef = 28D85FC115A3484901EA025E /* StageChangeNotifier.swift */; };
+		E921D2057F4A1D9CC250AABE /* StageChangeNotifierTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DAD0E70A0F78EA233046B9E /* StageChangeNotifierTests.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -92,6 +94,8 @@
 		1DD96EED2D4E6AF4005FD3AF /* TimelineItemView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TimelineItemView.swift; sourceTree = "<group>"; };
 		1DDB23312DBBADE600490A1B /* BillEntity.xcdatamodel */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcdatamodel; path = BillEntity.xcdatamodel; sourceTree = "<group>"; };
 		1DE634B52D698574007716C8 /* Theme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Theme.swift; sourceTree = "<group>"; };
+		28D85FC115A3484901EA025E /* StageChangeNotifier.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StageChangeNotifier.swift; sourceTree = "<group>"; };
+		6DAD0E70A0F78EA233046B9E /* StageChangeNotifierTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StageChangeNotifierTests.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -118,6 +122,7 @@
 			isa = PBXGroup;
 			children = (
 				A1B2C3D4E5F6012345678901 /* CoreDataManagerTests.swift */,
+				6DAD0E70A0F78EA233046B9E /* StageChangeNotifierTests.swift */,
 			);
 			path = TodayBillTests;
 			sourceTree = "<group>";
@@ -238,6 +243,7 @@
 				1D672B7F2D422E85000DD244 /* AppInitializer.swift */,
 				1D30EB182B0C3156006C1588 /* AppDelegate.swift */,
 				1D30EB1A2B0C3156006C1588 /* SceneDelegate.swift */,
+				28D85FC115A3484901EA025E /* StageChangeNotifier.swift */,
 			);
 			path = Core;
 			sourceTree = "<group>";
@@ -418,6 +424,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				A1B2C3D4E5F6012345678902 /* CoreDataManagerTests.swift in Sources */,
+				E921D2057F4A1D9CC250AABE /* StageChangeNotifierTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -459,6 +466,7 @@
 				1DE634B62D698574007716C8 /* Theme.swift in Sources */,
 				1D69B1A42D43501D00EB70F0 /* SearchViewController.swift in Sources */,
 				1D6476B92D45283B002A61B3 /* ListViewController.swift in Sources */,
+				634D012B8A6592A994EA3AE6 /* StageChangeNotifier.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
