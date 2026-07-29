@@ -70,7 +70,7 @@ final class MainTabBarViewController: UIViewController {
         tabBarHeightConstraint?.constant = tabBarContentHeight + view.safeAreaInsets.bottom
     }
     
-    private func selectTab(at index: Int) {
+    func selectTab(at index: Int) {
         guard index >= 0 && index < viewControllers.count else { return }
         
         let selectedViewController = viewControllers[index]

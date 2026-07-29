@@ -90,4 +90,23 @@ extension AppDelegate: UNUserNotificationCenterDelegate {
     ) {
         completionHandler([.banner, .sound])
     }
+
+    func userNotificationCenter(
+        _ center: UNUserNotificationCenter,
+        didReceive response: UNNotificationResponse,
+        withCompletionHandler completionHandler: @escaping () -> Void
+    ) {
+        if response.notification.request.identifier == StageChangeNotifier.notificationRequestIdentifier {
+            selectStarTab()
+        }
+        completionHandler()
+    }
+
+    private func selectStarTab() {
+        guard let windowScene = UIApplication.shared.connectedScenes.first(where: { $0.activationState == .foregroundActive }) as? UIWindowScene,
+              let tabBarController = windowScene.windows.first?.rootViewController as? MainTabBarViewController else {
+            return
+        }
+        tabBarController.selectTab(at: 2) // 추적 tab — see AppInitializer.swift:26-30
+    }
 }
