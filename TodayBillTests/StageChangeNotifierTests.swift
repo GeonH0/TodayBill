@@ -23,6 +23,14 @@ final class StageChangeNotifierTests: XCTestCase {
         XCTAssertTrue(result.isEmpty)
     }
 
+    func testBillsToNotifyExcludesNeverSeenBills() {
+        let neverSeen = makeSnapshot(id: "C1", committeeDate: "2025-02-01", lastSeenStageKey: nil)
+
+        let result = StageChangeNotifier.billsToNotify(from: [neverSeen], notifiedStageKeys: [:])
+
+        XCTAssertTrue(result.isEmpty)
+    }
+
     private func makeSnapshot(
         id: String,
         committeeDate: String,
