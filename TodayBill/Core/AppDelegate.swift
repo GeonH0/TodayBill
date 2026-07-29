@@ -21,6 +21,19 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
             self.handleStageCheck(task: task as! BGAppRefreshTask)
         }
         UNUserNotificationCenter.current().delegate = self
+
+        // Scene-based apps never receive `applicationDidEnterBackground(_:)`, but UIKit
+        // still posts `didEnterBackgroundNotification`, so schedule from there instead.
+        NotificationCenter.default.addObserver(
+            forName: UIApplication.didEnterBackgroundNotification,
+            object: nil,
+            queue: nil
+        ) { [weak self] _ in
+            self?.scheduleStageCheckIfNeeded()
+        }
+
+        scheduleStageCheckIfNeeded()
+        requestNotificationPermissionIfNeeded()
         return true
     }
 
@@ -44,6 +57,17 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         let request = BGAppRefreshTaskRequest(identifier: Self.stageCheckTaskIdentifier)
         request.earliestBeginDate = Date(timeIntervalSinceNow: 6 * 60 * 60)
         try? BGTaskScheduler.shared.submit(request)
+    }
+
+    /// Covers users who already had favorites before this feature shipped — the
+    /// first-favorite prompt in `BillsRepository.toggleFavorite` only fires on a 0→1 transition.
+    private func requestNotificationPermissionIfNeeded() {
+        guard !CoreDataManager.shared.fetchFavoriteSnapshots().isEmpty else { return }
+
+        UNUserNotificationCenter.current().getNotificationSettings { settings in
+            guard settings.authorizationStatus == .notDetermined else { return }
+            UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .badge, .sound]) { _, _ in }
+        }
     }
 
     private func handleStageCheck(task: BGAppRefreshTask) {
@@ -103,10 +127,13 @@ extension AppDelegate: UNUserNotificationCenterDelegate {
     }
 
     private func selectStarTab() {
-        guard let windowScene = UIApplication.shared.connectedScenes.first(where: { $0.activationState == .foregroundActive }) as? UIWindowScene,
-              let tabBarController = windowScene.windows.first?.rootViewController as? MainTabBarViewController else {
-            return
-        }
-        tabBarController.selectTab(at: 2) // 추적 tab — see AppInitializer.swift:26-30
+        // Tapping a digest is a cold-launch/resume path, so the scene may still be
+        // `.foregroundInactive` here — look the tab bar up without depending on activation state.
+        let tabBarController = UIApplication.shared.connectedScenes
+            .compactMap { $0 as? UIWindowScene }
+            .flatMap { $0.windows }
+            .compactMap { $0.rootViewController as? MainTabBarViewController }
+            .first
+        tabBarController?.selectTab(at: 2) // 추적 tab — see AppInitializer.swift:26-30
     }
 }
