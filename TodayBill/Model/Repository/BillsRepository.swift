@@ -6,6 +6,7 @@
 //
 
 import Foundation
+import UserNotifications
 
 enum BillsRepositoryError: Error {
     case dateConversionFailed
@@ -240,8 +241,12 @@ final class BillRepository: BillRepositoryProtocol {
 
         if snapshot.isFavorite {
             StarBillManager.shared.addBillToStarred(snapshot.toStarredBill())
+            if coreDataManager.fetchFavoriteSnapshots().count == 1 {
+                UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .badge, .sound]) { _, _ in }
+            }
         } else {
             StarBillManager.shared.removeBillFromStarred(by: id)
+            StageChangeNotifier.clearNotified(billID: id)
         }
         completion(.success(snapshot))
     }
