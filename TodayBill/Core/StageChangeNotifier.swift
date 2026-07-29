@@ -37,17 +37,26 @@ enum StageChangeNotifier {
                 return
             }
 
-            center.add(UNNotificationRequest(
-                identifier: notificationRequestIdentifier,
-                content: makeContent(for: toNotify),
-                trigger: nil
-            ))
+            // Only mark a change as announced if it can actually be delivered — otherwise an
+            // unauthorized user would silently lose the change even after enabling notifications.
+            center.getNotificationSettings { settings in
+                guard settings.authorizationStatus == .authorized else {
+                    completion()
+                    return
+                }
 
-            var updatedKeys = notifiedKeys
-            toNotify.forEach { updatedKeys[$0.billID] = $0.stageKey }
-            defaults.set(updatedKeys, forKey: notifiedStageKeysDefaultsKey)
+                center.add(UNNotificationRequest(
+                    identifier: notificationRequestIdentifier,
+                    content: makeContent(for: toNotify),
+                    trigger: nil
+                ))
 
-            completion()
+                var updatedKeys = notifiedKeys
+                toNotify.forEach { updatedKeys[$0.billID] = $0.stageKey }
+                defaults.set(updatedKeys, forKey: notifiedStageKeysDefaultsKey)
+
+                completion()
+            }
         }
     }
 
