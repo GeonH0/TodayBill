@@ -32,5 +32,13 @@
 	<string>7e233d4fbea04f17b0e3218ccb604750</string>
 	<key>LawInfoServiceKey</key>
 	<string>$(LAW_INFO_API_KEY)</string>
+	<key>BGTaskSchedulerPermittedIdentifiers</key>
+	<array>
+		<string>Test.TodayBill.stagecheck</string>
+	</array>
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>fetch</string>
+	</array>
 </dict>
 </plist>
