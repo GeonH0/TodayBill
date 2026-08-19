@@ -102,6 +102,66 @@ struct FavoriteInfo: Codable {
     var isFavorite: Bool
 }
 
+struct BillVoteSummary: Codable, Equatable {
+    let billID: String
+    let processedDate: String?
+    let result: String?
+    let memberTotalCount: Int
+    let voteTotalCount: Int
+    let yesCount: Int
+    let noCount: Int
+    let blankCount: Int
+
+    var absentCount: Int {
+        max(memberTotalCount - voteTotalCount, 0)
+    }
+
+    var hasVotes: Bool {
+        voteTotalCount > 0
+    }
+}
+
+struct BillVoteResponse: Codable {
+    let ncocpgfiaoituanbr: [BillVoteResponseSection]
+}
+
+struct BillVoteResponseSection: Codable {
+    let head: [Head]?
+    let row: [BillVoteRow]?
+}
+
+struct BillVoteRow: Codable {
+    let BILL_ID: String
+    let PROC_DT: String?
+    let PROC_RESULT_CD: String?
+    let MEMBER_TCNT: String?
+    let VOTE_TCNT: String?
+    let YES_TCNT: String?
+    let NO_TCNT: String?
+    let BLANK_TCNT: String?
+
+    var summary: BillVoteSummary {
+        BillVoteSummary(
+            billID: BILL_ID,
+            processedDate: BillSnapshot.nonEmpty(PROC_DT),
+            result: BillSnapshot.nonEmpty(PROC_RESULT_CD),
+            memberTotalCount: Self.intValue(MEMBER_TCNT),
+            voteTotalCount: Self.intValue(VOTE_TCNT),
+            yesCount: Self.intValue(YES_TCNT),
+            noCount: Self.intValue(NO_TCNT),
+            blankCount: Self.intValue(BLANK_TCNT)
+        )
+    }
+
+    private static func intValue(_ value: String?) -> Int {
+        guard let value else { return 0 }
+        let digitsOnly = value
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .filter { $0.isNumber }
+        return Int(String(digitsOnly)) ?? 0
+    }
+}
+
 extension Row {
     func toBillEntity(context: NSManagedObjectContext) -> BillEntity {
         let entity = BillEntity(context: context)

@@ -77,6 +77,10 @@ final class DetailViewController: UIViewController {
             self?.currentSnapshot = snapshot
             self?.render(snapshot: snapshot)
         }
+
+        viewModel.onVoteSummaryUpdate = { [weak self] summary in
+            self?.contentView.updateVoteSummary(summary)
+        }
     }
 
     private func render(snapshot: BillSnapshot) {
