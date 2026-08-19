@@ -12,21 +12,21 @@ struct Theme {
 
     static let backgroundColor = UIColor(dynamicProvider: { trait in
         trait.userInterfaceStyle == .dark
-            ? UIColor(red: 0.11, green: 0.09, blue: 0.07, alpha: 1)
-            : UIColor(red: 0.98, green: 0.96, blue: 0.91, alpha: 1)
+            ? UIColor(red: 0.06, green: 0.07, blue: 0.09, alpha: 1)
+            : UIColor(red: 0.94, green: 0.95, blue: 0.97, alpha: 1)
     })
 
     static let cellBackgroundColor = UIColor(dynamicProvider: { trait in
         trait.userInterfaceStyle == .dark
-            ? UIColor(red: 0.17, green: 0.14, blue: 0.10, alpha: 1)
-            : UIColor(red: 0.95, green: 0.93, blue: 0.88, alpha: 1)
+            ? UIColor(red: 0.11, green: 0.12, blue: 0.15, alpha: 1)
+            : UIColor.white
     })
 
     /// Surface for translucent-white dashboard cards; brighter than cellBackgroundColor so cards read as "elevated" in dark mode.
     static let surfaceElevated = UIColor(dynamicProvider: { trait in
         trait.userInterfaceStyle == .dark
-            ? UIColor(red: 0.23, green: 0.19, blue: 0.15, alpha: 1)
-            : UIColor(red: 1.0, green: 0.99, blue: 0.96, alpha: 1)
+            ? UIColor(red: 0.15, green: 0.16, blue: 0.20, alpha: 1)
+            : UIColor.white
     })
 
     static let separator = UIColor(dynamicProvider: { trait in
@@ -37,14 +37,14 @@ struct Theme {
 
     static let textColor = UIColor(dynamicProvider: { trait in
         trait.userInterfaceStyle == .dark
-            ? UIColor(red: 0.93, green: 0.90, blue: 0.85, alpha: 1)
-            : UIColor.darkText
+            ? UIColor(red: 0.94, green: 0.95, blue: 0.97, alpha: 1)
+            : UIColor(red: 0.07, green: 0.09, blue: 0.13, alpha: 1)
     })
 
     static let emptyLabelTextColor = UIColor(dynamicProvider: { trait in
         trait.userInterfaceStyle == .dark
-            ? UIColor(red: 0.65, green: 0.60, blue: 0.53, alpha: 1)
-            : UIColor.gray
+            ? UIColor(red: 0.62, green: 0.66, blue: 0.73, alpha: 1)
+            : UIColor(red: 0.49, green: 0.54, blue: 0.62, alpha: 1)
     })
 
     /// Named font roles standing in for the ad hoc ofSize literals that used to be scattered across the views.
@@ -76,6 +76,6 @@ struct Theme {
     /// at their call site instead (e.g. height / 2) - those aren't inconsistencies, just a different shape.
     struct Radius {
         static let small: CGFloat = 8
-        static let medium: CGFloat = 12
+        static let medium: CGFloat = 16
     }
 }
