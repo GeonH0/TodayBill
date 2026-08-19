@@ -504,6 +504,10 @@ private final class MockBillRepository: BillRepositoryProtocol {
         completion(.failure(BillsRepositoryError.missingSnapshot))
     }
 
+    func fetchVoteSummary(billID: String, age: Int, completion: @escaping (Result<BillVoteSummary?, Error>) -> Void) {
+        completion(.success(nil))
+    }
+
     func cachedSnapshot(id: String) -> BillSnapshot? {
         nil
     }

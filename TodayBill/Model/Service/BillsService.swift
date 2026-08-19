@@ -121,6 +121,78 @@ final class OpenAssemblyAPIClient {
     }
 }
 
+final class OpenAssemblyVoteAPIClient {
+    static let shared = OpenAssemblyVoteAPIClient()
+
+    private let baseURL = "https://open.assembly.go.kr/portal/openapi/ncocpgfiaoituanbr"
+    private let session: URLSession
+
+    init(session: URLSession = .shared) {
+        self.session = session
+    }
+
+    func fetchVoteSummary(
+        billID: String,
+        age: Int,
+        completion: @escaping (Result<BillVoteSummary?, Error>) -> Void
+    ) {
+        guard var urlComponents = URLComponents(string: baseURL) else {
+            completion(.failure(OpenAssemblyAPIClientError.invalidURL))
+            return
+        }
+
+        guard let apiKey = Bundle.main.object(forInfoDictionaryKey: "serviceKey") as? String else {
+            completion(.failure(OpenAssemblyAPIClientError.missingAPIKey))
+            return
+        }
+
+        urlComponents.queryItems = [
+            URLQueryItem(name: "Key", value: apiKey),
+            URLQueryItem(name: "Type", value: "json"),
+            URLQueryItem(name: "pIndex", value: "1"),
+            URLQueryItem(name: "pSize", value: "1"),
+            URLQueryItem(name: "AGE", value: "\(age)"),
+            URLQueryItem(name: "BILL_ID", value: billID)
+        ]
+
+        guard let url = urlComponents.url else {
+            completion(.failure(OpenAssemblyAPIClientError.invalidURL))
+            return
+        }
+
+        var request = URLRequest(url: url)
+        request.httpMethod = "GET"
+        request.setValue(OpenAssemblyAPIClient.userAgent, forHTTPHeaderField: "User-Agent")
+        request.setValue("ko-KR,ko;q=0.9,en-US;q=0.8", forHTTPHeaderField: "Accept-Language")
+        request.setValue("application/json, text/plain, */*", forHTTPHeaderField: "Accept")
+
+        session.dataTask(with: request) { data, response, error in
+            if let error {
+                completion(.failure(error))
+                return
+            }
+
+            guard let response = response as? HTTPURLResponse, (200...299).contains(response.statusCode),
+                  let data else {
+                completion(.failure(OpenAssemblyAPIClientError.invalidResponse))
+                return
+            }
+
+            do {
+                let decodedResponse = try JSONDecoder().decode(BillVoteResponse.self, from: data)
+                let summary = decodedResponse.ncocpgfiaoituanbr
+                    .compactMap { $0.row }
+                    .flatMap { $0 }
+                    .first?
+                    .summary
+                completion(.success(summary))
+            } catch {
+                completion(.failure(error))
+            }
+        }.resume()
+    }
+}
+
 enum LawInfoAPIClientError: LocalizedError {
     case missingAPIKey
     case invalidURL

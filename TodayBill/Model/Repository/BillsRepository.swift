@@ -25,6 +25,7 @@ protocol BillRepositoryProtocol {
     func refreshFavoriteSnapshots(completion: @escaping (Result<[BillSnapshot], Error>) -> Void)
     func markStageSeen(id: String)
     func fetchSummary(for snapshot: BillSnapshot, completion: @escaping (Result<BillSnapshot, Error>) -> Void)
+    func fetchVoteSummary(billID: String, age: Int, completion: @escaping (Result<BillVoteSummary?, Error>) -> Void)
     func cachedSnapshot(id: String) -> BillSnapshot?
 }
 
@@ -55,6 +56,7 @@ final class BillRepository: BillRepositoryProtocol {
     static let shared = BillRepository()
 
     private let apiClient: OpenAssemblyAPIClient
+    private let voteAPIClient: OpenAssemblyVoteAPIClient
     private let summaryClient: AssemblySummaryClient
     private let lawInfoClient: LawInfoAPIClient
     private let coreDataManager: CoreDataManager
@@ -62,12 +64,14 @@ final class BillRepository: BillRepositoryProtocol {
 
     init(
         apiClient: OpenAssemblyAPIClient = .shared,
+        voteAPIClient: OpenAssemblyVoteAPIClient = .shared,
         summaryClient: AssemblySummaryClient = AssemblySummaryClient(),
         lawInfoClient: LawInfoAPIClient = .shared,
         coreDataManager: CoreDataManager = .shared,
         dashboardCache: HomeDashboardCache = HomeDashboardCache()
     ) {
         self.apiClient = apiClient
+        self.voteAPIClient = voteAPIClient
         self.summaryClient = summaryClient
         self.lawInfoClient = lawInfoClient
         self.coreDataManager = coreDataManager
@@ -309,6 +313,14 @@ final class BillRepository: BillRepositoryProtocol {
                 completion(.failure(error))
             }
         }
+    }
+
+    func fetchVoteSummary(
+        billID: String,
+        age: Int,
+        completion: @escaping (Result<BillVoteSummary?, Error>) -> Void
+    ) {
+        voteAPIClient.fetchVoteSummary(billID: billID, age: age, completion: completion)
     }
 
     func cachedSnapshot(id: String) -> BillSnapshot? {
@@ -565,6 +577,7 @@ final class DetailViewModel {
     private var currentSnapshot: BillSnapshot?
     var onStateChange: ((ViewState<BillSnapshot>) -> Void)?
     var onSummaryUpdate: ((BillSnapshot) -> Void)?
+    var onVoteSummaryUpdate: ((BillVoteSummary?) -> Void)?
 
     init(billID: String, age: Int, repository: BillRepositoryProtocol = BillRepository.shared) {
         self.billID = billID
@@ -591,6 +604,7 @@ final class DetailViewModel {
                     self.currentSnapshot = visibleSnapshot
                     self.onStateChange?(.loaded(visibleSnapshot))
                     self.refreshSummaryIfNeeded(snapshot: visibleSnapshot)
+                    self.refreshVoteSummary(snapshot: visibleSnapshot)
                 case .failure:
                     self.onStateChange?(.error("법안 정보를 불러오는 데 실패했습니다."))
                 }
@@ -635,6 +649,20 @@ final class DetailViewModel {
                 if case let .success(updated) = result {
                     self.currentSnapshot = updated
                     self.onSummaryUpdate?(updated)
+                }
+            }
+        }
+    }
+
+    private func refreshVoteSummary(snapshot: BillSnapshot) {
+        repository.fetchVoteSummary(billID: snapshot.billID, age: snapshot.age) { [weak self] result in
+            guard let self = self else { return }
+            DispatchQueue.main.async {
+                switch result {
+                case .success(let summary):
+                    self.onVoteSummaryUpdate?(summary)
+                case .failure:
+                    self.onVoteSummaryUpdate?(nil)
                 }
             }
         }

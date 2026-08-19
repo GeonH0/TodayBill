@@ -177,6 +177,8 @@ final class DetailView: UIView {
         return view
     }()
 
+    private let voteSummaryView = DetailVoteSummaryView()
+
     private let proposalReasonTitleLabel = DetailView.makeSectionTitleLabel(text: "제안 이유")
 
     var proposalReasonExpandableView: ExpandableLabelView = {
@@ -263,6 +265,9 @@ final class DetailView: UIView {
         timelineStack.spacing = 10
         mainStackView.addArrangedSubview(timelineStack)
 
+        voteSummaryView.isHidden = true
+        mainStackView.addArrangedSubview(voteSummaryView)
+
         let proposalReasonStack = UIStackView(arrangedSubviews: [proposalReasonTitleLabel, proposalReasonExpandableView])
         proposalReasonStack.axis = .vertical
         proposalReasonStack.spacing = 10
@@ -348,6 +353,16 @@ final class DetailView: UIView {
         keyContentLabel.attributedText = makeBodyText(from: keyText, isPlaceholder: keyText == "요약 준비 중")
 
         configureDetailLink(url: validatedDetailURL(from: snapshot.detailLink))
+    }
+
+    func updateVoteSummary(_ summary: BillVoteSummary?) {
+        guard let summary, summary.hasVotes else {
+            voteSummaryView.isHidden = true
+            return
+        }
+
+        voteSummaryView.isHidden = false
+        voteSummaryView.configure(with: summary)
     }
 
     func showLoading(_ message: String) {
@@ -495,6 +510,171 @@ final class DetailView: UIView {
         label.textColor = Theme.textColor
         label.numberOfLines = 1
         return label
+    }
+}
+
+private final class DetailVoteSummaryView: UIView {
+    private let titleLabel: UILabel = {
+        let label = UILabel()
+        label.text = "본회의 표결 결과"
+        label.font = Theme.Font.sectionTitle
+        label.textColor = Theme.textColor
+        label.numberOfLines = 1
+        return label
+    }()
+
+    private let resultLabel: UILabel = {
+        let label = UILabel()
+        label.font = Theme.Font.metaTextStrong
+        label.textColor = .systemGreen
+        return label
+    }()
+
+    private let countLabel: UILabel = {
+        let label = UILabel()
+        label.font = Theme.Font.heroTitle
+        label.textColor = Theme.textColor
+        return label
+    }()
+
+    private let metaLabel: UILabel = {
+        let label = UILabel()
+        label.font = Theme.Font.metaText
+        label.textColor = Theme.emptyLabelTextColor
+        label.numberOfLines = 1
+        return label
+    }()
+
+    private let barsStackView: UIStackView = {
+        let stack = UIStackView()
+        stack.axis = .vertical
+        stack.spacing = 8
+        return stack
+    }()
+
+    private let yesRow = VoteCountRow(title: "찬성", color: .systemGreen)
+    private let noRow = VoteCountRow(title: "반대", color: .systemRed)
+    private let blankRow = VoteCountRow(title: "기권", color: .systemGray)
+    private let absentRow = VoteCountRow(title: "불참", color: .systemGray3)
+
+    private let contentStackView: UIStackView = {
+        let stack = UIStackView()
+        stack.axis = .vertical
+        stack.spacing = 12
+        stack.translatesAutoresizingMaskIntoConstraints = false
+        return stack
+    }()
+
+    override init(frame: CGRect) {
+        super.init(frame: frame)
+        setupView()
+    }
+
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
+
+    private func setupView() {
+        backgroundColor = Theme.cellBackgroundColor
+        layer.cornerRadius = Theme.Radius.medium
+        layer.masksToBounds = true
+
+        addSubview(contentStackView)
+
+        let headerStack = UIStackView(arrangedSubviews: [titleLabel, resultLabel])
+        headerStack.axis = .horizontal
+        headerStack.alignment = .firstBaseline
+        headerStack.spacing = 8
+
+        barsStackView.addArrangedSubview(yesRow)
+        barsStackView.addArrangedSubview(noRow)
+        barsStackView.addArrangedSubview(blankRow)
+        barsStackView.addArrangedSubview(absentRow)
+
+        contentStackView.addArrangedSubview(headerStack)
+        contentStackView.addArrangedSubview(countLabel)
+        contentStackView.addArrangedSubview(metaLabel)
+        contentStackView.addArrangedSubview(barsStackView)
+
+        NSLayoutConstraint.activate([
+            contentStackView.topAnchor.constraint(equalTo: topAnchor, constant: 16),
+            contentStackView.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 16),
+            contentStackView.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -16),
+            contentStackView.bottomAnchor.constraint(equalTo: bottomAnchor, constant: -16)
+        ])
+    }
+
+    func configure(with summary: BillVoteSummary) {
+        resultLabel.text = summary.result
+        resultLabel.isHidden = BillSnapshot.nonEmpty(summary.result) == nil
+        countLabel.text = "\(summary.yesCount)"
+
+        let dateText = BillSnapshot.nonEmpty(summary.processedDate)
+            .map { " · \($0)" } ?? ""
+        metaLabel.text = "재적 \(summary.memberTotalCount)명 · 투표 \(summary.voteTotalCount)명\(dateText)"
+
+        let denominator = max(summary.memberTotalCount, summary.voteTotalCount, 1)
+        yesRow.configure(count: summary.yesCount, denominator: denominator)
+        noRow.configure(count: summary.noCount, denominator: denominator)
+        blankRow.configure(count: summary.blankCount, denominator: denominator)
+        absentRow.configure(count: summary.absentCount, denominator: denominator)
+    }
+}
+
+private final class VoteCountRow: UIView {
+    private let titleLabel: UILabel = {
+        let label = UILabel()
+        label.font = Theme.Font.metaText
+        label.textColor = Theme.emptyLabelTextColor
+        return label
+    }()
+
+    private let countLabel: UILabel = {
+        let label = UILabel()
+        label.font = Theme.Font.metaTextStrong
+        label.textColor = Theme.textColor
+        label.textAlignment = .right
+        return label
+    }()
+
+    private let progressView = UIProgressView(progressViewStyle: .bar)
+
+    init(title: String, color: UIColor) {
+        super.init(frame: .zero)
+        titleLabel.text = title
+        progressView.progressTintColor = color
+        progressView.trackTintColor = Theme.separator
+        setupView()
+    }
+
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
+
+    private func setupView() {
+        let labelStack = UIStackView(arrangedSubviews: [titleLabel, countLabel])
+        labelStack.axis = .horizontal
+        labelStack.spacing = 8
+
+        let stack = UIStackView(arrangedSubviews: [labelStack, progressView])
+        stack.axis = .vertical
+        stack.spacing = 5
+        stack.translatesAutoresizingMaskIntoConstraints = false
+
+        addSubview(stack)
+
+        NSLayoutConstraint.activate([
+            stack.topAnchor.constraint(equalTo: topAnchor),
+            stack.leadingAnchor.constraint(equalTo: leadingAnchor),
+            stack.trailingAnchor.constraint(equalTo: trailingAnchor),
+            stack.bottomAnchor.constraint(equalTo: bottomAnchor),
+            progressView.heightAnchor.constraint(equalToConstant: 4)
+        ])
+    }
+
+    func configure(count: Int, denominator: Int) {
+        countLabel.text = "\(count)"
+        progressView.setProgress(Float(count) / Float(max(denominator, 1)), animated: false)
     }
 }
 
