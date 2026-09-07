@@ -18,7 +18,7 @@ final class DetailView: UIView {
 
     private let stickyHeaderView: UIView = {
         let view = UIView()
-        view.backgroundColor = Theme.cellBackgroundColor
+        view.backgroundColor = Theme.backgroundColor
         view.translatesAutoresizingMaskIntoConstraints = false
         return view
     }()
@@ -78,7 +78,7 @@ final class DetailView: UIView {
     private let mainStackView: UIStackView = {
         let stack = UIStackView()
         stack.axis = .vertical
-        stack.spacing = 24
+        stack.spacing = 16
         stack.translatesAutoresizingMaskIntoConstraints = false
         return stack
     }()
@@ -135,7 +135,7 @@ final class DetailView: UIView {
 
     private let bodyTitleLabel: UILabel = {
         let label = UILabel()
-        label.font = Theme.Font.pageTitle
+        label.font = UIFont.systemFont(ofSize: 24, weight: .bold)
         label.textColor = Theme.textColor
         label.numberOfLines = 0
         label.lineBreakMode = .byWordWrapping
@@ -246,14 +246,8 @@ final class DetailView: UIView {
         stageRow.axis = .horizontal
         stageRow.alignment = .leading
 
-        metadataStackView.addArrangedSubview(proposedDateRow)
-        metadataStackView.addArrangedSubview(committeeRow)
-        metadataStackView.addArrangedSubview(proposerRow)
-        metadataStackView.addArrangedSubview(cosponsorRow)
-
         coreHeaderStack.addArrangedSubview(stageRow)
         coreHeaderStack.addArrangedSubview(bodyTitleLabel)
-        coreHeaderStack.addArrangedSubview(metadataStackView)
         mainStackView.addArrangedSubview(coreHeaderStack)
 
         insightSectionStack.addArrangedSubview(DetailView.makeSectionTitleLabel(text: "주목 포인트"))
@@ -263,20 +257,27 @@ final class DetailView: UIView {
         let timelineStack = UIStackView(arrangedSubviews: [timelineTitleLabel, timelineView])
         timelineStack.axis = .vertical
         timelineStack.spacing = 10
-        mainStackView.addArrangedSubview(timelineStack)
+        mainStackView.addArrangedSubview(DetailCardView(contentView: timelineStack))
 
         voteSummaryView.isHidden = true
-        mainStackView.addArrangedSubview(voteSummaryView)
 
         let proposalReasonStack = UIStackView(arrangedSubviews: [proposalReasonTitleLabel, proposalReasonExpandableView])
         proposalReasonStack.axis = .vertical
         proposalReasonStack.spacing = 10
-        mainStackView.addArrangedSubview(proposalReasonStack)
+        mainStackView.addArrangedSubview(DetailCardView(contentView: proposalReasonStack))
+
+        mainStackView.addArrangedSubview(voteSummaryView)
+
+        metadataStackView.addArrangedSubview(proposedDateRow)
+        metadataStackView.addArrangedSubview(committeeRow)
+        metadataStackView.addArrangedSubview(proposerRow)
+        metadataStackView.addArrangedSubview(cosponsorRow)
+        mainStackView.addArrangedSubview(DetailCardView(contentView: metadataStackView))
 
         let keyContentStack = UIStackView(arrangedSubviews: [keyContentTitleLabel, keyContentLabel])
         keyContentStack.axis = .vertical
         keyContentStack.spacing = 10
-        mainStackView.addArrangedSubview(keyContentStack)
+        mainStackView.addArrangedSubview(DetailCardView(contentView: keyContentStack))
 
         mainStackView.addArrangedSubview(detailLinkButton)
     }
@@ -313,9 +314,9 @@ final class DetailView: UIView {
             containerView.bottomAnchor.constraint(equalTo: scrollView.contentLayoutGuide.bottomAnchor),
             containerView.widthAnchor.constraint(equalTo: scrollView.frameLayoutGuide.widthAnchor),
 
-            mainStackView.topAnchor.constraint(equalTo: containerView.topAnchor, constant: 20),
-            mainStackView.leadingAnchor.constraint(equalTo: containerView.leadingAnchor, constant: 16),
-            mainStackView.trailingAnchor.constraint(equalTo: containerView.trailingAnchor, constant: -16),
+            mainStackView.topAnchor.constraint(equalTo: containerView.topAnchor, constant: 18),
+            mainStackView.leadingAnchor.constraint(equalTo: containerView.leadingAnchor, constant: 18),
+            mainStackView.trailingAnchor.constraint(equalTo: containerView.trailingAnchor, constant: -18),
             mainStackView.bottomAnchor.constraint(equalTo: containerView.bottomAnchor, constant: -24),
 
             detailLinkButton.heightAnchor.constraint(equalToConstant: 48),
@@ -432,14 +433,17 @@ final class DetailView: UIView {
         detailLinkURL = url
 
         var config = UIButton.Configuration.filled()
-        config.title = url == nil ? "원문 링크 없음" : "국회 원문 보기"
-        config.image = UIImage(systemName: url == nil ? "link.slash" : "safari")
-        config.imagePadding = 8
+        config.title = url == nil ? "원문 링크 없음" : "원문 보기"
         config.cornerStyle = .fixed
-        config.background.cornerRadius = Theme.Radius.small
+        config.background.cornerRadius = Theme.Radius.medium
         config.contentInsets = NSDirectionalEdgeInsets(top: 0, leading: 16, bottom: 0, trailing: 16)
         config.baseBackgroundColor = url == nil ? UIColor.systemGray5 : UIColor.systemBlue
         config.baseForegroundColor = url == nil ? Theme.emptyLabelTextColor : .white
+        config.titleTextAttributesTransformer = UIConfigurationTextAttributesTransformer { incoming in
+            var outgoing = incoming
+            outgoing.font = UIFont.systemFont(ofSize: 17, weight: .bold)
+            return outgoing
+        }
 
         detailLinkButton.configuration = config
         detailLinkButton.isEnabled = url != nil
@@ -513,6 +517,28 @@ final class DetailView: UIView {
     }
 }
 
+private final class DetailCardView: UIView {
+    init(contentView: UIView) {
+        super.init(frame: .zero)
+        backgroundColor = Theme.surfaceElevated
+        layer.cornerRadius = Theme.Radius.medium
+        layer.masksToBounds = true
+        addSubview(contentView)
+        contentView.translatesAutoresizingMaskIntoConstraints = false
+
+        NSLayoutConstraint.activate([
+            contentView.topAnchor.constraint(equalTo: topAnchor, constant: 16),
+            contentView.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 16),
+            contentView.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -16),
+            contentView.bottomAnchor.constraint(equalTo: bottomAnchor, constant: -16)
+        ])
+    }
+
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
+}
+
 private final class DetailVoteSummaryView: UIView {
     private let titleLabel: UILabel = {
         let label = UILabel()
@@ -532,8 +558,15 @@ private final class DetailVoteSummaryView: UIView {
 
     private let countLabel: UILabel = {
         let label = UILabel()
-        label.font = Theme.Font.heroTitle
+        label.font = UIFont.systemFont(ofSize: 30, weight: .bold)
         label.textColor = Theme.textColor
+        return label
+    }()
+
+    private let countSuffixLabel: UILabel = {
+        let label = UILabel()
+        label.font = Theme.Font.metaText
+        label.textColor = Theme.emptyLabelTextColor
         return label
     }()
 
@@ -575,7 +608,7 @@ private final class DetailVoteSummaryView: UIView {
     }
 
     private func setupView() {
-        backgroundColor = Theme.cellBackgroundColor
+        backgroundColor = Theme.surfaceElevated
         layer.cornerRadius = Theme.Radius.medium
         layer.masksToBounds = true
 
@@ -591,8 +624,13 @@ private final class DetailVoteSummaryView: UIView {
         barsStackView.addArrangedSubview(blankRow)
         barsStackView.addArrangedSubview(absentRow)
 
+        let countStack = UIStackView(arrangedSubviews: [countLabel, countSuffixLabel, UIView()])
+        countStack.axis = .horizontal
+        countStack.alignment = .lastBaseline
+        countStack.spacing = 6
+
         contentStackView.addArrangedSubview(headerStack)
-        contentStackView.addArrangedSubview(countLabel)
+        contentStackView.addArrangedSubview(countStack)
         contentStackView.addArrangedSubview(metaLabel)
         contentStackView.addArrangedSubview(barsStackView)
 
@@ -608,10 +646,11 @@ private final class DetailVoteSummaryView: UIView {
         resultLabel.text = summary.result
         resultLabel.isHidden = BillSnapshot.nonEmpty(summary.result) == nil
         countLabel.text = "\(summary.yesCount)"
+        countSuffixLabel.text = "/ 재적 \(summary.memberTotalCount)"
 
         let dateText = BillSnapshot.nonEmpty(summary.processedDate)
             .map { " · \($0)" } ?? ""
-        metaLabel.text = "재적 \(summary.memberTotalCount)명 · 투표 \(summary.voteTotalCount)명\(dateText)"
+        metaLabel.text = "총투표 \(summary.voteTotalCount)명\(dateText)"
 
         let denominator = max(summary.memberTotalCount, summary.voteTotalCount, 1)
         yesRow.configure(count: summary.yesCount, denominator: denominator)
