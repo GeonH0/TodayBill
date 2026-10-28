@@ -27,26 +27,6 @@ final class CalendarView: UIView {
         return stackView
     }()
 
-    private static func makeColumn() -> UIStackView {
-        let stackView = UIStackView()
-        stackView.axis = .vertical
-        stackView.spacing = Theme.Spacing.section
-        return stackView
-    }
-
-    /// The dashboard, and everything dated, sit in their own columns. Stacked
-    /// vertically they read in the original order, so the narrow layout is
-    /// unchanged; side by side they fill a wide screen instead of stretching.
-    private let primaryColumnView = makeColumn()
-    private let secondaryColumnView = makeColumn()
-
-    private let columnsStackView: UIStackView = {
-        let stackView = UIStackView()
-        stackView.axis = .vertical
-        stackView.spacing = Theme.Spacing.section
-        stackView.alignment = .fill
-        return stackView
-    }()
 
     let dashboardView = HomeDashboardPanelView()
 
@@ -82,10 +62,6 @@ final class CalendarView: UIView {
     }()
 
     weak var delegate: UICalendarViewDelegate?
-
-    /// Fires when the columns change axis, since anything sized from the
-    /// container width has to be measured again against the new width.
-    var onColumnLayoutChanged: (() -> Void)?
     private var listHeightConstraint: NSLayoutConstraint?
 
     override init(frame: CGRect) {
@@ -109,22 +85,16 @@ final class CalendarView: UIView {
             content: CardView(contentView: dateView, padding: Theme.Spacing.listPadding)
         )
 
-        primaryColumnView.addArrangedSubview(dashboardView)
-
-        secondaryColumnView.addArrangedSubview(calendarSectionView)
-        secondaryColumnView.addArrangedSubview(
+        contentStackView.addArrangedSubview(dashboardView)
+        contentStackView.addArrangedSubview(calendarSectionView)
+        contentStackView.addArrangedSubview(
             Self.makeSection(header: selectedDateTitleLabel, content: listContainerView, spacing: 0)
         )
-        secondaryColumnView.addArrangedSubview(lawSectionView)
+        contentStackView.addArrangedSubview(lawSectionView)
+        contentStackView.addArrangedSubview(footerLabel)
 
         // The list controller sets its own horizontal inset, so it spans the full stack width.
-        secondaryColumnView.setCustomSpacing(8, after: calendarSectionView)
-
-        columnsStackView.addArrangedSubview(primaryColumnView)
-        columnsStackView.addArrangedSubview(secondaryColumnView)
-
-        contentStackView.addArrangedSubview(columnsStackView)
-        contentStackView.addArrangedSubview(footerLabel)
+        contentStackView.setCustomSpacing(8, after: calendarSectionView)
 
         lawSectionView.onLawSelected = { [weak self] enforcement in
             self?.dashboardView.onLawSelected?(enforcement)
@@ -151,27 +121,6 @@ final class CalendarView: UIView {
 
             listHeightConstraint!
         ])
-    }
-
-    override func layoutSubviews() {
-        super.layoutSubviews()
-        updateColumnAxis()
-    }
-
-    private func updateColumnAxis() {
-        let available = bounds.width - Theme.Spacing.screenHorizontal * 2
-        let wide = available >= Theme.Layout.twoColumnMinWidth
-        let axis: NSLayoutConstraint.Axis = wide ? .horizontal : .vertical
-        guard columnsStackView.axis != axis else { return }
-
-        columnsStackView.axis = axis
-        columnsStackView.distribution = wide ? .fillEqually : .fill
-        columnsStackView.alignment = wide ? .top : .fill
-
-        // Let the new width settle before measuring against it.
-        DispatchQueue.main.async { [weak self] in
-            self?.onColumnLayoutChanged?()
-        }
     }
 
     func updateDashboard(_ dashboard: HomeDashboard) {

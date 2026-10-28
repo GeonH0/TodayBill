@@ -56,8 +56,10 @@ final class MainTabBarViewController: UIViewController {
         contentBottomToViewConstraint = contentContainerView.bottomAnchor.constraint(equalTo: view.bottomAnchor)
         NSLayoutConstraint.activate([
             contentContainerView.topAnchor.constraint(equalTo: view.topAnchor),
-            contentContainerView.leadingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.leadingAnchor),
-            contentContainerView.trailingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.trailingAnchor),
+            contentContainerView.leadingAnchor.constraint(greaterThanOrEqualTo: view.safeAreaLayoutGuide.leadingAnchor),
+            contentContainerView.trailingAnchor.constraint(lessThanOrEqualTo: view.safeAreaLayoutGuide.trailingAnchor),
+            contentContainerView.centerXAnchor.constraint(equalTo: view.safeAreaLayoutGuide.centerXAnchor),
+            contentContainerView.widthAnchor.constraint(lessThanOrEqualToConstant: Theme.Layout.maxContentWidth),
             contentBottomToTabBarConstraint!,
             
             customTabBar.leadingAnchor.constraint(equalTo: view.leadingAnchor),
@@ -66,6 +68,13 @@ final class MainTabBarViewController: UIViewController {
             tabBarHeightConstraint!
         ])
         contentBottomToViewConstraint?.isActive = false
+
+        // Fill the safe area whenever it is narrower than the cap above.
+        let fullWidth = contentContainerView.widthAnchor.constraint(
+            equalTo: view.safeAreaLayoutGuide.widthAnchor
+        )
+        fullWidth.priority = .defaultHigh
+        fullWidth.isActive = true
     }
     
     private func updateTabBarHeight() {

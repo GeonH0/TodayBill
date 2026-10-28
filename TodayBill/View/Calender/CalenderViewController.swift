@@ -36,9 +36,6 @@ final class CalenderViewController: UIViewController {
         setupCalendar()
         setupConstraints()
         setupDashboardActions()
-        contentView.onColumnLayoutChanged = { [weak self] in
-            self?.updateSelectedListHeight()
-        }
         bindViewModel()
         fetchBills(for: Date(), isInitialLoad: true)
     }

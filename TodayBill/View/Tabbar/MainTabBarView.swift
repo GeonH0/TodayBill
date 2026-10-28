@@ -65,10 +65,20 @@ final class MainTabBarView: UIView {
 
         NSLayoutConstraint.activate([
             itemStackView.topAnchor.constraint(equalTo: topAnchor, constant: 9),
-            itemStackView.leadingAnchor.constraint(equalTo: safeAreaLayoutGuide.leadingAnchor, constant: 12),
-            itemStackView.trailingAnchor.constraint(equalTo: safeAreaLayoutGuide.trailingAnchor, constant: -12),
+            itemStackView.leadingAnchor.constraint(greaterThanOrEqualTo: safeAreaLayoutGuide.leadingAnchor, constant: 12),
+            itemStackView.trailingAnchor.constraint(lessThanOrEqualTo: safeAreaLayoutGuide.trailingAnchor, constant: -12),
+            itemStackView.centerXAnchor.constraint(equalTo: safeAreaLayoutGuide.centerXAnchor),
+            itemStackView.widthAnchor.constraint(lessThanOrEqualToConstant: Theme.Layout.maxContentWidth),
             itemStackHeightConstraint
         ])
+
+        // Spread across the safe area until the cap above takes over.
+        let fullWidth = itemStackView.widthAnchor.constraint(
+            equalTo: safeAreaLayoutGuide.widthAnchor,
+            constant: -24
+        )
+        fullWidth.priority = .defaultHigh
+        fullWidth.isActive = true
     }
 
     func configure(symbolNames: [String], titles: [String]) {
