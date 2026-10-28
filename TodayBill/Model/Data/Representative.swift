@@ -39,3 +39,68 @@ struct Representative: Codable {
     let ASSEM_ADDR: String?
 }
 
+struct RepresentativeResponse: Codable {
+    let nwvrqwxyaytdsfvhu: [RepresentativeResponseSection]
+}
+
+struct RepresentativeResponseSection: Codable {
+    let head: [Head]?
+    let row: [Representative]?
+}
+
+enum RepresentativeLookup {
+    static func proposerName(from value: String?) -> String? {
+        guard let value else { return nil }
+
+        let withoutCount = value.replacingOccurrences(
+            of: #"\s*(외|등)\s*\d+\s*인.*$"#,
+            with: "",
+            options: .regularExpression
+        )
+        let separators = CharacterSet(charactersIn: ",;ㆍ·\n")
+        guard let first = withoutCount.components(separatedBy: separators)
+            .map({ $0.trimmingCharacters(in: .whitespacesAndNewlines) })
+            .first(where: { !$0.isEmpty && $0 != "-" }) else {
+            return nil
+        }
+
+        let name = first.replacingOccurrences(
+            of: #"\s*의원\s*$"#,
+            with: "",
+            options: .regularExpression
+        )
+        return nonEmpty(name)
+    }
+
+    static func normalizedName(_ value: String) -> String {
+        value
+            .components(separatedBy: .whitespacesAndNewlines)
+            .joined()
+            .lowercased()
+    }
+
+    static func displayText(proposer: String?, representative: Representative?) -> String {
+        guard let proposer = nonEmpty(proposer) else { return "미확인" }
+
+        if let representative,
+           let party = nonEmpty(representative.POLY_NM) {
+            return "\(representative.HG_NM) 의원 · \(party)"
+        }
+
+        let withoutCount = proposer.replacingOccurrences(
+            of: #"\s*(외|등)\s*\d+\s*인.*$"#,
+            with: "",
+            options: .regularExpression
+        )
+        let separators = CharacterSet(charactersIn: ",;ㆍ·\n")
+        return withoutCount.components(separatedBy: separators)
+            .map({ $0.trimmingCharacters(in: .whitespacesAndNewlines) })
+            .first(where: { !$0.isEmpty && $0 != "-" }) ?? proposer
+    }
+
+    private static func nonEmpty(_ value: String?) -> String? {
+        guard let value else { return nil }
+        let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmed.isEmpty || trimmed == "-" ? nil : trimmed
+    }
+}

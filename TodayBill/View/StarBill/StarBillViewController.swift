@@ -12,13 +12,20 @@ final class StarBillViewController: UIViewController {
     private var sections: [BillTrackingSection] = []
 
     private let tableView: UITableView = {
-        let tableView = UITableView(frame: .zero, style: .insetGrouped)
+        let tableView = UITableView(frame: .zero, style: .plain)
         tableView.register(TrackingBillCell.self, forCellReuseIdentifier: TrackingBillCell.reuseIdentifier)
         tableView.backgroundColor = Theme.backgroundColor
         tableView.separatorStyle = .none
+        tableView.rowHeight = UITableView.automaticDimension
+        tableView.estimatedRowHeight = 150
+        tableView.sectionHeaderTopPadding = Theme.Spacing.section
+        tableView.showsVerticalScrollIndicator = false
+        tableView.contentInset = UIEdgeInsets(top: 0, left: 0, bottom: 24, right: 0)
         tableView.translatesAutoresizingMaskIntoConstraints = false
         return tableView
     }()
+
+    private let headerView = TrackingHeaderView()
 
     private let statusStackView: UIStackView = {
         let stack = UIStackView()
@@ -47,8 +54,10 @@ final class StarBillViewController: UIViewController {
 
     override func viewDidLoad() {
         super.viewDidLoad()
-        title = "추적"
+        // The 26/800 title lives in the table header, so the bar carries only the refresh action.
+        title = nil
         view.backgroundColor = Theme.backgroundColor
+        configureNavigationBarAppearance()
         setupUI()
         bindViewModel()
         viewModel.load(refresh: true)
@@ -60,6 +69,16 @@ final class StarBillViewController: UIViewController {
         viewModel.load(refresh: false)
     }
 
+    private func configureNavigationBarAppearance() {
+        let appearance = UINavigationBarAppearance()
+        appearance.configureWithOpaqueBackground()
+        appearance.backgroundColor = Theme.backgroundColor
+        appearance.shadowColor = .clear
+        navigationItem.standardAppearance = appearance
+        navigationItem.scrollEdgeAppearance = appearance
+        navigationItem.compactAppearance = appearance
+    }
+
     private func setupUI() {
         navigationItem.rightBarButtonItem = UIBarButtonItem(
             image: UIImage(systemName: "arrow.clockwise"),
@@ -67,9 +86,12 @@ final class StarBillViewController: UIViewController {
             target: self,
             action: #selector(refreshButtonTapped)
         )
+        navigationItem.rightBarButtonItem?.tintColor = Theme.textSecondary
+        navigationItem.rightBarButtonItem?.accessibilityLabel = "새로고침"
 
         tableView.dataSource = self
         tableView.delegate = self
+        tableView.tableHeaderView = headerView
 
         view.addSubview(tableView)
         view.addSubview(statusStackView)
@@ -101,17 +123,18 @@ final class StarBillViewController: UIViewController {
                 self.loadingIndicator.startAnimating()
             case .loaded(let sections):
                 self.sections = sections
+                self.updateHeader()
                 self.tableView.reloadData()
                 self.statusStackView.isHidden = true
                 self.loadingIndicator.stopAnimating()
                 self.tableView.isHidden = false
             case .empty(let message):
                 self.sections = []
+                self.updateHeader()
                 self.tableView.reloadData()
                 self.statusLabel.text = message
                 self.statusStackView.isHidden = false
                 self.loadingIndicator.stopAnimating()
-                self.tableView.isHidden = true
             case .error(let message):
                 self.statusLabel.text = message
                 self.statusStackView.isHidden = false
@@ -122,6 +145,19 @@ final class StarBillViewController: UIViewController {
 
     @objc private func refreshButtonTapped() {
         viewModel.load(refresh: true)
+    }
+
+    private func updateHeader() {
+        headerView.configure(with: sections.flatMap { $0.snapshots })
+        // A self-sizing table header has to be measured by hand before the table lays out.
+        let width = tableView.bounds.width > 0 ? tableView.bounds.width : view.bounds.width
+        let height = headerView.systemLayoutSizeFitting(
+            CGSize(width: width, height: UIView.layoutFittingCompressedSize.height),
+            withHorizontalFittingPriority: .required,
+            verticalFittingPriority: .fittingSizeLevel
+        ).height
+        headerView.frame = CGRect(x: 0, y: 0, width: width, height: height)
+        tableView.tableHeaderView = headerView
     }
 }
 
@@ -134,12 +170,28 @@ extension StarBillViewController: UITableViewDataSource, UITableViewDelegate {
         sections[section].snapshots.count
     }
 
-    func tableView(_ tableView: UITableView, titleForHeaderInSection section: Int) -> String? {
-        sections[section].title
+    func tableView(_ tableView: UITableView, viewForHeaderInSection section: Int) -> UIView? {
+        let container = UIView()
+        container.backgroundColor = Theme.backgroundColor
+        let label = SectionHeaderLabel(text: sections[section].title)
+        container.addSubview(label)
+        NSLayoutConstraint.activate([
+            label.leadingAnchor.constraint(
+                equalTo: container.leadingAnchor,
+                constant: Theme.Spacing.screenHorizontal
+            ),
+            label.trailingAnchor.constraint(
+                lessThanOrEqualTo: container.trailingAnchor,
+                constant: -Theme.Spacing.screenHorizontal
+            ),
+            label.topAnchor.constraint(equalTo: container.topAnchor),
+            label.bottomAnchor.constraint(equalTo: container.bottomAnchor, constant: -8)
+        ])
+        return container
     }
 
-    func tableView(_ tableView: UITableView, heightForRowAt indexPath: IndexPath) -> CGFloat {
-        118
+    func tableView(_ tableView: UITableView, heightForHeaderInSection section: Int) -> CGFloat {
+        UITableView.automaticDimension
     }
 
     func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
@@ -169,6 +221,107 @@ extension StarBillViewController: UITableViewDataSource, UITableViewDelegate {
     }
 }
 
+/// 관심 법안 헤더: 화면 제목 · 한 줄 요약, 그리고 이번 주 변동을 담은 잉크 카드 하나.
+private final class TrackingHeaderView: UIView {
+    private let titleLabel: UILabel = {
+        let label = UILabel()
+        label.text = "관심 법안"
+        label.font = Theme.Font.screenTitle
+        label.textColor = Theme.textColor
+        return label
+    }()
+
+    private let subtitleLabel: UILabel = {
+        let label = UILabel()
+        label.font = Theme.Font.rowLabel
+        label.textColor = Theme.textMuted
+        label.numberOfLines = 0
+        return label
+    }()
+
+    private let highlightCaptionLabel: UILabel = {
+        let label = UILabel()
+        label.text = "이번 주 변동"
+        label.font = Theme.Font.badge
+        label.textColor = Theme.onInkSecondary
+        return label
+    }()
+
+    private let highlightMessageLabel: UILabel = {
+        let label = UILabel()
+        label.font = Theme.Font.listTitle
+        label.textColor = Theme.onInkPrimary
+        label.numberOfLines = 0
+        return label
+    }()
+
+    private let highlightCardView: UIView = {
+        let view = UIView()
+        view.backgroundColor = Theme.inkSurface
+        view.layer.cornerRadius = Theme.Radius.card
+        view.layer.masksToBounds = true
+        view.translatesAutoresizingMaskIntoConstraints = false
+        return view
+    }()
+
+    override init(frame: CGRect) {
+        super.init(frame: frame)
+        setupView()
+    }
+
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
+
+    private func setupView() {
+        backgroundColor = Theme.backgroundColor
+
+        let highlightStack = UIStackView(arrangedSubviews: [highlightCaptionLabel, highlightMessageLabel])
+        highlightStack.axis = .vertical
+        highlightStack.spacing = 2
+        highlightStack.translatesAutoresizingMaskIntoConstraints = false
+        highlightCardView.addSubview(highlightStack)
+
+        let titleStack = UIStackView(arrangedSubviews: [titleLabel, subtitleLabel])
+        titleStack.axis = .vertical
+        titleStack.spacing = 4
+
+        let mainStack = UIStackView(arrangedSubviews: [titleStack, highlightCardView])
+        mainStack.axis = .vertical
+        mainStack.spacing = Theme.Spacing.section
+        mainStack.translatesAutoresizingMaskIntoConstraints = false
+        addSubview(mainStack)
+
+        let inset = Theme.Spacing.screenHorizontal
+        NSLayoutConstraint.activate([
+            mainStack.topAnchor.constraint(equalTo: topAnchor, constant: 8),
+            mainStack.leadingAnchor.constraint(equalTo: leadingAnchor, constant: inset),
+            mainStack.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -inset),
+            mainStack.bottomAnchor.constraint(equalTo: bottomAnchor, constant: -4),
+
+            highlightStack.topAnchor.constraint(equalTo: highlightCardView.topAnchor, constant: 18),
+            highlightStack.leadingAnchor.constraint(equalTo: highlightCardView.leadingAnchor, constant: 20),
+            highlightStack.trailingAnchor.constraint(equalTo: highlightCardView.trailingAnchor, constant: -20),
+            highlightStack.bottomAnchor.constraint(equalTo: highlightCardView.bottomAnchor, constant: -18)
+        ])
+    }
+
+    func configure(with snapshots: [BillSnapshot]) {
+        let total = snapshots.count
+        let inProgress = snapshots.filter { $0.stage != .completed && $0.stage != .unknown }.count
+        subtitleLabel.text = total == 0
+            ? "아직 담아둔 법안이 없습니다"
+            : "\(total)건 중 \(inProgress)건이 심사 진행 중"
+
+        let changed = snapshots.filter { $0.hasUnseenStageChange }.count
+        highlightCardView.isHidden = total == 0
+        highlightMessageLabel.text = changed == 0
+            ? "확인하지 않은 단계 변경이 없습니다"
+            : "\(changed)건의 단계가 바뀌었습니다"
+    }
+}
+
+/// 관심 법안 카드: 제목 · 메타 · 5단계 진행 막대. 진행률은 색이 아니라 채워진 칸 수가 말한다.
 private final class TrackingBillCell: UITableViewCell {
     static let reuseIdentifier = "TrackingBillCell"
 
@@ -176,7 +329,7 @@ private final class TrackingBillCell: UITableViewCell {
 
     private let titleLabel: UILabel = {
         let label = UILabel()
-        label.font = Theme.Font.cardTitle
+        label.font = Theme.Font.cardHeading
         label.textColor = Theme.textColor
         label.numberOfLines = 2
         return label
@@ -184,58 +337,35 @@ private final class TrackingBillCell: UITableViewCell {
 
     private let metaLabel: UILabel = {
         let label = UILabel()
-        label.font = Theme.Font.metaText
-        label.textColor = Theme.emptyLabelTextColor
+        label.font = Theme.Font.meta
+        label.textColor = Theme.textMuted
         label.numberOfLines = 1
         label.lineBreakMode = .byTruncatingTail
         return label
     }()
 
-    private let stageLabel: UILabel = {
-        let label = UILabel()
-        label.font = Theme.Font.metaTextStrong
-        label.textColor = .systemBlue
-        return label
-    }()
+    private let changeBadgeLabel = BadgeLabel()
 
-    private let changeBadgeLabel: UILabel = {
-        let label = UILabel()
-        label.text = "변경"
-        label.font = Theme.Font.smallStrongBold
-        label.textColor = .white
-        label.backgroundColor = .systemRed
-        label.textAlignment = .center
-        label.layer.cornerRadius = Theme.Radius.small
-        label.layer.masksToBounds = true
-        label.isHidden = true
-        return label
-    }()
+    private let progressView = StageProgressView()
 
     private lazy var favoriteButton: UIButton = {
         let button = UIButton(type: .system)
         button.setImage(UIImage(systemName: "star.fill"), for: .normal)
-        button.tintColor = .systemYellow
+        button.tintColor = Theme.accent
+        button.setContentHuggingPriority(.required, for: .horizontal)
         button.addAction(UIAction(handler: { [weak self] _ in
             self?.onFavoriteTapped?()
         }), for: .touchUpInside)
         return button
     }()
 
-    private let verticalStackView: UIStackView = {
-        let stack = UIStackView()
-        stack.axis = .vertical
-        stack.spacing = 8
-        stack.alignment = .fill
-        stack.translatesAutoresizingMaskIntoConstraints = false
-        return stack
-    }()
-
-    private let stageStackView: UIStackView = {
-        let stack = UIStackView()
-        stack.axis = .horizontal
-        stack.spacing = 8
-        stack.alignment = .center
-        return stack
+    private let cardView: UIView = {
+        let view = UIView()
+        view.backgroundColor = Theme.cellBackgroundColor
+        view.layer.cornerRadius = Theme.Radius.list
+        view.layer.masksToBounds = true
+        view.translatesAutoresizingMaskIntoConstraints = false
+        return view
     }()
 
     override init(style: UITableViewCell.CellStyle, reuseIdentifier: String?) {
@@ -254,43 +384,62 @@ private final class TrackingBillCell: UITableViewCell {
 
     func configure(with snapshot: BillSnapshot) {
         titleLabel.text = snapshot.title
-        metaLabel.text = "\(snapshot.proposedDate) · \(snapshot.displayCommittee) · \(snapshot.displayProposer)"
-        stageLabel.text = "현재 단계: \(snapshot.stage.title)"
+        titleLabel.textColor = snapshot.stage == .unknown ? Theme.textSecondary : Theme.textColor
+
+        let stageText = "\(snapshot.stage.title) 단계"
+        metaLabel.text = [stageText, BillSnapshot.nonEmpty(snapshot.proposedDate)]
+            .compactMap { $0 }
+            .joined(separator: " · ")
+
         changeBadgeLabel.isHidden = !snapshot.hasUnseenStageChange
+        changeBadgeLabel.configure(text: "변경", style: .progress)
+
+        progressView.configure(with: snapshot.stage)
         accessibilityLabel = "\(snapshot.title), \(snapshot.stage.title)"
     }
 
     private func setupUI() {
         backgroundColor = .clear
-        selectionStyle = .default
-        contentView.backgroundColor = Theme.cellBackgroundColor
-        contentView.layer.cornerRadius = Theme.Radius.small
-        contentView.layer.masksToBounds = true
+        contentView.backgroundColor = .clear
+        selectionStyle = .none
 
         favoriteButton.translatesAutoresizingMaskIntoConstraints = false
         changeBadgeLabel.translatesAutoresizingMaskIntoConstraints = false
+        progressView.translatesAutoresizingMaskIntoConstraints = false
 
-        contentView.addSubview(verticalStackView)
-        contentView.addSubview(favoriteButton)
-        verticalStackView.addArrangedSubview(titleLabel)
-        verticalStackView.addArrangedSubview(metaLabel)
-        verticalStackView.addArrangedSubview(stageStackView)
-        stageStackView.addArrangedSubview(stageLabel)
-        stageStackView.addArrangedSubview(changeBadgeLabel)
+        contentView.addSubview(cardView)
+
+        let headerRow = UIStackView(arrangedSubviews: [titleLabel, changeBadgeLabel, favoriteButton])
+        headerRow.axis = .horizontal
+        headerRow.spacing = 10
+        headerRow.alignment = .top
+
+        let textStack = UIStackView(arrangedSubviews: [headerRow, metaLabel])
+        textStack.axis = .vertical
+        textStack.spacing = 6
+
+        let mainStack = UIStackView(arrangedSubviews: [textStack, progressView])
+        mainStack.axis = .vertical
+        mainStack.spacing = 12
+        mainStack.translatesAutoresizingMaskIntoConstraints = false
+        cardView.addSubview(mainStack)
+
+        let inset = Theme.Spacing.screenHorizontal
+        let padding = Theme.Spacing.listPadding
 
         NSLayoutConstraint.activate([
-            verticalStackView.topAnchor.constraint(equalTo: contentView.topAnchor, constant: 14),
-            verticalStackView.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 14),
-            verticalStackView.trailingAnchor.constraint(equalTo: favoriteButton.leadingAnchor, constant: -12),
-            verticalStackView.bottomAnchor.constraint(lessThanOrEqualTo: contentView.bottomAnchor, constant: -14),
+            cardView.topAnchor.constraint(equalTo: contentView.topAnchor, constant: 5),
+            cardView.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: inset),
+            cardView.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -inset),
+            cardView.bottomAnchor.constraint(equalTo: contentView.bottomAnchor, constant: -5),
 
-            favoriteButton.topAnchor.constraint(equalTo: contentView.topAnchor, constant: 12),
-            favoriteButton.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -12),
-            favoriteButton.widthAnchor.constraint(equalToConstant: 32),
-            favoriteButton.heightAnchor.constraint(equalToConstant: 32),
+            mainStack.topAnchor.constraint(equalTo: cardView.topAnchor, constant: padding),
+            mainStack.leadingAnchor.constraint(equalTo: cardView.leadingAnchor, constant: padding),
+            mainStack.trailingAnchor.constraint(equalTo: cardView.trailingAnchor, constant: -padding),
+            mainStack.bottomAnchor.constraint(equalTo: cardView.bottomAnchor, constant: -padding),
 
-            changeBadgeLabel.widthAnchor.constraint(equalToConstant: 42),
-            changeBadgeLabel.heightAnchor.constraint(equalToConstant: 24)
+            favoriteButton.widthAnchor.constraint(equalToConstant: 24),
+            favoriteButton.heightAnchor.constraint(equalToConstant: 24)
         ])
     }
 }

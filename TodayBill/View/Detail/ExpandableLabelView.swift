@@ -14,6 +14,8 @@ protocol ExpandableLabelViewDelegate: AnyObject {
 }
 
 final class ExpandableLabelView: UIView {
+    private static let collapsedLineCount = 3
+
     private let stackView: UIStackView = {
         let stack = UIStackView()
         stack.axis = .vertical
@@ -22,20 +24,36 @@ final class ExpandableLabelView: UIView {
         stack.translatesAutoresizingMaskIntoConstraints = false
         return stack
     }()
+
+    private let textContainerView: UIView = {
+        let view = UIView()
+        view.clipsToBounds = true
+        return view
+    }()
     
     private let label: UILabel = {
         let lbl = UILabel()
-        lbl.numberOfLines = 3
+        lbl.numberOfLines = 0
         lbl.translatesAutoresizingMaskIntoConstraints = false
-        lbl.font = Theme.Font.bodyText
-        lbl.textColor = Theme.textColor
+        lbl.font = Theme.Font.body
+        lbl.textColor = Theme.textSecondary
         return lbl
     }()
     
     private let toggleButton: UIButton = {
         let btn = UIButton(type: .system)
-        btn.setTitle("더 보기", for: .normal)
-        btn.setTitleColor(Theme.emptyLabelTextColor, for: .normal)
+        var config = UIButton.Configuration.plain()
+        config.title = "더 보기"
+        config.baseForegroundColor = Theme.accent
+        config.contentInsets = NSDirectionalEdgeInsets(top: 4, leading: 0, bottom: 0, trailing: 0)
+        config.titleTextAttributesTransformer = UIConfigurationTextAttributesTransformer { incoming in
+            var outgoing = incoming
+            outgoing.font = Theme.Font.link
+            return outgoing
+        }
+        btn.configuration = config
+        btn.contentHorizontalAlignment = .leading
+        btn.isHidden = true
         btn.translatesAutoresizingMaskIntoConstraints = false
         return btn
     }()
@@ -44,6 +62,10 @@ final class ExpandableLabelView: UIView {
     
     private var isExpanded = false
     private var textNeedsExpansion = false
+    private var fullTextHeight: CGFloat = 0
+    private var collapsedTextHeight: CGFloat = 0
+    private var measuredWidth: CGFloat = 0
+    private var textHeightConstraint: NSLayoutConstraint!
     
     override init(frame: CGRect) {
         super.init(frame: frame)
@@ -57,14 +79,22 @@ final class ExpandableLabelView: UIView {
     
     private func setupViews() {
         addSubview(stackView)
-        stackView.addArrangedSubview(label)
+        stackView.addArrangedSubview(textContainerView)
         stackView.addArrangedSubview(toggleButton)
+        textContainerView.addSubview(label)
+
+        textHeightConstraint = textContainerView.heightAnchor.constraint(equalToConstant: 0)
 
         NSLayoutConstraint.activate([
             stackView.topAnchor.constraint(equalTo: topAnchor),
             stackView.leadingAnchor.constraint(equalTo: leadingAnchor),
             stackView.trailingAnchor.constraint(equalTo: trailingAnchor),
-            stackView.bottomAnchor.constraint(equalTo: bottomAnchor)
+            stackView.bottomAnchor.constraint(equalTo: bottomAnchor),
+
+            label.topAnchor.constraint(equalTo: textContainerView.topAnchor),
+            label.leadingAnchor.constraint(equalTo: textContainerView.leadingAnchor),
+            label.trailingAnchor.constraint(equalTo: textContainerView.trailingAnchor),
+            textHeightConstraint
         ])
         
         toggleButton.addAction(
@@ -75,50 +105,78 @@ final class ExpandableLabelView: UIView {
             ),
             for: .touchUpInside
         )
-        updateToggleVisibility()
     }
     
     override func layoutSubviews() {
         super.layoutSubviews()
-        updateToggleVisibility()
+        updateTextMeasurementsIfNeeded()
     }
     
     func toggleExpanded() {
         guard textNeedsExpansion else { return }
+
+        let layoutRoot = window ?? superview ?? self
+        layoutRoot.layoutIfNeeded()
+
         isExpanded.toggle()
-        label.numberOfLines = isExpanded ? 0 : 3
-        let title = isExpanded ? "접기" : "더 보기"
-        toggleButton.setTitle(title, for: .normal)
-        UIView.animate(withDuration: 0.25) {
-            self.layoutIfNeeded()
+        textHeightConstraint.constant = isExpanded ? fullTextHeight : collapsedTextHeight
+        toggleButton.configuration?.title = isExpanded ? "접기" : "더 보기"
+
+        guard !UIAccessibility.isReduceMotionEnabled else {
+            layoutRoot.layoutIfNeeded()
+            return
+        }
+
+        UIView.animate(
+            withDuration: 0.3,
+            delay: 0,
+            options: [.curveEaseInOut, .beginFromCurrentState, .allowUserInteraction]
+        ) {
+            layoutRoot.layoutIfNeeded()
         }
     }
     
     func configure(with text: String) {
-        label.text = text
+        // Body copy is set at line-height 1.65, matching the type spec.
+        let paragraphStyle = NSMutableParagraphStyle()
+        paragraphStyle.lineSpacing = Theme.Metric.bodyLineSpacing
+        label.attributedText = NSAttributedString(
+            string: text,
+            attributes: [
+                .paragraphStyle: paragraphStyle,
+                .font: Theme.Font.body,
+                .foregroundColor: Theme.textSecondary
+            ]
+        )
         isExpanded = false
-        label.numberOfLines = 3
-        toggleButton.setTitle("더 보기", for: .normal)
+        toggleButton.configuration?.title = "더 보기"
+        measuredWidth = 0
         setNeedsLayout()
-        layoutIfNeeded()
-        updateToggleVisibility()
     }
     
-    private func updateToggleVisibility() {
-        guard label.bounds.width > 0 else {
+    private func updateTextMeasurementsIfNeeded() {
+        let availableWidth = textContainerView.bounds.width
+        guard availableWidth > 0 else {
             toggleButton.isHidden = true
             return
         }
-        
-        let originalNumberOfLines = label.numberOfLines
-        label.numberOfLines = 0
+
+        guard abs(availableWidth - measuredWidth) > 0.5 || fullTextHeight == 0 else { return }
+        measuredWidth = availableWidth
+
         let fullSize = label.sizeThatFits(
-            CGSize(width: label.bounds.width, height: .greatestFiniteMagnitude)
+            CGSize(width: availableWidth, height: .greatestFiniteMagnitude)
         )
-        label.numberOfLines = originalNumberOfLines
-        
-        let collapsedHeight = ceil(label.font.lineHeight * 3)
-        textNeedsExpansion = fullSize.height > collapsedHeight + 1
+        fullTextHeight = ceil(fullSize.height)
+        collapsedTextHeight = min(
+            fullTextHeight,
+            ceil(
+                label.font.lineHeight * CGFloat(Self.collapsedLineCount)
+                    + Theme.Metric.bodyLineSpacing * CGFloat(Self.collapsedLineCount - 1)
+            )
+        )
+        textNeedsExpansion = fullTextHeight > collapsedTextHeight + 1
         toggleButton.isHidden = !textNeedsExpansion
+        textHeightConstraint.constant = isExpanded ? fullTextHeight : collapsedTextHeight
     }
 }

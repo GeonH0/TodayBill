@@ -16,7 +16,7 @@ final class MainTabBarViewController: UIViewController {
     private var viewControllers: [UIViewController] = []
     private var currentViewController: UIViewController?
     private var isCustomTabBarHidden = false
-    private let tabBarContentHeight: CGFloat = 50
+    private let tabBarContentHeight: CGFloat = Theme.Metric.tabBarContentHeight
     
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -29,10 +29,10 @@ final class MainTabBarViewController: UIViewController {
         updateTabBarHeight()
     }
     
-    func setViewControllers(_ controllers: [UIViewController], images: [UIImage], titles: [String]) {
+    func setViewControllers(_ controllers: [UIViewController], symbolNames: [String], titles: [String]) {
         viewControllers = controllers
         controllers.compactMap { $0 as? UINavigationController }.forEach { $0.delegate = self }
-        customTabBar.configure(with: images, titles: titles)
+        customTabBar.configure(symbolNames: symbolNames, titles: titles)
         selectTab(at: 0)
     }
     

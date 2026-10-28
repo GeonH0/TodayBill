@@ -14,6 +14,9 @@ protocol DetailViewDelegate: AnyObject {
     func retryButtonTapped()
 }
 
+/// 법안 상세. Header block (배지 · 제목 · 메타) sits directly on the grey background;
+/// everything below is a white card. The 원문 보기 action is pinned to the bottom rather
+/// than scrolling away at the end of the page.
 final class DetailView: UIView {
 
     private let stickyHeaderView: UIView = {
@@ -26,7 +29,7 @@ final class DetailView: UIView {
     private lazy var backButton: UIButton = {
         let button = UIButton(type: .system)
         button.setImage(UIImage(systemName: "chevron.left"), for: .normal)
-        button.tintColor = Theme.textColor
+        button.tintColor = Theme.textSecondary
         button.accessibilityLabel = "뒤로가기"
         button.addAction(
             UIAction(handler: { [weak self] _ in
@@ -45,13 +48,13 @@ final class DetailView: UIView {
         label.textAlignment = .center
         label.numberOfLines = 1
         label.lineBreakMode = .byTruncatingTail
+        label.alpha = 0
         label.translatesAutoresizingMaskIntoConstraints = false
         return label
     }()
 
     private lazy var favoriteButton: UIButton = {
         let button = UIButton(type: .system)
-        button.tintColor = .gray
         button.addAction(
             UIAction(handler: { [weak self] _ in
                 self?.delegate?.favoriteButtonTapped()
@@ -65,6 +68,7 @@ final class DetailView: UIView {
     private let scrollView: UIScrollView = {
         let scrollView = UIScrollView()
         scrollView.alwaysBounceVertical = true
+        scrollView.showsVerticalScrollIndicator = false
         scrollView.translatesAutoresizingMaskIntoConstraints = false
         return scrollView
     }()
@@ -78,7 +82,7 @@ final class DetailView: UIView {
     private let mainStackView: UIStackView = {
         let stack = UIStackView()
         stack.axis = .vertical
-        stack.spacing = 16
+        stack.spacing = Theme.Spacing.section
         stack.translatesAutoresizingMaskIntoConstraints = false
         return stack
     }()
@@ -101,7 +105,7 @@ final class DetailView: UIView {
 
     private let statusLabel: UILabel = {
         let label = UILabel()
-        label.textColor = Theme.emptyLabelTextColor
+        label.textColor = Theme.textMuted
         label.font = Theme.Font.statusMessage
         label.textAlignment = .center
         label.numberOfLines = 0
@@ -110,10 +114,17 @@ final class DetailView: UIView {
 
     private lazy var retryButton: UIButton = {
         let button = UIButton(type: .system)
-        var config = UIButton.Configuration.bordered()
+        var config = UIButton.Configuration.plain()
         config.title = "다시 시도"
-        config.baseForegroundColor = .systemBlue
-        config.contentInsets = NSDirectionalEdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16)
+        config.baseForegroundColor = Theme.accent
+        config.background.backgroundColor = Theme.accentSoft
+        config.background.cornerRadius = Theme.Radius.chip
+        config.contentInsets = NSDirectionalEdgeInsets(top: 10, leading: 18, bottom: 10, trailing: 18)
+        config.titleTextAttributesTransformer = UIConfigurationTextAttributesTransformer { incoming in
+            var outgoing = incoming
+            outgoing.font = Theme.Font.chip
+            return outgoing
+        }
         button.configuration = config
         button.addAction(
             UIAction(handler: { [weak self] _ in
@@ -124,33 +135,46 @@ final class DetailView: UIView {
         return button
     }()
 
+    // MARK: Header block
+
     private let coreHeaderStack: UIStackView = {
         let stack = UIStackView()
         stack.axis = .vertical
-        stack.spacing = 14
+        stack.spacing = 12
         return stack
     }()
 
-    private let stagePillLabel = DetailPillLabel(fontSize: 13, horizontalPadding: 10, verticalPadding: 5)
+    private let stageBadgeLabel = BadgeLabel(horizontalPadding: 9)
+    private let ageBadgeLabel = BadgeLabel(horizontalPadding: 9)
 
     private let bodyTitleLabel: UILabel = {
         let label = UILabel()
-        label.font = UIFont.systemFont(ofSize: 24, weight: .bold)
+        label.font = Theme.Font.detailTitle
         label.textColor = Theme.textColor
         label.numberOfLines = 0
         label.lineBreakMode = .byWordWrapping
         return label
     }()
 
+    private let headerMetaLabel: UILabel = {
+        let label = UILabel()
+        label.font = Theme.Font.rowLabel
+        label.textColor = Theme.textSecondary
+        label.numberOfLines = 0
+        return label
+    }()
+
+    // MARK: Cards
+
     private let metadataStackView: UIStackView = {
         let stack = UIStackView()
         stack.axis = .vertical
-        stack.spacing = 8
+        stack.spacing = 0
         return stack
     }()
 
     private let proposedDateRow = DetailMetadataRow(title: "제안일")
-    private let committeeRow = DetailMetadataRow(title: "위원회")
+    private let committeeRow = DetailMetadataRow(title: "소관위원회")
     private let proposerRow = DetailMetadataRow(title: "대표발의자")
     private let cosponsorRow = DetailMetadataRow(title: "공동발의 수")
 
@@ -164,12 +188,10 @@ final class DetailView: UIView {
     private let insightChipStackView: UIStackView = {
         let stack = UIStackView()
         stack.axis = .horizontal
-        stack.spacing = 8
+        stack.spacing = 6
         stack.alignment = .leading
         return stack
     }()
-
-    private let timelineTitleLabel = DetailView.makeSectionTitleLabel(text: "진행 타임라인")
 
     private let timelineView: TimelineView = {
         let view = TimelineView(steps: [])
@@ -179,21 +201,26 @@ final class DetailView: UIView {
 
     private let voteSummaryView = DetailVoteSummaryView()
 
-    private let proposalReasonTitleLabel = DetailView.makeSectionTitleLabel(text: "제안 이유")
-
     var proposalReasonExpandableView: ExpandableLabelView = {
         let view = ExpandableLabelView()
         view.translatesAutoresizingMaskIntoConstraints = false
         return view
     }()
 
-    private let keyContentTitleLabel = DetailView.makeSectionTitleLabel(text: "주요 내용")
-
     private let keyContentLabel: UILabel = {
         let label = UILabel()
         label.numberOfLines = 0
         label.translatesAutoresizingMaskIntoConstraints = false
         return label
+    }()
+
+    // MARK: Sticky action
+
+    private let bottomBarView: UIView = {
+        let view = UIView()
+        view.backgroundColor = Theme.backgroundColor
+        view.translatesAutoresizingMaskIntoConstraints = false
+        return view
     }()
 
     private lazy var detailLinkButton: UIButton = {
@@ -234,6 +261,9 @@ final class DetailView: UIView {
         stickyHeaderView.addSubview(favoriteButton)
 
         addSubview(scrollView)
+        addSubview(bottomBarView)
+        bottomBarView.addSubview(detailLinkButton)
+
         scrollView.addSubview(containerView)
         containerView.addSubview(mainStackView)
         containerView.addSubview(statusStackView)
@@ -242,62 +272,70 @@ final class DetailView: UIView {
         statusStackView.addArrangedSubview(statusLabel)
         statusStackView.addArrangedSubview(retryButton)
 
-        let stageRow = UIStackView(arrangedSubviews: [stagePillLabel, UIView()])
-        stageRow.axis = .horizontal
-        stageRow.alignment = .leading
+        let badgeRow = UIStackView(arrangedSubviews: [stageBadgeLabel, ageBadgeLabel, UIView()])
+        badgeRow.axis = .horizontal
+        badgeRow.spacing = 6
+        badgeRow.alignment = .center
 
-        coreHeaderStack.addArrangedSubview(stageRow)
+        coreHeaderStack.addArrangedSubview(badgeRow)
         coreHeaderStack.addArrangedSubview(bodyTitleLabel)
+        coreHeaderStack.addArrangedSubview(headerMetaLabel)
         mainStackView.addArrangedSubview(coreHeaderStack)
 
-        insightSectionStack.addArrangedSubview(DetailView.makeSectionTitleLabel(text: "주목 포인트"))
+        insightSectionStack.addArrangedSubview(Self.makeSectionTitleLabel(text: "주목 포인트"))
         insightSectionStack.addArrangedSubview(insightChipStackView)
-        mainStackView.addArrangedSubview(insightSectionStack)
+        mainStackView.addArrangedSubview(CardView(contentView: insightSectionStack))
 
-        let timelineStack = UIStackView(arrangedSubviews: [timelineTitleLabel, timelineView])
-        timelineStack.axis = .vertical
-        timelineStack.spacing = 10
-        mainStackView.addArrangedSubview(DetailCardView(contentView: timelineStack))
+        mainStackView.addArrangedSubview(
+            CardView(contentView: Self.makeSection(title: "진행 경과", content: timelineView, spacing: 16))
+        )
+
+        mainStackView.addArrangedSubview(
+            CardView(contentView: Self.makeSection(title: "제안 이유", content: proposalReasonExpandableView))
+        )
 
         voteSummaryView.isHidden = true
-
-        let proposalReasonStack = UIStackView(arrangedSubviews: [proposalReasonTitleLabel, proposalReasonExpandableView])
-        proposalReasonStack.axis = .vertical
-        proposalReasonStack.spacing = 10
-        mainStackView.addArrangedSubview(DetailCardView(contentView: proposalReasonStack))
-
         mainStackView.addArrangedSubview(voteSummaryView)
 
         metadataStackView.addArrangedSubview(proposedDateRow)
+        metadataStackView.addArrangedSubview(HairlineView())
         metadataStackView.addArrangedSubview(committeeRow)
+        metadataStackView.addArrangedSubview(HairlineView())
         metadataStackView.addArrangedSubview(proposerRow)
+        metadataStackView.addArrangedSubview(HairlineView())
         metadataStackView.addArrangedSubview(cosponsorRow)
-        mainStackView.addArrangedSubview(DetailCardView(contentView: metadataStackView))
+        // Rows carry their own 15pt vertical padding, so the card only needs side gutters.
+        mainStackView.addArrangedSubview(
+            CardView(
+                contentView: metadataStackView,
+                horizontalPadding: Theme.Spacing.cardPadding,
+                verticalPadding: 5
+            )
+        )
 
-        let keyContentStack = UIStackView(arrangedSubviews: [keyContentTitleLabel, keyContentLabel])
-        keyContentStack.axis = .vertical
-        keyContentStack.spacing = 10
-        mainStackView.addArrangedSubview(DetailCardView(contentView: keyContentStack))
-
-        mainStackView.addArrangedSubview(detailLinkButton)
+        mainStackView.addArrangedSubview(
+            CardView(contentView: Self.makeSection(title: "주요 내용", content: keyContentLabel))
+        )
     }
 
     private func setupConstraints() {
+        let screenInset = Theme.Spacing.screenHorizontal
+
         NSLayoutConstraint.activate([
             stickyHeaderView.topAnchor.constraint(equalTo: safeAreaLayoutGuide.topAnchor),
             stickyHeaderView.leadingAnchor.constraint(equalTo: leadingAnchor),
             stickyHeaderView.trailingAnchor.constraint(equalTo: trailingAnchor),
-            stickyHeaderView.heightAnchor.constraint(equalToConstant: 56),
+            stickyHeaderView.heightAnchor.constraint(equalToConstant: 48),
 
             backButton.leadingAnchor.constraint(equalTo: stickyHeaderView.leadingAnchor, constant: 8),
             backButton.centerYAnchor.constraint(equalTo: stickyHeaderView.centerYAnchor),
-            backButton.widthAnchor.constraint(equalToConstant: 44),
-            backButton.heightAnchor.constraint(equalToConstant: 44),
+            backButton.widthAnchor.constraint(equalToConstant: Theme.Spacing.touchTarget),
+            backButton.heightAnchor.constraint(equalToConstant: Theme.Spacing.touchTarget),
 
             favoriteButton.trailingAnchor.constraint(equalTo: stickyHeaderView.trailingAnchor, constant: -8),
             favoriteButton.centerYAnchor.constraint(equalTo: stickyHeaderView.centerYAnchor),
-            favoriteButton.widthAnchor.constraint(equalToConstant: 44),
-            favoriteButton.heightAnchor.constraint(equalToConstant: 44),
+            favoriteButton.widthAnchor.constraint(equalToConstant: Theme.Spacing.touchTarget),
+            favoriteButton.heightAnchor.constraint(equalToConstant: Theme.Spacing.touchTarget),
 
             headerTitleLabel.leadingAnchor.constraint(equalTo: backButton.trailingAnchor, constant: 4),
             headerTitleLabel.trailingAnchor.constraint(equalTo: favoriteButton.leadingAnchor, constant: -4),
@@ -306,7 +344,20 @@ final class DetailView: UIView {
             scrollView.topAnchor.constraint(equalTo: stickyHeaderView.bottomAnchor),
             scrollView.leadingAnchor.constraint(equalTo: leadingAnchor),
             scrollView.trailingAnchor.constraint(equalTo: trailingAnchor),
-            scrollView.bottomAnchor.constraint(equalTo: bottomAnchor),
+            scrollView.bottomAnchor.constraint(equalTo: bottomBarView.topAnchor),
+
+            bottomBarView.leadingAnchor.constraint(equalTo: leadingAnchor),
+            bottomBarView.trailingAnchor.constraint(equalTo: trailingAnchor),
+            bottomBarView.bottomAnchor.constraint(equalTo: bottomAnchor),
+
+            detailLinkButton.topAnchor.constraint(equalTo: bottomBarView.topAnchor, constant: 12),
+            detailLinkButton.leadingAnchor.constraint(equalTo: bottomBarView.leadingAnchor, constant: screenInset),
+            detailLinkButton.trailingAnchor.constraint(equalTo: bottomBarView.trailingAnchor, constant: -screenInset),
+            detailLinkButton.bottomAnchor.constraint(
+                equalTo: safeAreaLayoutGuide.bottomAnchor,
+                constant: -12
+            ),
+            detailLinkButton.heightAnchor.constraint(equalToConstant: 54),
 
             containerView.topAnchor.constraint(equalTo: scrollView.contentLayoutGuide.topAnchor),
             containerView.leadingAnchor.constraint(equalTo: scrollView.contentLayoutGuide.leadingAnchor),
@@ -314,12 +365,10 @@ final class DetailView: UIView {
             containerView.bottomAnchor.constraint(equalTo: scrollView.contentLayoutGuide.bottomAnchor),
             containerView.widthAnchor.constraint(equalTo: scrollView.frameLayoutGuide.widthAnchor),
 
-            mainStackView.topAnchor.constraint(equalTo: containerView.topAnchor, constant: 18),
-            mainStackView.leadingAnchor.constraint(equalTo: containerView.leadingAnchor, constant: 18),
-            mainStackView.trailingAnchor.constraint(equalTo: containerView.trailingAnchor, constant: -18),
-            mainStackView.bottomAnchor.constraint(equalTo: containerView.bottomAnchor, constant: -24),
-
-            detailLinkButton.heightAnchor.constraint(equalToConstant: 48),
+            mainStackView.topAnchor.constraint(equalTo: containerView.topAnchor, constant: 4),
+            mainStackView.leadingAnchor.constraint(equalTo: containerView.leadingAnchor, constant: screenInset),
+            mainStackView.trailingAnchor.constraint(equalTo: containerView.trailingAnchor, constant: -screenInset),
+            mainStackView.bottomAnchor.constraint(equalTo: containerView.bottomAnchor, constant: -20),
 
             statusStackView.leadingAnchor.constraint(equalTo: containerView.leadingAnchor, constant: 32),
             statusStackView.trailingAnchor.constraint(equalTo: containerView.trailingAnchor, constant: -32),
@@ -328,20 +377,37 @@ final class DetailView: UIView {
     }
 
     func update(with bill: Row, proposalReason: String, keyContent: String) {
-        update(with: BillSnapshot(row: bill), proposalReason: proposalReason, keyContent: keyContent)
+        update(
+            with: BillSnapshot(row: bill),
+            proposalReason: proposalReason,
+            keyContent: keyContent,
+            representative: nil
+        )
     }
 
-    func update(with snapshot: BillSnapshot, proposalReason: String?, keyContent: String?) {
+    func update(
+        with snapshot: BillSnapshot,
+        proposalReason: String?,
+        keyContent: String?,
+        representative: Representative? = nil
+    ) {
         showContent()
 
         headerTitleLabel.text = snapshot.title
-        bodyTitleLabel.text = snapshot.title
-        stagePillLabel.configure(text: snapshot.stage.title, color: color(for: snapshot.stage))
+        bodyTitleLabel.attributedText = Self.makeTitleText(snapshot.title)
+        stageBadgeLabel.configure(text: snapshot.stage.title, style: snapshot.stage.badgeStyle)
+        ageBadgeLabel.configure(text: "제\(snapshot.age)대 국회", style: .neutral)
+        headerMetaLabel.text = headerMetaText(for: snapshot)
         updateFavoriteButton(isFavorite: snapshot.isFavorite)
 
         proposedDateRow.configure(value: BillSnapshot.nonEmpty(snapshot.proposedDate) ?? "미확인")
         committeeRow.configure(value: snapshot.displayCommittee)
-        proposerRow.configure(value: representativeProposerText(for: snapshot))
+        proposerRow.configure(
+            value: RepresentativeLookup.displayText(
+                proposer: snapshot.proposer,
+                representative: representative
+            )
+        )
         cosponsorRow.configure(value: "\(max(snapshot.cosponsorCount - 1, 0))명")
 
         configureInsights(snapshot.detailInsightReasons())
@@ -368,6 +434,7 @@ final class DetailView: UIView {
 
     func showLoading(_ message: String) {
         mainStackView.isHidden = true
+        bottomBarView.isHidden = true
         statusStackView.isHidden = false
         statusLabel.text = message
         retryButton.isHidden = true
@@ -376,6 +443,7 @@ final class DetailView: UIView {
 
     func showError(_ message: String) {
         mainStackView.isHidden = true
+        bottomBarView.isHidden = true
         statusStackView.isHidden = false
         statusLabel.text = message
         retryButton.isHidden = false
@@ -400,6 +468,7 @@ final class DetailView: UIView {
 
     private func showContent() {
         mainStackView.isHidden = false
+        bottomBarView.isHidden = false
         statusStackView.isHidden = true
         loadingIndicator.stopAnimating()
     }
@@ -412,9 +481,9 @@ final class DetailView: UIView {
 
         insightSectionStack.isHidden = reasons.isEmpty
         reasons.forEach { reason in
-            let label = DetailPillLabel(fontSize: 12, horizontalPadding: 9, verticalPadding: 5)
-            label.configure(text: reason.title, color: .systemBlue)
-            insightChipStackView.addArrangedSubview(label)
+            let badge = BadgeLabel(horizontalPadding: 9)
+            badge.configure(text: reason.title, style: .progress)
+            insightChipStackView.addArrangedSubview(badge)
         }
 
         let spacer = UIView()
@@ -425,7 +494,7 @@ final class DetailView: UIView {
     private func updateFavoriteButton(isFavorite: Bool) {
         let imageName = isFavorite ? "star.fill" : "star"
         favoriteButton.setImage(UIImage(systemName: imageName), for: .normal)
-        favoriteButton.tintColor = isFavorite ? .systemYellow : .gray
+        favoriteButton.tintColor = isFavorite ? Theme.accent : Theme.textDisabled
         favoriteButton.accessibilityLabel = isFavorite ? "추적 해제" : "추적 추가"
     }
 
@@ -435,13 +504,13 @@ final class DetailView: UIView {
         var config = UIButton.Configuration.filled()
         config.title = url == nil ? "원문 링크 없음" : "원문 보기"
         config.cornerStyle = .fixed
-        config.background.cornerRadius = Theme.Radius.medium
+        config.background.cornerRadius = Theme.Radius.button
         config.contentInsets = NSDirectionalEdgeInsets(top: 0, leading: 16, bottom: 0, trailing: 16)
-        config.baseBackgroundColor = url == nil ? UIColor.systemGray5 : UIColor.systemBlue
-        config.baseForegroundColor = url == nil ? Theme.emptyLabelTextColor : .white
+        config.baseBackgroundColor = url == nil ? Theme.fill : Theme.accent
+        config.baseForegroundColor = url == nil ? Theme.textMuted : .white
         config.titleTextAttributesTransformer = UIConfigurationTextAttributesTransformer { incoming in
             var outgoing = incoming
-            outgoing.font = UIFont.systemFont(ofSize: 17, weight: .bold)
+            outgoing.font = Theme.Font.button
             return outgoing
         }
 
@@ -460,90 +529,63 @@ final class DetailView: UIView {
         return url
     }
 
-    private func representativeProposerText(for snapshot: BillSnapshot) -> String {
-        guard let proposer = BillSnapshot.nonEmpty(snapshot.proposer) else {
-            return "미확인"
-        }
-
-        let trimmedProposer = proposer.replacingOccurrences(
-            of: #"\s*(외|등)\s*\d+\s*인.*$"#,
-            with: "",
-            options: .regularExpression
-        )
-        let separators = CharacterSet(charactersIn: ",;ㆍ·\n")
-        if let first = trimmedProposer.components(separatedBy: separators)
-            .map({ $0.trimmingCharacters(in: .whitespacesAndNewlines) })
-            .first(where: { !$0.isEmpty && $0 != "-" }) {
-            return first
-        }
-        return proposer
-    }
-
-    private func color(for stage: BillStage) -> UIColor {
-        switch stage {
-        case .proposed:
-            return .systemBlue
-        case .committee:
-            return .systemTeal
-        case .lawReview:
-            return .systemIndigo
-        case .plenary:
-            return .systemOrange
-        case .completed:
-            return .systemGreen
-        case .unknown:
-            return .systemGray
-        }
+    /// "김서연 의원 등 12인 · 의안번호 2201847"
+    private func headerMetaText(for snapshot: BillSnapshot) -> String {
+        let billNoText = BillSnapshot.nonEmpty(snapshot.billNo).map { "의안번호 \($0)" }
+        return [BillSnapshot.nonEmpty(snapshot.displayProposer), billNoText]
+            .compactMap { $0 }
+            .joined(separator: " · ")
     }
 
     private func makeBodyText(from text: String, isPlaceholder: Bool = false) -> NSAttributedString {
         let paragraphStyle = NSMutableParagraphStyle()
-        paragraphStyle.lineSpacing = 6
+        paragraphStyle.lineSpacing = Theme.Metric.bodyLineSpacing
         let attributes: [NSAttributedString.Key: Any] = [
             .paragraphStyle: paragraphStyle,
-            .font: Theme.Font.bodyText,
-            .foregroundColor: isPlaceholder ? Theme.emptyLabelTextColor : Theme.textColor
+            .font: Theme.Font.body,
+            .foregroundColor: isPlaceholder ? Theme.textMuted : Theme.textSecondary
         ]
         return NSAttributedString(string: text, attributes: attributes)
+    }
+
+    /// The 24pt title is set at line-height 1.35 with tight tracking, per the type spec.
+    private static func makeTitleText(_ text: String) -> NSAttributedString {
+        let paragraphStyle = NSMutableParagraphStyle()
+        paragraphStyle.lineSpacing = 24 * 0.35
+        return NSAttributedString(
+            string: text,
+            attributes: [
+                .paragraphStyle: paragraphStyle,
+                .font: Theme.Font.detailTitle,
+                .foregroundColor: Theme.textColor,
+                .kern: -0.5
+            ]
+        )
     }
 
     private static func makeSectionTitleLabel(text: String) -> UILabel {
         let label = UILabel()
         label.text = text
-        label.font = Theme.Font.sectionTitle
+        label.font = Theme.Font.sectionHeading
         label.textColor = Theme.textColor
         label.numberOfLines = 1
         return label
     }
-}
 
-private final class DetailCardView: UIView {
-    init(contentView: UIView) {
-        super.init(frame: .zero)
-        backgroundColor = Theme.surfaceElevated
-        layer.cornerRadius = Theme.Radius.medium
-        layer.masksToBounds = true
-        addSubview(contentView)
-        contentView.translatesAutoresizingMaskIntoConstraints = false
-
-        NSLayoutConstraint.activate([
-            contentView.topAnchor.constraint(equalTo: topAnchor, constant: 16),
-            contentView.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 16),
-            contentView.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -16),
-            contentView.bottomAnchor.constraint(equalTo: bottomAnchor, constant: -16)
-        ])
-    }
-
-    required init?(coder: NSCoder) {
-        fatalError("init(coder:) has not been implemented")
+    private static func makeSection(title: String, content: UIView, spacing: CGFloat = 10) -> UIStackView {
+        let stack = UIStackView(arrangedSubviews: [makeSectionTitleLabel(text: title), content])
+        stack.axis = .vertical
+        stack.spacing = spacing
+        return stack
     }
 }
 
+/// 본회의 표결 결과: one headline number, one stacked bar, one legend.
 private final class DetailVoteSummaryView: UIView {
     private let titleLabel: UILabel = {
         let label = UILabel()
         label.text = "본회의 표결 결과"
-        label.font = Theme.Font.sectionTitle
+        label.font = Theme.Font.sectionHeading
         label.textColor = Theme.textColor
         label.numberOfLines = 1
         return label
@@ -551,49 +593,54 @@ private final class DetailVoteSummaryView: UIView {
 
     private let resultLabel: UILabel = {
         let label = UILabel()
-        label.font = Theme.Font.metaTextStrong
-        label.textColor = .systemGreen
+        label.font = Theme.Font.captionStrong
+        label.textColor = Theme.success
+        label.textAlignment = .right
         return label
     }()
 
     private let countLabel: UILabel = {
         let label = UILabel()
-        label.font = UIFont.systemFont(ofSize: 30, weight: .bold)
+        label.font = Theme.Font.metricL
         label.textColor = Theme.textColor
         return label
     }()
 
     private let countSuffixLabel: UILabel = {
         let label = UILabel()
-        label.font = Theme.Font.metaText
-        label.textColor = Theme.emptyLabelTextColor
+        label.font = Theme.Font.rowValue
+        label.textColor = Theme.textMuted
         return label
     }()
 
     private let metaLabel: UILabel = {
         let label = UILabel()
-        label.font = Theme.Font.metaText
-        label.textColor = Theme.emptyLabelTextColor
+        label.font = Theme.Font.meta
+        label.textColor = Theme.textMuted
         label.numberOfLines = 1
         return label
     }()
 
-    private let barsStackView: UIStackView = {
+    private let barStackView: UIStackView = {
         let stack = UIStackView()
-        stack.axis = .vertical
-        stack.spacing = 8
+        stack.axis = .horizontal
+        stack.spacing = 3
+        stack.distribution = .fill
         return stack
     }()
 
-    private let yesRow = VoteCountRow(title: "찬성", color: .systemGreen)
-    private let noRow = VoteCountRow(title: "반대", color: .systemRed)
-    private let blankRow = VoteCountRow(title: "기권", color: .systemGray)
-    private let absentRow = VoteCountRow(title: "불참", color: .systemGray3)
+    private let legendStackView: UIStackView = {
+        let stack = UIStackView()
+        stack.axis = .horizontal
+        stack.spacing = 16
+        stack.alignment = .center
+        return stack
+    }()
 
     private let contentStackView: UIStackView = {
         let stack = UIStackView()
         stack.axis = .vertical
-        stack.spacing = 12
+        stack.spacing = 16
         stack.translatesAutoresizingMaskIntoConstraints = false
         return stack
     }()
@@ -608,21 +655,16 @@ private final class DetailVoteSummaryView: UIView {
     }
 
     private func setupView() {
-        backgroundColor = Theme.surfaceElevated
-        layer.cornerRadius = Theme.Radius.medium
+        backgroundColor = Theme.cellBackgroundColor
+        layer.cornerRadius = Theme.Radius.card
         layer.masksToBounds = true
 
         addSubview(contentStackView)
 
-        let headerStack = UIStackView(arrangedSubviews: [titleLabel, resultLabel])
+        let headerStack = UIStackView(arrangedSubviews: [titleLabel, UIView(), resultLabel])
         headerStack.axis = .horizontal
         headerStack.alignment = .firstBaseline
         headerStack.spacing = 8
-
-        barsStackView.addArrangedSubview(yesRow)
-        barsStackView.addArrangedSubview(noRow)
-        barsStackView.addArrangedSubview(blankRow)
-        barsStackView.addArrangedSubview(absentRow)
 
         let countStack = UIStackView(arrangedSubviews: [countLabel, countSuffixLabel, UIView()])
         countStack.axis = .horizontal
@@ -631,14 +673,18 @@ private final class DetailVoteSummaryView: UIView {
 
         contentStackView.addArrangedSubview(headerStack)
         contentStackView.addArrangedSubview(countStack)
+        contentStackView.addArrangedSubview(barStackView)
+        contentStackView.addArrangedSubview(legendStackView)
         contentStackView.addArrangedSubview(metaLabel)
-        contentStackView.addArrangedSubview(barsStackView)
+        contentStackView.setCustomSpacing(8, after: barStackView)
 
+        let padding = Theme.Spacing.cardPadding
         NSLayoutConstraint.activate([
-            contentStackView.topAnchor.constraint(equalTo: topAnchor, constant: 16),
-            contentStackView.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 16),
-            contentStackView.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -16),
-            contentStackView.bottomAnchor.constraint(equalTo: bottomAnchor, constant: -16)
+            contentStackView.topAnchor.constraint(equalTo: topAnchor, constant: padding),
+            contentStackView.leadingAnchor.constraint(equalTo: leadingAnchor, constant: padding),
+            contentStackView.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -padding),
+            contentStackView.bottomAnchor.constraint(equalTo: bottomAnchor, constant: -padding),
+            barStackView.heightAnchor.constraint(equalToConstant: 8)
         ])
     }
 
@@ -652,77 +698,95 @@ private final class DetailVoteSummaryView: UIView {
             .map { " · \($0)" } ?? ""
         metaLabel.text = "총투표 \(summary.voteTotalCount)명\(dateText)"
 
-        let denominator = max(summary.memberTotalCount, summary.voteTotalCount, 1)
-        yesRow.configure(count: summary.yesCount, denominator: denominator)
-        noRow.configure(count: summary.noCount, denominator: denominator)
-        blankRow.configure(count: summary.blankCount, denominator: denominator)
-        absentRow.configure(count: summary.absentCount, denominator: denominator)
+        // 찬성 초록 · 반대 중간 회색 · 기권 옅은 회색 - opposition is a lightness step, not a red.
+        let segments: [(String, Int, UIColor)] = [
+            ("찬성", summary.yesCount, Theme.success),
+            ("반대", summary.noCount, Theme.textDisabled),
+            ("기권", summary.blankCount, Theme.fill)
+        ]
+        rebuildBar(with: segments)
+        rebuildLegend(with: segments)
+    }
+
+    private func rebuildBar(with segments: [(String, Int, UIColor)]) {
+        barStackView.arrangedSubviews.forEach { view in
+            barStackView.removeArrangedSubview(view)
+            view.removeFromSuperview()
+        }
+
+        let total = max(segments.reduce(0) { $0 + $1.1 }, 1)
+        for (_, count, color) in segments where count > 0 {
+            let segment = UIView()
+            segment.backgroundColor = color
+            segment.layer.cornerRadius = 4
+            segment.layer.masksToBounds = true
+            barStackView.addArrangedSubview(segment)
+            // Widths are proportional to the vote split, so the bar is the chart.
+            segment.widthAnchor.constraint(
+                equalTo: barStackView.widthAnchor,
+                multiplier: CGFloat(count) / CGFloat(total),
+                constant: -2
+            ).isActive = true
+        }
+    }
+
+    private func rebuildLegend(with segments: [(String, Int, UIColor)]) {
+        legendStackView.arrangedSubviews.forEach { view in
+            legendStackView.removeArrangedSubview(view)
+            view.removeFromSuperview()
+        }
+
+        for (title, count, color) in segments {
+            legendStackView.addArrangedSubview(VoteLegendItemView(title: title, count: count, color: color))
+        }
+        legendStackView.addArrangedSubview(UIView())
     }
 }
 
-private final class VoteCountRow: UIView {
-    private let titleLabel: UILabel = {
-        let label = UILabel()
-        label.font = Theme.Font.metaText
-        label.textColor = Theme.emptyLabelTextColor
-        return label
-    }()
-
-    private let countLabel: UILabel = {
-        let label = UILabel()
-        label.font = Theme.Font.metaTextStrong
-        label.textColor = Theme.textColor
-        label.textAlignment = .right
-        return label
-    }()
-
-    private let progressView = UIProgressView(progressViewStyle: .bar)
-
-    init(title: String, color: UIColor) {
+private final class VoteLegendItemView: UIView {
+    init(title: String, count: Int, color: UIColor) {
         super.init(frame: .zero)
-        titleLabel.text = title
-        progressView.progressTintColor = color
-        progressView.trackTintColor = Theme.separator
-        setupView()
+
+        let dotView = UIView()
+        dotView.backgroundColor = color
+        dotView.layer.cornerRadius = 4
+        dotView.translatesAutoresizingMaskIntoConstraints = false
+
+        let label = UILabel()
+        label.text = "\(title) \(count)"
+        label.font = Theme.Font.caption
+        label.textColor = Theme.textSecondary
+
+        let stack = UIStackView(arrangedSubviews: [dotView, label])
+        stack.axis = .horizontal
+        stack.spacing = 6
+        stack.alignment = .center
+        stack.translatesAutoresizingMaskIntoConstraints = false
+        addSubview(stack)
+
+        NSLayoutConstraint.activate([
+            dotView.widthAnchor.constraint(equalToConstant: 8),
+            dotView.heightAnchor.constraint(equalToConstant: 8),
+            stack.topAnchor.constraint(equalTo: topAnchor),
+            stack.leadingAnchor.constraint(equalTo: leadingAnchor),
+            stack.trailingAnchor.constraint(equalTo: trailingAnchor),
+            stack.bottomAnchor.constraint(equalTo: bottomAnchor)
+        ])
     }
 
     required init?(coder: NSCoder) {
         fatalError("init(coder:) has not been implemented")
     }
-
-    private func setupView() {
-        let labelStack = UIStackView(arrangedSubviews: [titleLabel, countLabel])
-        labelStack.axis = .horizontal
-        labelStack.spacing = 8
-
-        let stack = UIStackView(arrangedSubviews: [labelStack, progressView])
-        stack.axis = .vertical
-        stack.spacing = 5
-        stack.translatesAutoresizingMaskIntoConstraints = false
-
-        addSubview(stack)
-
-        NSLayoutConstraint.activate([
-            stack.topAnchor.constraint(equalTo: topAnchor),
-            stack.leadingAnchor.constraint(equalTo: leadingAnchor),
-            stack.trailingAnchor.constraint(equalTo: trailingAnchor),
-            stack.bottomAnchor.constraint(equalTo: bottomAnchor),
-            progressView.heightAnchor.constraint(equalToConstant: 4)
-        ])
-    }
-
-    func configure(count: Int, denominator: Int) {
-        countLabel.text = "\(count)"
-        progressView.setProgress(Float(count) / Float(max(denominator, 1)), animated: false)
-    }
 }
 
+/// Key on the left in muted 14/600, value on the right in 14/700 - split rows, hairline between.
 private final class DetailMetadataRow: UIStackView {
     private let nameLabel: UILabel = {
         let label = UILabel()
-        label.font = Theme.Font.metaTextStrong
-        label.textColor = Theme.emptyLabelTextColor
+        label.font = Theme.Font.rowLabel
+        label.textColor = Theme.textMuted
         label.setContentHuggingPriority(.required, for: .horizontal)
+        label.setContentCompressionResistancePriority(.required, for: .horizontal)
         return label
     }()
 
@@ -730,6 +794,7 @@ private final class DetailMetadataRow: UIStackView {
         let label = UILabel()
         label.font = Theme.Font.rowValue
         label.textColor = Theme.textColor
+        label.textAlignment = .right
         label.numberOfLines = 0
         return label
     }()
@@ -739,6 +804,8 @@ private final class DetailMetadataRow: UIStackView {
         axis = .horizontal
         alignment = .firstBaseline
         spacing = 12
+        isLayoutMarginsRelativeArrangement = true
+        layoutMargins = UIEdgeInsets(top: 15, left: 0, bottom: 15, right: 0)
         nameLabel.text = title
         addArrangedSubview(nameLabel)
         addArrangedSubview(valueLabel)
@@ -750,46 +817,5 @@ private final class DetailMetadataRow: UIStackView {
 
     func configure(value: String) {
         valueLabel.text = value
-    }
-}
-
-private final class DetailPillLabel: UILabel {
-    private let textInsets: UIEdgeInsets
-
-    init(fontSize: CGFloat, horizontalPadding: CGFloat, verticalPadding: CGFloat) {
-        self.textInsets = UIEdgeInsets(
-            top: verticalPadding,
-            left: horizontalPadding,
-            bottom: verticalPadding,
-            right: horizontalPadding
-        )
-        super.init(frame: .zero)
-        font = .systemFont(ofSize: fontSize, weight: .semibold)
-        numberOfLines = 1
-        layer.cornerRadius = Theme.Radius.small
-        layer.masksToBounds = true
-        setContentHuggingPriority(.required, for: .horizontal)
-    }
-
-    required init?(coder: NSCoder) {
-        fatalError("init(coder:) has not been implemented")
-    }
-
-    func configure(text: String, color: UIColor) {
-        self.text = text
-        textColor = color
-        backgroundColor = color.withAlphaComponent(0.12)
-    }
-
-    override func drawText(in rect: CGRect) {
-        super.drawText(in: rect.inset(by: textInsets))
-    }
-
-    override var intrinsicContentSize: CGSize {
-        let size = super.intrinsicContentSize
-        return CGSize(
-            width: size.width + textInsets.left + textInsets.right,
-            height: size.height + textInsets.top + textInsets.bottom
-        )
     }
 }

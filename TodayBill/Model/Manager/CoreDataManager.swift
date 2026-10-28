@@ -195,6 +195,7 @@ final class CoreDataManager {
         performContext {
             starredBills.forEach { bill in
                 let entity = entity(for: bill.ID) ?? BillEntity(context: context)
+                let wasFavorite = entity.isFavorite
                 if entity.id == nil {
                     let snapshot = BillSnapshot(
                         billID: bill.ID,
@@ -207,7 +208,12 @@ final class CoreDataManager {
                 }
                 entity.isFavorite = true
                 entity.favoriteCreatedAt = entity.favoriteCreatedAt ?? Date()
-                entity.lastSeenStageKey = BillSnapshot(entity: entity).stageKey
+                // Reconnecting a scene must not acknowledge unread changes.
+                // Legacy entries without real stage data establish their baseline on first fetch.
+                if !wasFavorite || entity.lastSeenStageKey == BillStage.unknown.rawValue {
+                    let snapshot = BillSnapshot(entity: entity)
+                    entity.lastSeenStageKey = snapshot.stage == .unknown ? nil : snapshot.stageKey
+                }
             }
 
             saveContext()

@@ -25,13 +25,6 @@ final class CalenderViewController: UIViewController {
         return label
     }()
 
-    private let separator: UIView = {
-        let view = UIView()
-        view.backgroundColor = .lightGray
-        view.translatesAutoresizingMaskIntoConstraints = false
-        return view
-    }()
-
     override func loadView() {
         view = contentView
         view.backgroundColor = Theme.backgroundColor

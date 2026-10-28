@@ -48,6 +48,8 @@ final class SearchViewController: UIViewController {
         searchResultsViewController = SearchResultsViewController(searchResults: [])
         addChild(searchResultsViewController)
         searchResultsViewController.view.translatesAutoresizingMaskIntoConstraints = false
+        searchResultsViewController.view.backgroundColor = Theme.backgroundColor
+        searchResultsViewController.collectionView.backgroundColor = Theme.backgroundColor
         view.addSubview(searchResultsViewController.view)
         searchResultsViewController.onReachedEnd = { [weak self] in
             self?.loadNextPageIfNeeded()
@@ -70,13 +72,16 @@ final class SearchViewController: UIViewController {
             switch state {
             case .idle:
                 self.searchResultsViewController.view.isHidden = true
+                self.contentView.updateResultCount(nil)
                 self.contentView.setResultsVisible(false)
             case .loading(let message):
                 self.searchResultsViewController.view.isHidden = true
+                self.contentView.updateResultCount(nil)
                 self.contentView.setResultsVisible(false)
                 self.contentView.showLoadingState(message)
             case .loaded(let snapshots):
                 self.searchResultsViewController.updateResults(snapshots)
+                self.contentView.updateResultCount(snapshots.count)
                 self.contentView.showIdleState()
                 self.contentView.setResultsVisible(true)
                 self.searchResultsViewController.view.isHidden = false
@@ -84,6 +89,7 @@ final class SearchViewController: UIViewController {
                 self.pendingSearchCompletion = nil
             case .empty(let message):
                 self.searchResultsViewController.updateResults([BillSnapshot]())
+                self.contentView.updateResultCount(0)
                 self.contentView.showIdleState()
                 self.contentView.setResultsVisible(true)
                 self.searchResultsViewController.setEmptyMessage(message)

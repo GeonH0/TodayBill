@@ -658,28 +658,49 @@ struct BillSummary: Codable, Equatable {
         let processedText = rawText
             .replacingOccurrences(of: "(?<=\\.)\\s+", with: "\n", options: .regularExpression)
             .trimmingCharacters(in: .whitespacesAndNewlines)
+        let contentText = stripLeadingCombinedHeading(from: processedText)
 
-        if let range = primaryContentMarkerRange(in: processedText) {
-            let proposalReason = String(processedText[..<range.lowerBound])
+        if let range = primaryContentMarkerRange(in: contentText) {
+            let proposalReason = stripLeadingProposalHeading(String(contentText[..<range.lowerBound]))
                 .trimmingCharacters(in: .whitespacesAndNewlines)
-            let keyContent = String(processedText[range.upperBound...])
+            let keyContent = stripLeadingKeyContentHeading(String(contentText[range.upperBound...]))
                 .trimmingCharacters(in: .whitespacesAndNewlines)
             return BillSummary(
                 proposalReason: proposalReason.isEmpty ? "제안 이유 정보가 없습니다." : proposalReason,
                 keyContent: keyContent.isEmpty ? "주요 내용 정보가 없습니다." : keyContent,
-                rawText: processedText
+                rawText: contentText
             )
         }
 
-        if let inferred = inferKeyContent(from: processedText) {
+        if let inferred = inferKeyContent(from: contentText) {
             return inferred
         }
 
+        let proposalReason = stripLeadingProposalHeading(contentText)
         return BillSummary(
-            proposalReason: processedText.isEmpty ? "요약 정보가 없습니다." : processedText,
+            proposalReason: proposalReason.isEmpty ? "요약 정보가 없습니다." : proposalReason,
             keyContent: unableToSeparateKeyContentText,
-            rawText: processedText
+            rawText: contentText
         )
+    }
+
+    private static func stripLeadingCombinedHeading(from text: String) -> String {
+        stripLeadingHeading(text, pattern: #"제안\s*이유\s*및\s*주요\s*내용"#)
+    }
+
+    private static func stripLeadingProposalHeading(_ text: String) -> String {
+        stripLeadingHeading(text, pattern: #"제안\s*이유"#)
+    }
+
+    private static func stripLeadingKeyContentHeading(_ text: String) -> String {
+        stripLeadingHeading(text, pattern: #"주요\s*(내용|골자|사항)"#)
+    }
+
+    private static func stripLeadingHeading(_ text: String, pattern: String) -> String {
+        let headingPattern = #"^\s*"# + pattern + #"\s*[:：]?\s*"#
+        return text
+            .replacingOccurrences(of: headingPattern, with: "", options: .regularExpression)
+            .trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
     private static func primaryContentMarkerRange(in text: String) -> Range<String.Index>? {
@@ -721,10 +742,10 @@ struct BillSummary: Codable, Equatable {
             let keyContent = String(mainText[candidateRange]).trimmingCharacters(in: .whitespacesAndNewlines)
             guard !keyContent.isEmpty else { continue }
 
-            let proposalReason = String(mainText[..<candidateRange.lowerBound])
+            let proposalReason = stripLeadingProposalHeading(String(mainText[..<candidateRange.lowerBound]))
                 .trimmingCharacters(in: .whitespacesAndNewlines)
             return BillSummary(
-                proposalReason: proposalReason.isEmpty ? mainText : proposalReason,
+                proposalReason: proposalReason.isEmpty ? stripLeadingProposalHeading(mainText) : proposalReason,
                 keyContent: keyContent,
                 rawText: text
             )
@@ -737,8 +758,8 @@ struct BillSummary: Codable, Equatable {
 
         if let keyContent = lines.last(where: { $0.contains("(안 ") || $0.contains("(안 제") }) {
             return BillSummary(
-                proposalReason: mainText,
-                keyContent: keyContent,
+                proposalReason: stripLeadingProposalHeading(mainText),
+                keyContent: stripLeadingKeyContentHeading(keyContent),
                 rawText: text
             )
         }
@@ -1190,6 +1211,12 @@ extension BillEntity {
             summaryProposalReason = snapshot.summaryProposalReason
             summaryKeyContent = snapshot.summaryKeyContent
             summaryFetchedAt = snapshot.summaryFetchedAt
+        }
+
+        if isFavorite,
+           lastSeenStageKey == nil || lastSeenStageKey == BillStage.unknown.rawValue,
+           snapshot.stage != .unknown {
+            lastSeenStageKey = snapshot.stageKey
         }
     }
 }
