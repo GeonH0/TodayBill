@@ -164,6 +164,19 @@ struct Theme {
         static let tabBarContentHeight: CGFloat = 60
     }
 
+    struct Layout {
+        /// Below this the home screen keeps one column; at or above it the
+        /// sections split left and right. The cover screen in portrait (466pt)
+        /// stays single, while landscape and the unfolded display go to two.
+        static let twoColumnMinWidth: CGFloat = 540
+
+        /// A short pose — landscape, or the cover screen turned sideways — cannot
+        /// spare 60pt for a tab bar, so it loses its labels and gets shorter.
+        static func tabBarContentHeight(for traits: UITraitCollection) -> CGFloat {
+            traits.verticalSizeClass == .compact ? 44 : Metric.tabBarContentHeight
+        }
+    }
+
     // MARK: - Helpers
 
     private static func dynamic(light: UInt32, dark: UInt32) -> UIColor {

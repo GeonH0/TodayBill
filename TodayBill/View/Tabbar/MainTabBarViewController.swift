@@ -16,7 +16,9 @@ final class MainTabBarViewController: UIViewController {
     private var viewControllers: [UIViewController] = []
     private var currentViewController: UIViewController?
     private var isCustomTabBarHidden = false
-    private let tabBarContentHeight: CGFloat = Theme.Metric.tabBarContentHeight
+    private var tabBarContentHeight: CGFloat {
+        Theme.Layout.tabBarContentHeight(for: traitCollection)
+    }
     
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -67,6 +69,7 @@ final class MainTabBarViewController: UIViewController {
     }
     
     private func updateTabBarHeight() {
+        customTabBar.setCompact(traitCollection.verticalSizeClass == .compact)
         tabBarHeightConstraint?.constant = tabBarContentHeight + view.safeAreaInsets.bottom
     }
     

@@ -47,6 +47,17 @@ final class MainTabBarView: UIView {
         fatalError("init(coder:) has not been implemented")
     }
 
+    private lazy var itemStackHeightConstraint = itemStackView.heightAnchor.constraint(
+        equalToConstant: Theme.Metric.tabBarContentHeight - 9
+    )
+
+    /// Drops the labels and shortens the bar when the screen is short.
+    func setCompact(_ compact: Bool) {
+        let content = compact ? 44 : Theme.Metric.tabBarContentHeight
+        itemStackHeightConstraint.constant = content - 9
+        items.forEach { $0.setCompact(compact) }
+    }
+
     private func addsubviews() {
         backgroundColor = Theme.cellBackgroundColor
         addSubview(separatorView)
@@ -56,7 +67,7 @@ final class MainTabBarView: UIView {
             itemStackView.topAnchor.constraint(equalTo: topAnchor, constant: 9),
             itemStackView.leadingAnchor.constraint(equalTo: safeAreaLayoutGuide.leadingAnchor, constant: 12),
             itemStackView.trailingAnchor.constraint(equalTo: safeAreaLayoutGuide.trailingAnchor, constant: -12),
-            itemStackView.heightAnchor.constraint(equalToConstant: Theme.Metric.tabBarContentHeight - 9)
+            itemStackHeightConstraint
         ])
     }
 
@@ -102,6 +113,11 @@ private final class TabItemView: UIControl {
     private let normalImage: UIImage?
     private let selectedImage: UIImage?
 
+    private lazy var imageTopConstraint = imageView.topAnchor.constraint(
+        equalTo: topAnchor,
+        constant: 3
+    )
+
     init(symbolName: String, title: String) {
         let lineConfiguration = UIImage.SymbolConfiguration(pointSize: 19, weight: .regular)
         let selectedConfiguration = UIImage.SymbolConfiguration(pointSize: 19, weight: .bold)
@@ -129,7 +145,7 @@ private final class TabItemView: UIControl {
         addTarget(self, action: #selector(handleTap), for: .touchUpInside)
 
         NSLayoutConstraint.activate([
-            imageView.topAnchor.constraint(equalTo: topAnchor, constant: 3),
+            imageTopConstraint,
             imageView.centerXAnchor.constraint(equalTo: centerXAnchor),
             imageView.heightAnchor.constraint(equalToConstant: 25),
 
@@ -143,6 +159,11 @@ private final class TabItemView: UIControl {
 
     required init?(coder: NSCoder) {
         fatalError("init(coder:) has not been implemented")
+    }
+
+    func setCompact(_ compact: Bool) {
+        titleLabel.isHidden = compact
+        imageTopConstraint.constant = compact ? 9 : 3
     }
 
     func setSelected(_ selected: Bool) {
