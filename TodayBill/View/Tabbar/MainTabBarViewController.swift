@@ -54,8 +54,8 @@ final class MainTabBarViewController: UIViewController {
         contentBottomToViewConstraint = contentContainerView.bottomAnchor.constraint(equalTo: view.bottomAnchor)
         NSLayoutConstraint.activate([
             contentContainerView.topAnchor.constraint(equalTo: view.topAnchor),
-            contentContainerView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
-            contentContainerView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+            contentContainerView.leadingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.leadingAnchor),
+            contentContainerView.trailingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.trailingAnchor),
             contentBottomToTabBarConstraint!,
             
             customTabBar.leadingAnchor.constraint(equalTo: view.leadingAnchor),

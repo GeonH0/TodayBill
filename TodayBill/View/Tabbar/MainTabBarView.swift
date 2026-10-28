@@ -54,8 +54,8 @@ final class MainTabBarView: UIView {
 
         NSLayoutConstraint.activate([
             itemStackView.topAnchor.constraint(equalTo: topAnchor, constant: 9),
-            itemStackView.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 12),
-            itemStackView.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -12),
+            itemStackView.leadingAnchor.constraint(equalTo: safeAreaLayoutGuide.leadingAnchor, constant: 12),
+            itemStackView.trailingAnchor.constraint(equalTo: safeAreaLayoutGuide.trailingAnchor, constant: -12),
             itemStackView.heightAnchor.constraint(equalToConstant: Theme.Metric.tabBarContentHeight - 9)
         ])
     }
