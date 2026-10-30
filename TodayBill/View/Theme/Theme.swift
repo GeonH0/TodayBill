@@ -423,9 +423,10 @@ extension BillStage {
 }
 
 extension BillSnapshot {
-    /// `stage` only knows that processing finished, not how it ended. 폐기 · 철회 · 부결은
-    /// 끝난 것이지 통과한 것이 아니므로 성공 초록을 쓰지 않는다.
+    /// `stage` only knows that processing finished, not how it ended. 끝난 법안 중
+    /// 가결만 성공 초록을 쓰고, 나머지는 폐기든 읽지 못한 결과든 회색으로 둔다.
     var badgeStyle: BadgeStyle {
-        isDiscarded ? .muted : stage.badgeStyle
+        guard stage == .completed else { return stage.badgeStyle }
+        return isPassed ? .done : .muted
     }
 }

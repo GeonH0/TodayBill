@@ -931,10 +931,12 @@ struct BillSnapshot: Codable, Equatable, Identifiable {
         return (repaired.proposalReason, repaired.keyContent)
     }
 
-    /// 처리가 끝났지만 가결로 끝나지 않은 결과. 폐기 · 대안반영폐기 · 임기만료폐기 · 철회 · 부결을 모두 포함한다.
-    var isDiscarded: Bool {
+    /// 가결로 끝난 처리 결과. 원안가결 · 수정가결이 여기 들어온다.
+    /// 성공만 나열한다. 폐기 · 철회 · 부결처럼 통과가 아닌 결말은 표현이 열려 있어 빠뜨리기 쉽지만,
+    /// 가결은 그렇지 않다. 읽지 못한 값은 성공이 아닌 쪽으로 떨어지는 편이 안전하다.
+    var isPassed: Bool {
         guard let result = Self.nonEmpty(procResult) else { return false }
-        return ["폐기", "철회", "부결"].contains { result.contains($0) }
+        return result.contains("가결")
     }
 
     var stage: BillStage {
