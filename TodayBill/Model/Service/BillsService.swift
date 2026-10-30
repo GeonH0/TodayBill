@@ -77,7 +77,8 @@ final class OpenAssemblyAPIClient {
         fetchRows(queryItems: queryItems, completion: completion)
     }
 
-    func fetchDetail(id: String, age: Int, completion: @escaping (Result<[Row], Error>) -> Void) {
+    @discardableResult
+    func fetchDetail(id: String, age: Int, completion: @escaping (Result<[Row], Error>) -> Void) -> URLSessionDataTask? {
         fetchRows(
             queryItems: [
                 URLQueryItem(name: "pIndex", value: "1"),
@@ -89,16 +90,17 @@ final class OpenAssemblyAPIClient {
         )
     }
 
-    private func fetchRows(queryItems: [URLQueryItem], completion: @escaping (Result<[Row], Error>) -> Void) {
+    @discardableResult
+    private func fetchRows(queryItems: [URLQueryItem], completion: @escaping (Result<[Row], Error>) -> Void) -> URLSessionDataTask? {
         let request: URLRequest
         do {
             request = try makeRequest(queryItems: queryItems)
         } catch {
             completion(.failure(error))
-            return
+            return nil
         }
 
-        session.dataTask(with: request) { data, response, error in
+        let task = session.dataTask(with: request) { data, response, error in
             if let error = error {
                 completion(.failure(error))
                 return
@@ -117,7 +119,9 @@ final class OpenAssemblyAPIClient {
             } catch {
                 completion(.failure(error))
             }
-        }.resume()
+        }
+        task.resume()
+        return task
     }
 }
 
@@ -190,6 +194,162 @@ final class OpenAssemblyVoteAPIClient {
                 completion(.failure(error))
             }
         }.resume()
+    }
+}
+
+final class OpenAssemblyRepresentativeAPIClient {
+    static let shared = OpenAssemblyRepresentativeAPIClient()
+
+    private typealias PendingRequest = (
+        name: String,
+        age: Int,
+        completion: (Result<Representative?, Error>) -> Void
+    )
+
+    private let baseURL = "https://open.assembly.go.kr/portal/openapi/nwvrqwxyaytdsfvhu"
+    private let session: URLSession
+    private let stateQueue = DispatchQueue(label: "TodayBill.representative-directory")
+    private var directoryByName: [String: Representative]?
+    private var pendingRequests: [PendingRequest] = []
+    private var isLoading = false
+
+    init(session: URLSession = .shared) {
+        self.session = session
+    }
+
+    func fetchRepresentative(
+        named name: String,
+        age: Int,
+        completion: @escaping (Result<Representative?, Error>) -> Void
+    ) {
+        stateQueue.async { [weak self] in
+            guard let self else { return }
+
+            if let directory = self.directoryByName {
+                completion(.success(self.findRepresentative(named: name, age: age, in: directory)))
+                return
+            }
+
+            self.pendingRequests.append((name, age, completion))
+            guard !self.isLoading else { return }
+
+            self.isLoading = true
+            self.loadDirectory()
+        }
+    }
+
+    private func loadDirectory() {
+        let request: URLRequest
+        do {
+            request = try makeRequest()
+        } catch {
+            finishLoading(with: .failure(error))
+            return
+        }
+
+        session.dataTask(with: request) { [weak self] data, response, error in
+            guard let self else { return }
+
+            if let error {
+                self.finishLoading(with: .failure(error))
+                return
+            }
+
+            guard let response = response as? HTTPURLResponse,
+                  (200...299).contains(response.statusCode),
+                  let data else {
+                self.finishLoading(with: .failure(OpenAssemblyAPIClientError.invalidResponse))
+                return
+            }
+
+            do {
+                let decoded = try JSONDecoder().decode(RepresentativeResponse.self, from: data)
+                let representatives = decoded.nwvrqwxyaytdsfvhu
+                    .compactMap(\.row)
+                    .flatMap { $0 }
+                let directory = Dictionary(
+                    representatives.map {
+                        (RepresentativeLookup.normalizedName($0.HG_NM), $0)
+                    },
+                    uniquingKeysWith: { first, _ in first }
+                )
+                self.finishLoading(with: .success(directory))
+            } catch {
+                self.finishLoading(with: .failure(error))
+            }
+        }.resume()
+    }
+
+    private func makeRequest() throws -> URLRequest {
+        guard var urlComponents = URLComponents(string: baseURL) else {
+            throw OpenAssemblyAPIClientError.invalidURL
+        }
+
+        guard let apiKey = Bundle.main.object(forInfoDictionaryKey: "serviceKey") as? String else {
+            throw OpenAssemblyAPIClientError.missingAPIKey
+        }
+
+        urlComponents.queryItems = [
+            URLQueryItem(name: "key", value: apiKey),
+            URLQueryItem(name: "Type", value: "json"),
+            URLQueryItem(name: "pIndex", value: "1"),
+            URLQueryItem(name: "pSize", value: "1000")
+        ]
+
+        guard let url = urlComponents.url else {
+            throw OpenAssemblyAPIClientError.invalidURL
+        }
+
+        var request = URLRequest(url: url)
+        request.httpMethod = "GET"
+        request.setValue(OpenAssemblyAPIClient.userAgent, forHTTPHeaderField: "User-Agent")
+        request.setValue("ko-KR,ko;q=0.9,en-US;q=0.8", forHTTPHeaderField: "Accept-Language")
+        request.setValue("application/json, text/plain, */*", forHTTPHeaderField: "Accept")
+        return request
+    }
+
+    private func finishLoading(with result: Result<[String: Representative], Error>) {
+        stateQueue.async { [weak self] in
+            guard let self else { return }
+
+            if case let .success(directory) = result {
+                self.directoryByName = directory
+            }
+
+            let requests = self.pendingRequests
+            self.pendingRequests.removeAll()
+            self.isLoading = false
+
+            requests.forEach { request in
+                switch result {
+                case .success(let directory):
+                    request.completion(
+                        .success(self.findRepresentative(named: request.name, age: request.age, in: directory))
+                    )
+                case .failure(let error):
+                    request.completion(.failure(error))
+                }
+            }
+        }
+    }
+
+    private func findRepresentative(
+        named name: String,
+        age: Int,
+        in directory: [String: Representative]
+    ) -> Representative? {
+        guard let representative = directory[RepresentativeLookup.normalizedName(name)] else {
+            return nil
+        }
+
+        let expectedUnit = "제\(age)대"
+        guard representative.UNITS?
+            .components(separatedBy: CharacterSet(charactersIn: ",;"))
+            .map({ $0.trimmingCharacters(in: .whitespacesAndNewlines) })
+            .contains(expectedUnit) == true else {
+            return nil
+        }
+        return representative
     }
 }
 

@@ -15,10 +15,16 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     static let stageCheckTaskIdentifier = "Test.TodayBill.stagecheck"
 
     var window: UIWindow?
+    private lazy var stageScheduler = StageCheckScheduler()
 
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
+        CoreDataManager.shared.migrateUserDefaultsFavorites(StarBillManager.shared.loadStarredBills())
         BGTaskScheduler.shared.register(forTaskWithIdentifier: Self.stageCheckTaskIdentifier, using: nil) { task in
-            self.handleStageCheck(task: task as! BGAppRefreshTask)
+            guard let refreshTask = task as? BGAppRefreshTask else {
+                task.setTaskCompleted(success: false)
+                return
+            }
+            self.handleStageCheck(task: refreshTask)
         }
         UNUserNotificationCenter.current().delegate = self
 
@@ -27,13 +33,17 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         NotificationCenter.default.addObserver(
             forName: UIApplication.didEnterBackgroundNotification,
             object: nil,
-            queue: nil
+            queue: .main
         ) { [weak self] _ in
             self?.scheduleStageCheckIfNeeded()
         }
 
+        NotificationCenter.default.addObserver(
+            forName: StageChangeNotifier.favoritesDidChange, object: nil, queue: .main
+        ) { [weak self] _ in
+            self?.scheduleStageCheckIfNeeded()
+        }
         scheduleStageCheckIfNeeded()
-        requestNotificationPermissionIfNeeded()
         return true
     }
 
@@ -52,43 +62,64 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     }
 
     private func scheduleStageCheckIfNeeded() {
-        guard !CoreDataManager.shared.fetchFavoriteSnapshots().isEmpty else { return }
-
-        let request = BGAppRefreshTaskRequest(identifier: Self.stageCheckTaskIdentifier)
-        request.earliestBeginDate = Date(timeIntervalSinceNow: 6 * 60 * 60)
-        try? BGTaskScheduler.shared.submit(request)
+        stageScheduler.scheduleIfNeeded()
     }
 
-    /// Covers users who already had favorites before this feature shipped — the
-    /// first-favorite prompt in `BillsRepository.toggleFavorite` only fires on a 0→1 transition.
-    private func requestNotificationPermissionIfNeeded() {
+    func sceneBecameActive() {
+        scheduleStageCheckIfNeeded()
         guard !CoreDataManager.shared.fetchFavoriteSnapshots().isEmpty else { return }
+        requestNotificationPermissionIfNeeded()
+        StageChangeNotifier.shared.runIfNeeded()
+    }
 
+    private func requestNotificationPermissionIfNeeded() {
         UNUserNotificationCenter.current().getNotificationSettings { settings in
             guard settings.authorizationStatus == .notDetermined else { return }
-            UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .badge, .sound]) { _, _ in }
+            UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .badge, .sound]) { _, _ in
+                DispatchQueue.main.async {
+                    guard UIApplication.shared.applicationState == .active else { return }
+                    StageChangeNotifier.shared.runIfNeeded()
+                }
+            }
         }
     }
 
     private func handleStageCheck(task: BGAppRefreshTask) {
-        scheduleStageCheckIfNeeded()
-
+        let lifetime = StageCheckCancellation()
         let lock = NSLock()
-        var isFinished = false
+        var finished = false
         func finish(success: Bool) {
             lock.lock()
-            defer { lock.unlock() }
-            guard !isFinished else { return }
-            isFinished = true
+            guard !finished else { lock.unlock(); return }
+            finished = true
+            lock.unlock()
+            lifetime.finish()
+            task.expirationHandler = nil
             task.setTaskCompleted(success: success)
         }
-
         task.expirationHandler = {
+            lifetime.cancel()
             finish(success: false)
         }
-
-        StageChangeNotifier.run {
-            finish(success: true)
+        DispatchQueue.main.async {
+            guard !lifetime.isCancelled else {
+                self.stageScheduler.scheduleIfNeeded(delay: StageChangeNotifier.retryInterval)
+                return
+            }
+            // Secure the successor while the task is alive, including if the refresh later expires.
+            self.stageScheduler.scheduleIfNeeded()
+            let work = StageChangeNotifier.shared.run { result in
+                let success: Bool
+                switch result {
+                case .success: success = true
+                case .failure: success = false
+                }
+                self.stageScheduler.scheduleIfNeeded(delay: success
+                    ? StageChangeNotifier.refreshInterval : StageChangeNotifier.retryInterval) {
+                    finish(success: success)
+                }
+            }
+            lifetime.onCancel { work.cancel() }
         }
     }
 
@@ -135,5 +166,91 @@ extension AppDelegate: UNUserNotificationCenterDelegate {
             .compactMap { $0.rootViewController as? MainTabBarViewController }
             .first
         tabBarController?.selectTab(at: 2) // 추적 tab — see AppInitializer.swift:26-30
+    }
+}
+
+protocol StageCheckScheduling {
+    func pendingRequests(completion: @escaping ([BGTaskRequest]) -> Void)
+    func submit(_ request: BGTaskRequest) throws
+    func cancel(identifier: String)
+}
+
+struct SystemStageCheckScheduler: StageCheckScheduling {
+    func pendingRequests(completion: @escaping ([BGTaskRequest]) -> Void) {
+        BGTaskScheduler.shared.getPendingTaskRequests(completionHandler: completion)
+    }
+    func submit(_ request: BGTaskRequest) throws { try BGTaskScheduler.shared.submit(request) }
+    func cancel(identifier: String) { BGTaskScheduler.shared.cancel(taskRequestWithIdentifier: identifier) }
+}
+
+/// Serializes the asynchronous pending-request check and never postpones an existing request.
+final class StageCheckScheduler {
+    static let lastErrorKey = "StageCheckScheduler.lastError"
+    private let scheduler: StageCheckScheduling
+    private let hasFavorites: () -> Bool
+    private let defaults: UserDefaults
+    private let now: () -> Date
+    private var checking = false
+    private var requestedDelay = StageChangeNotifier.refreshInterval
+    private var completions: [() -> Void] = []
+
+    init(
+        scheduler: StageCheckScheduling = SystemStageCheckScheduler(),
+        hasFavorites: @escaping () -> Bool = { !CoreDataManager.shared.fetchFavoriteSnapshots().isEmpty },
+        defaults: UserDefaults = .standard,
+        now: @escaping () -> Date = Date.init
+    ) {
+        self.scheduler = scheduler
+        self.hasFavorites = hasFavorites
+        self.defaults = defaults
+        self.now = now
+    }
+
+    func scheduleIfNeeded(delay: TimeInterval = StageChangeNotifier.refreshInterval, completion: @escaping () -> Void = {}) {
+        dispatchPrecondition(condition: .onQueue(.main))
+        completions.append(completion)
+        if checking {
+            requestedDelay = min(requestedDelay, delay)
+            return
+        }
+        checking = true
+        requestedDelay = delay
+        guard hasFavorites() else {
+            scheduler.cancel(identifier: AppDelegate.stageCheckTaskIdentifier)
+            finishCheck()
+            return
+        }
+        scheduler.pendingRequests { [weak self] requests in
+            DispatchQueue.main.async {
+                guard let self else { return }
+                defer { self.finishCheck() }
+                guard self.hasFavorites() else {
+                    self.scheduler.cancel(identifier: AppDelegate.stageCheckTaskIdentifier)
+                    return
+                }
+                let earliestDate = self.now().addingTimeInterval(self.requestedDelay)
+                if let existing = requests.first(where: { $0.identifier == AppDelegate.stageCheckTaskIdentifier }),
+                   existing.earliestBeginDate.map({ $0 <= earliestDate }) ?? true {
+                    return
+                }
+                let request = BGAppRefreshTaskRequest(identifier: AppDelegate.stageCheckTaskIdentifier)
+                request.earliestBeginDate = earliestDate
+                do {
+                    try self.scheduler.submit(request)
+                    self.defaults.removeObject(forKey: Self.lastErrorKey)
+                } catch {
+                    let nsError = error as NSError
+                    self.defaults.set("\(nsError.domain):\(nsError.code)", forKey: Self.lastErrorKey)
+                    NSLog("Stage check scheduling failed (%@:%ld)", nsError.domain, nsError.code)
+                }
+            }
+        }
+    }
+
+    private func finishCheck() {
+        checking = false
+        let callbacks = completions
+        completions.removeAll()
+        callbacks.forEach { $0() }
     }
 }

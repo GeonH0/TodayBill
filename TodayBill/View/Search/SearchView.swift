@@ -19,9 +19,28 @@ final class SearchView: UIView {
     // MARK: - UI Components
     let searchBar: UISearchBar = {
         let searchbar = UISearchBar()
+        searchbar.searchBarStyle = .minimal
+        searchbar.backgroundColor = Theme.backgroundColor
+        searchbar.barTintColor = Theme.backgroundColor
+        searchbar.isTranslucent = false
         searchbar.backgroundImage = UIImage()
         searchbar.placeholder = "법안명 또는 키워드 검색"
         searchbar.searchTextField.accessibilityLabel = "법안 검색"
+        searchbar.searchTextField.backgroundColor = Theme.cellBackgroundColor
+        searchbar.searchTextField.font = UIFont.systemFont(ofSize: 16, weight: .semibold)
+        searchbar.searchTextField.textColor = Theme.textColor
+        searchbar.searchTextField.layer.cornerRadius = Theme.Radius.field
+        searchbar.searchTextField.layer.masksToBounds = true
+        searchbar.searchTextField.clipsToBounds = true
+        searchbar.tintColor = Theme.accent
+        searchbar.setImage(
+            UIImage(
+                systemName: "magnifyingglass",
+                withConfiguration: UIImage.SymbolConfiguration(pointSize: 15, weight: .semibold)
+            )?.withTintColor(Theme.textMuted, renderingMode: .alwaysOriginal),
+            for: .search,
+            state: .normal
+        )
         return searchbar
     }()
     
@@ -30,9 +49,8 @@ final class SearchView: UIView {
         let attributedText = NSAttributedString(
             string: "전체 삭제",
             attributes: [
-                .font: Theme.Font.linkAction,
-                .foregroundColor: Theme.textColor,
-                .underlineStyle: NSUnderlineStyle.single.rawValue
+                .font: Theme.Font.metaStrong,
+                .foregroundColor: Theme.textMuted
             ]
         )
         allDeleteButton.setAttributedTitle(attributedText, for: .normal)
@@ -48,12 +66,21 @@ final class SearchView: UIView {
 
     private lazy var filterButton: UIButton = {
         let button = UIButton(type: .system)
-        var config = UIButton.Configuration.bordered()
-        config.image = UIImage(systemName: "line.3.horizontal.decrease.circle")
-        config.title = "필터"
-        config.imagePadding = 6
-        config.baseForegroundColor = .systemBlue
-        config.contentInsets = NSDirectionalEdgeInsets(top: 8, leading: 12, bottom: 8, trailing: 12)
+        var config = UIButton.Configuration.plain()
+        config.image = UIImage(
+            systemName: "chevron.down",
+            withConfiguration: UIImage.SymbolConfiguration(pointSize: 10, weight: .bold)
+        )
+        config.title = "최신순"
+        config.imagePlacement = .trailing
+        config.imagePadding = 5
+        config.baseForegroundColor = Theme.textMuted
+        config.contentInsets = NSDirectionalEdgeInsets(top: 8, leading: 6, bottom: 8, trailing: 6)
+        config.titleTextAttributesTransformer = UIConfigurationTextAttributesTransformer { incoming in
+            var outgoing = incoming
+            outgoing.font = Theme.Font.metaStrong
+            return outgoing
+        }
         button.configuration = config
         button.addAction(UIAction(handler: { [weak self] _ in
             self?.delegate?.showFilters()
@@ -62,27 +89,34 @@ final class SearchView: UIView {
         return button
     }()
 
-    private let filterSummaryLabel: UILabel = {
+    private let resultTitleLabel: UILabel = {
         let label = UILabel()
-        label.text = "최신순"
-        label.textColor = Theme.emptyLabelTextColor
-        label.font = Theme.Font.metaText
-        label.numberOfLines = 1
-        label.lineBreakMode = .byTruncatingTail
+        label.text = "검색 결과"
+        label.font = UIFont.systemFont(ofSize: 14, weight: .heavy)
+        label.textColor = Theme.textColor
+        label.isHidden = true
+        return label
+    }()
+
+    private let resultCountLabel: UILabel = {
+        let label = UILabel()
+        label.font = UIFont.systemFont(ofSize: 14, weight: .heavy)
+        label.textColor = Theme.accent
+        label.isHidden = true
         return label
     }()
 
     private let filterStackView: UIStackView = {
         let stack = UIStackView()
         stack.axis = .horizontal
-        stack.spacing = 10
+        stack.spacing = 6
         stack.alignment = .center
         return stack
     }()
     
     private let keywordScrollView: UIScrollView = {
         let scrollView = UIScrollView()
-        scrollView.backgroundColor = Theme.surfaceElevated
+        scrollView.backgroundColor = .clear
         scrollView.showsHorizontalScrollIndicator = false
         return scrollView
     }()
@@ -98,8 +132,9 @@ final class SearchView: UIView {
     
     private let recentTitleLabel: UILabel = {
         let label = UILabel()
-        label.text = "최근검색"
-        label.font = UIFont.boldSystemFont(ofSize: 20)
+        label.text = "최근 검색"
+        label.font = Theme.Font.sectionHeading
+        label.textColor = Theme.textColor
         return label
     }()
     
@@ -148,10 +183,17 @@ final class SearchView: UIView {
     
     private lazy var retryButton: UIButton = {
         let button = UIButton(type: .system)
-        var config = UIButton.Configuration.bordered()
+        var config = UIButton.Configuration.plain()
         config.title = "다시 시도"
-        config.baseForegroundColor = .systemBlue
-        config.contentInsets = NSDirectionalEdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16)
+        config.baseForegroundColor = Theme.accent
+        config.background.backgroundColor = Theme.accentSoft
+        config.background.cornerRadius = Theme.Radius.chip
+        config.contentInsets = NSDirectionalEdgeInsets(top: 10, leading: 18, bottom: 10, trailing: 18)
+        config.titleTextAttributesTransformer = UIConfigurationTextAttributesTransformer { incoming in
+            var outgoing = incoming
+            outgoing.font = Theme.Font.chip
+            return outgoing
+        }
         button.configuration = config
         button.addAction(UIAction(handler: { [weak self] _ in
             self?.delegate?.retrySearch()
@@ -193,11 +235,21 @@ final class SearchView: UIView {
     }
 
     func updateFilterSummary(_ summary: String) {
-        filterSummaryLabel.text = summary
+        filterButton.configuration?.title = summary
+        // 명시적 accessibilityLabel이 버튼 제목을 가리므로, 바뀐 요약을 직접 넣어준다.
+        filterButton.accessibilityLabel = "검색 필터, \(summary)"
+    }
+
+    /// Shows "검색 결과 24" beside the sort chip; `nil` hides the pair while idle.
+    func updateResultCount(_ count: Int?) {
+        resultTitleLabel.isHidden = count == nil
+        resultCountLabel.isHidden = count == nil
+        resultCountLabel.text = count.map { "\($0)" }
     }
 
     // MARK: - Private Setup Methods
     private func setupUI() {
+        backgroundColor = Theme.backgroundColor
         addSubviews()
         setupConstraints()
     }
@@ -216,8 +268,10 @@ final class SearchView: UIView {
         statusStackView.addArrangedSubview(loadingIndicator)
         statusStackView.addArrangedSubview(statusLabel)
         statusStackView.addArrangedSubview(retryButton)
+        filterStackView.addArrangedSubview(resultTitleLabel)
+        filterStackView.addArrangedSubview(resultCountLabel)
+        filterStackView.addArrangedSubview(UIView())
         filterStackView.addArrangedSubview(filterButton)
-        filterStackView.addArrangedSubview(filterSummaryLabel)
     }
 
     private func setupConstraints() {
@@ -234,18 +288,18 @@ final class SearchView: UIView {
         NSLayoutConstraint.activate([
             // SearchBar
             searchBar.topAnchor.constraint(equalTo: safeAreaLayoutGuide.topAnchor),
-            searchBar.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 8),
-            searchBar.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -8),
+            searchBar.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 12),
+            searchBar.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -12),
 
             filterStackView.topAnchor.constraint(equalTo: searchBar.bottomAnchor, constant: 4),
-            filterStackView.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 16),
-            filterStackView.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -16),
+            filterStackView.leadingAnchor.constraint(equalTo: leadingAnchor, constant: Theme.Spacing.screenHorizontal),
+            filterStackView.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -Theme.Spacing.screenHorizontal),
             filterStackView.heightAnchor.constraint(equalToConstant: 40),
             
             // Keyword Scroll View
             keywordScrollView.topAnchor.constraint(equalTo: filterStackView.bottomAnchor, constant: 8),
-            keywordScrollView.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 16),
-            keywordScrollView.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -16),
+            keywordScrollView.leadingAnchor.constraint(equalTo: leadingAnchor, constant: Theme.Spacing.screenHorizontal),
+            keywordScrollView.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -Theme.Spacing.screenHorizontal),
             keywordScrollView.heightAnchor.constraint(equalToConstant: 40),
             
             // Keyword Stack View
@@ -257,11 +311,11 @@ final class SearchView: UIView {
             
             // All Delete Button
             allDeleteButton.topAnchor.constraint(equalTo: keywordScrollView.bottomAnchor, constant: 16),
-            allDeleteButton.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -16),
+            allDeleteButton.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -Theme.Spacing.screenHorizontal),
             
             // Recent Title Label
             recentTitleLabel.topAnchor.constraint(equalTo: keywordScrollView.bottomAnchor, constant: 16),
-            recentTitleLabel.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 16),
+            recentTitleLabel.leadingAnchor.constraint(equalTo: leadingAnchor, constant: Theme.Spacing.screenHorizontal),
             
             // Recent Table View
             recentTableView.topAnchor.constraint(equalTo: recentTitleLabel.bottomAnchor, constant: 8),
@@ -284,25 +338,20 @@ final class SearchView: UIView {
             let button = UIButton()
 
             // 버튼 스타일 설정
+            // 칩: 흰 면 + 11 라운드. 구분은 그림자가 아니라 배경과의 명도 차로 만든다.
             var config = UIButton.Configuration.plain()
             config.title = keyword
-            config.baseBackgroundColor = Theme.surfaceElevated
-            config.baseForegroundColor = Theme.textColor
-            config.contentInsets = NSDirectionalEdgeInsets(top: 6, leading: 20, bottom: 6, trailing: 20) // 내부 여백
+            config.background.backgroundColor = Theme.cellBackgroundColor
+            config.background.cornerRadius = Theme.Radius.chip
+            config.baseForegroundColor = Theme.textSecondary
+            config.contentInsets = NSDirectionalEdgeInsets(top: 8, leading: 13, bottom: 8, trailing: 13)
+            config.titleTextAttributesTransformer = UIConfigurationTextAttributesTransformer { incoming in
+                var outgoing = incoming
+                outgoing.font = Theme.Font.chip
+                return outgoing
+            }
             button.configuration = config
-            button.titleLabel?.font = Theme.Font.buttonLabel
             button.accessibilityLabel = "\(keyword) 키워드 검색"
-
-            button.layer.cornerRadius = Theme.Radius.small
-            button.layer.masksToBounds = false
-            button.layer.borderWidth = 1
-            button.layer.borderColor = UIColor.systemGray5.cgColor
-
-            // 그림자 효과
-            button.layer.shadowColor = UIColor.black.cgColor
-            button.layer.shadowOpacity = 0.15
-            button.layer.shadowOffset = CGSize(width: 0, height: 8)
-            button.layer.shadowRadius = 12
 
             // 버튼 클릭 이벤트 추가 (UIAction 사용)
             let action = UIAction { [weak self] _ in
@@ -311,7 +360,6 @@ final class SearchView: UIView {
             button.addAction(action, for: .touchUpInside)
 
             keywordStackView.addArrangedSubview(button)
-            keywordStackView.backgroundColor = Theme.backgroundColor
         }
     }
 
@@ -387,8 +435,8 @@ extension SearchView: UITableViewDataSource, UITableViewDelegate {
     func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
         let cell = tableView.dequeueReusableCell(withIdentifier: "SearchCell", for: indexPath)
         cell.textLabel?.text = recentSearches[indexPath.row]
-        cell.textLabel?.font = Theme.Font.buttonLabel
-        cell.textLabel?.textColor = Theme.textColor
+        cell.textLabel?.font = Theme.Font.rowValue
+        cell.textLabel?.textColor = Theme.textSecondary
         cell.backgroundColor = Theme.backgroundColor
         return cell
     }

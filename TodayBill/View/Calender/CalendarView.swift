@@ -8,10 +8,13 @@
 import Foundation
 import UIKit
 
+/// 홈: 오늘의 지표 하나를 크게 세우고, 그 아래로 캘린더 · 날짜별 법안 · 시행 예정을 잇는다.
+/// 모든 블록은 회색 바탕 위의 흰 카드이며, 색은 상태에만 쓴다.
 final class CalendarView: UIView {
     private let scrollView: UIScrollView = {
         let scrollView = UIScrollView()
         scrollView.alwaysBounceVertical = true
+        scrollView.showsVerticalScrollIndicator = false
         scrollView.translatesAutoresizingMaskIntoConstraints = false
         return scrollView
     }()
@@ -19,82 +22,88 @@ final class CalendarView: UIView {
     private let contentStackView: UIStackView = {
         let stackView = UIStackView()
         stackView.axis = .vertical
-        stackView.spacing = 18
+        stackView.spacing = Theme.Spacing.section
         stackView.translatesAutoresizingMaskIntoConstraints = false
         return stackView
     }()
 
+
     let dashboardView = HomeDashboardPanelView()
 
-    private let calendarSectionView: UIView = {
-        let view = UIView()
-        view.backgroundColor = .clear
-        view.translatesAutoresizingMaskIntoConstraints = false
-        return view
-    }()
-
-    private let calendarTitleLabel: UILabel = {
-        let label = UILabel()
-        label.text = "날짜별 법안"
-        label.font = Theme.Font.screenTitle
-        label.textColor = Theme.textColor
-        label.translatesAutoresizingMaskIntoConstraints = false
-        return label
-    }()
+    private let calendarTitleLabel = SectionHeaderLabel(text: "날짜별 법안")
 
     lazy var dateView: UICalendarView = {
         var view = UICalendarView()
         view.wantsDateDecorations = true
-        view.backgroundColor = Theme.cellBackgroundColor
-        view.layer.cornerRadius = Theme.Radius.medium
-        view.layer.masksToBounds = true
+        view.backgroundColor = .clear
+        view.tintColor = Theme.accent
         view.translatesAutoresizingMaskIntoConstraints = false
         return view
     }()
 
-    private let selectedDateTitleLabel: UILabel = {
-        let label = UILabel()
-        label.text = "선택 날짜 법안"
-        label.font = Theme.Font.screenTitle
-        label.textColor = Theme.textColor
-        label.translatesAutoresizingMaskIntoConstraints = false
-        return label
-    }()
+    private let selectedDateTitleLabel = SectionHeaderLabel(text: "선택 날짜 법안")
 
     let listContainerView: UIView = {
         let view = UIView()
         view.backgroundColor = .clear
+        view.clipsToBounds = true
         view.translatesAutoresizingMaskIntoConstraints = false
         return view
     }()
 
+    private let lawSectionView = LawEnforcementSectionView()
+
+    private let footerLabel: UILabel = {
+        let label = UILabel()
+        label.font = Theme.Font.caption
+        label.textColor = Theme.textMuted
+        label.numberOfLines = 0
+        return label
+    }()
+
     weak var delegate: UICalendarViewDelegate?
     private var listHeightConstraint: NSLayoutConstraint?
-    
+
     override init(frame: CGRect) {
         super.init(frame: frame)
         setupView()
     }
-    
+
     required init?(coder: NSCoder) {
         fatalError("init(coder:) has not been implemented")
     }
-        
+
     private func setupView() {
         addSubview(scrollView)
         scrollView.addSubview(contentStackView)
 
         dashboardView.translatesAutoresizingMaskIntoConstraints = false
+        lawSectionView.translatesAutoresizingMaskIntoConstraints = false
+
+        let calendarSectionView = Self.makeSection(
+            header: calendarTitleLabel,
+            content: CardView(contentView: dateView, padding: Theme.Spacing.listPadding)
+        )
+
         contentStackView.addArrangedSubview(dashboardView)
         contentStackView.addArrangedSubview(calendarSectionView)
-        contentStackView.addArrangedSubview(selectedDateTitleLabel)
-        contentStackView.addArrangedSubview(listContainerView)
+        contentStackView.addArrangedSubview(
+            Self.makeSection(header: selectedDateTitleLabel, content: listContainerView, spacing: 0)
+        )
+        contentStackView.addArrangedSubview(lawSectionView)
+        contentStackView.addArrangedSubview(footerLabel)
 
-        calendarSectionView.addSubview(calendarTitleLabel)
-        calendarSectionView.addSubview(dateView)
+        // The list controller sets its own horizontal inset, so it spans the full stack width.
+        contentStackView.setCustomSpacing(8, after: calendarSectionView)
+
+        lawSectionView.onLawSelected = { [weak self] enforcement in
+            self?.dashboardView.onLawSelected?(enforcement)
+        }
 
         listHeightConstraint = listContainerView.heightAnchor.constraint(equalToConstant: 260)
         listHeightConstraint?.priority = .defaultHigh
+
+        let inset = Theme.Spacing.screenHorizontal
 
         NSLayoutConstraint.activate([
             scrollView.topAnchor.constraint(equalTo: safeAreaLayoutGuide.topAnchor),
@@ -102,21 +111,13 @@ final class CalendarView: UIView {
             scrollView.trailingAnchor.constraint(equalTo: trailingAnchor),
             scrollView.bottomAnchor.constraint(equalTo: bottomAnchor),
 
-            contentStackView.topAnchor.constraint(equalTo: scrollView.contentLayoutGuide.topAnchor, constant: 18),
-            contentStackView.leadingAnchor.constraint(equalTo: scrollView.contentLayoutGuide.leadingAnchor, constant: 18),
-            contentStackView.trailingAnchor.constraint(equalTo: scrollView.contentLayoutGuide.trailingAnchor, constant: -18),
-            contentStackView.bottomAnchor.constraint(equalTo: scrollView.contentLayoutGuide.bottomAnchor, constant: -24),
-            contentStackView.widthAnchor.constraint(equalTo: scrollView.frameLayoutGuide.widthAnchor, constant: -36),
+            contentStackView.topAnchor.constraint(equalTo: scrollView.contentLayoutGuide.topAnchor, constant: 6),
+            contentStackView.leadingAnchor.constraint(equalTo: scrollView.contentLayoutGuide.leadingAnchor, constant: inset),
+            contentStackView.trailingAnchor.constraint(equalTo: scrollView.contentLayoutGuide.trailingAnchor, constant: -inset),
+            contentStackView.bottomAnchor.constraint(equalTo: scrollView.contentLayoutGuide.bottomAnchor, constant: -28),
+            contentStackView.widthAnchor.constraint(equalTo: scrollView.frameLayoutGuide.widthAnchor, constant: -inset * 2),
 
-            calendarTitleLabel.topAnchor.constraint(equalTo: calendarSectionView.topAnchor),
-            calendarTitleLabel.leadingAnchor.constraint(equalTo: calendarSectionView.leadingAnchor, constant: 2),
-            calendarTitleLabel.trailingAnchor.constraint(equalTo: calendarSectionView.trailingAnchor, constant: -2),
-
-            dateView.topAnchor.constraint(equalTo: calendarTitleLabel.bottomAnchor, constant: 10),
-            dateView.leadingAnchor.constraint(equalTo: calendarSectionView.leadingAnchor),
-            dateView.trailingAnchor.constraint(equalTo: calendarSectionView.trailingAnchor),
-            dateView.heightAnchor.constraint(equalToConstant: 360),
-            dateView.bottomAnchor.constraint(equalTo: calendarSectionView.bottomAnchor),
+            dateView.heightAnchor.constraint(equalToConstant: 340),
 
             listHeightConstraint!
         ])
@@ -124,6 +125,11 @@ final class CalendarView: UIView {
 
     func updateDashboard(_ dashboard: HomeDashboard) {
         dashboardView.configure(with: dashboard)
+        lawSectionView.configure(
+            with: dashboard.lawEnforcements,
+            failed: dashboard.failedSections.contains(.lawEnforcements)
+        )
+        footerLabel.attributedText = Self.makeFooterText(updatedAt: dashboard.updatedAt)
     }
 
     func updateSelectedDateTitle(_ title: String) {
@@ -134,7 +140,7 @@ final class CalendarView: UIView {
         listHeightConstraint?.constant = max(180, height)
         layoutIfNeeded()
     }
-    
+
     func reloadDateView(date: Date?) {
         if let date = date {
             let calendar = Calendar.current
@@ -142,54 +148,108 @@ final class CalendarView: UIView {
             dateView.reloadDecorations(forDateComponents: [dateComponents], animated: true)
         }
     }
+
+    private static func makeSection(header: UILabel, content: UIView, spacing: CGFloat = 8) -> UIStackView {
+        let stack = UIStackView(arrangedSubviews: [header, content])
+        stack.axis = .vertical
+        stack.spacing = spacing
+        return stack
+    }
+
+    private static func makeFooterText(updatedAt: Date) -> NSAttributedString {
+        let paragraphStyle = NSMutableParagraphStyle()
+        paragraphStyle.lineSpacing = 4
+        let text = "데이터 출처 · 국회 의안정보시스템\n최근 업데이트 \(footerDateFormatter.string(from: updatedAt))"
+        return NSAttributedString(
+            string: text,
+            attributes: [
+                .paragraphStyle: paragraphStyle,
+                .font: Theme.Font.caption,
+                .foregroundColor: Theme.textMuted
+            ]
+        )
+    }
+
+    private static let footerDateFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "ko_KR")
+        formatter.dateFormat = "yyyy.MM.dd HH:mm"
+        return formatter
+    }()
+}
+
+/// 15 / 800 section heading, sitting on the background with a 4pt optical gutter.
+final class SectionHeaderLabel: UILabel {
+    init(text: String) {
+        super.init(frame: .zero)
+        self.text = text
+        font = Theme.Font.sectionHeading
+        textColor = Theme.textColor
+        numberOfLines = 1
+        translatesAutoresizingMaskIntoConstraints = false
+    }
+
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
+
+    override func drawText(in rect: CGRect) {
+        super.drawText(in: rect.inset(by: UIEdgeInsets(top: 0, left: 4, bottom: 0, right: 4)))
+    }
+
+    override var intrinsicContentSize: CGSize {
+        let size = super.intrinsicContentSize
+        return CGSize(width: size.width + 8, height: size.height)
+    }
 }
 
 final class HomeDashboardPanelView: UIView {
     var onBillSelected: ((BillSnapshot) -> Void)?
     var onLawSelected: ((LawEnforcementSnapshot) -> Void)?
 
+    private let dateLabel: UILabel = {
+        let label = UILabel()
+        label.font = Theme.Font.metaStrong
+        label.textColor = Theme.textMuted
+        return label
+    }()
+
     private let titleLabel: UILabel = {
         let label = UILabel()
-        label.text = "오늘의 법안"
-        label.font = Theme.Font.heroTitle
+        label.text = "오늘의 발의"
+        label.font = Theme.Font.screenTitle
         label.textColor = Theme.textColor
         label.numberOfLines = 1
         return label
     }()
 
-    private let summaryStackView: UIStackView = {
-        let stackView = UIStackView()
-        stackView.axis = .horizontal
-        stackView.spacing = 10
-        stackView.distribution = .fillEqually
-        return stackView
-    }()
+    private let headlineStatView = HeadlineStatView()
 
-    private let newProposalStatView = DashboardStatView()
-    private let stageChangeStatView = DashboardStatView()
-    private let enforcementStatView = DashboardStatView()
-
-    private let stageSectionStackView = DashboardSectionStackView(title: "진행 변경")
+    private let stageSectionStackView = DashboardSectionStackView(title: "내 관심 법안 변동")
     private let hotSectionStackView = DashboardSectionStackView(title: "주목할 법안")
-    private let lawSectionStackView = DashboardSectionStackView(title: "시행 예정/최근 시행")
+    private let committeeSectionStackView = DashboardSectionStackView(title: "오늘 위원회별 발의")
+    private let committeeChartView = CommitteeBreakdownView()
 
     private let hotScrollView: UIScrollView = {
         let scrollView = UIScrollView()
         scrollView.showsHorizontalScrollIndicator = false
+        // Clipped: in the two-column layout anything overflowing would be drawn
+        // on top of the column beside it.
+        scrollView.clipsToBounds = true
         return scrollView
     }()
 
     private let hotStackView: UIStackView = {
         let stackView = UIStackView()
         stackView.axis = .horizontal
-        stackView.spacing = 12
+        stackView.spacing = 10
         return stackView
     }()
 
     private let mainStackView: UIStackView = {
         let stackView = UIStackView()
         stackView.axis = .vertical
-        stackView.spacing = 18
+        stackView.spacing = Theme.Spacing.section
         stackView.translatesAutoresizingMaskIntoConstraints = false
         return stackView
     }()
@@ -206,19 +266,24 @@ final class HomeDashboardPanelView: UIView {
     private func setupView() {
         addSubview(mainStackView)
 
-        summaryStackView.addArrangedSubview(newProposalStatView)
-        summaryStackView.addArrangedSubview(stageChangeStatView)
-        summaryStackView.addArrangedSubview(enforcementStatView)
+        let headerStack = UIStackView(arrangedSubviews: [dateLabel, titleLabel])
+        headerStack.axis = .vertical
+        headerStack.spacing = 4
+        headerStack.isLayoutMarginsRelativeArrangement = true
+        headerStack.layoutMargins = UIEdgeInsets(top: 0, left: 4, bottom: 0, right: 4)
 
         hotScrollView.addSubview(hotStackView)
         hotStackView.translatesAutoresizingMaskIntoConstraints = false
         hotSectionStackView.contentStackView.addArrangedSubview(hotScrollView)
+        committeeSectionStackView.contentStackView.addArrangedSubview(committeeChartView)
 
-        mainStackView.addArrangedSubview(titleLabel)
-        mainStackView.addArrangedSubview(summaryStackView)
+        mainStackView.addArrangedSubview(headerStack)
+        mainStackView.addArrangedSubview(headlineStatView)
         mainStackView.addArrangedSubview(stageSectionStackView)
         mainStackView.addArrangedSubview(hotSectionStackView)
-        mainStackView.addArrangedSubview(lawSectionStackView)
+        mainStackView.addArrangedSubview(committeeSectionStackView)
+
+        dateLabel.text = Self.headerDateFormatter.string(from: Date())
 
         NSLayoutConstraint.activate([
             mainStackView.topAnchor.constraint(equalTo: topAnchor),
@@ -226,7 +291,7 @@ final class HomeDashboardPanelView: UIView {
             mainStackView.trailingAnchor.constraint(equalTo: trailingAnchor),
             mainStackView.bottomAnchor.constraint(equalTo: bottomAnchor),
 
-            hotScrollView.heightAnchor.constraint(equalToConstant: 150),
+            hotScrollView.heightAnchor.constraint(equalToConstant: 124),
             hotStackView.topAnchor.constraint(equalTo: hotScrollView.contentLayoutGuide.topAnchor),
             hotStackView.leadingAnchor.constraint(equalTo: hotScrollView.contentLayoutGuide.leadingAnchor),
             hotStackView.trailingAnchor.constraint(equalTo: hotScrollView.contentLayoutGuide.trailingAnchor),
@@ -236,13 +301,11 @@ final class HomeDashboardPanelView: UIView {
     }
 
     func configure(with dashboard: HomeDashboard) {
-        newProposalStatView.configure(title: "새 발의", count: dashboard.newProposals.count, tintColor: .systemBlue)
-        stageChangeStatView.configure(title: "진행 변경", count: dashboard.stageChanges.count, tintColor: .systemIndigo)
-        enforcementStatView.configure(title: "시행 예정", count: upcomingLawCount(from: dashboard.lawEnforcements), tintColor: .systemGreen)
-
+        dateLabel.text = Self.headerDateFormatter.string(from: Date())
+        headlineStatView.configure(with: dashboard)
         configureStageChanges(dashboard.stageChanges)
         configureHotBills(dashboard.hotBills)
-        configureLawEnforcements(dashboard.lawEnforcements, failed: dashboard.failedSections.contains(.lawEnforcements))
+        configureCommitteeBreakdown(dashboard.newProposals)
     }
 
     private func configureStageChanges(_ snapshots: [BillSnapshot]) {
@@ -252,14 +315,34 @@ final class HomeDashboardPanelView: UIView {
             return
         }
 
-        snapshots.prefix(3).forEach { snapshot in
-            let row = DashboardBillRowControl()
+        let rows = snapshots.prefix(3).map { snapshot -> UIView in
+            let row = StageChangeRowControl()
             row.configure(snapshot: snapshot)
             row.onActivate = { [weak self] in
                 self?.onBillSelected?(snapshot)
             }
-            stageSectionStackView.contentStackView.addArrangedSubview(row)
+            return row
         }
+
+        // One card holding hairline-separated rows, rather than one card per row.
+        let rowsStack = UIStackView()
+        rowsStack.axis = .vertical
+        rowsStack.spacing = 0
+        for (index, row) in rows.enumerated() {
+            rowsStack.addArrangedSubview(row)
+            if index < rows.count - 1 {
+                rowsStack.addArrangedSubview(HairlineView())
+            }
+        }
+
+        stageSectionStackView.contentStackView.addArrangedSubview(
+            CardView(
+                contentView: rowsStack,
+                horizontalPadding: Theme.Spacing.listPadding,
+                verticalPadding: 6,
+                cornerRadius: Theme.Radius.list
+            )
+        )
     }
 
     private func configureHotBills(_ hotBills: [HotBillSnapshot]) {
@@ -282,76 +365,60 @@ final class HomeDashboardPanelView: UIView {
                 self?.onBillSelected?(hotBill.bill)
             }
             hotStackView.addArrangedSubview(card)
-            card.widthAnchor.constraint(equalToConstant: 280).isActive = true
+            card.widthAnchor.constraint(equalToConstant: 268).isActive = true
         }
     }
 
-    private func configureLawEnforcements(_ enforcements: [LawEnforcementSnapshot], failed: Bool) {
-        lawSectionStackView.clearContent()
-        if failed {
-            lawSectionStackView.addStatusBadge("시행일 정보를 불러오지 못했어요")
+    private func configureCommitteeBreakdown(_ snapshots: [BillSnapshot]) {
+        let grouped: [String: [BillSnapshot]] = Dictionary(grouping: snapshots) { $0.displayCommittee }
+        var counts: [(name: String, count: Int)] = grouped.map { (name: $0.key, count: $0.value.count) }
+        counts.sort { lhs, rhs in
+            lhs.count == rhs.count ? lhs.name < rhs.name : lhs.count > rhs.count
         }
+        let top = Array(counts.prefix(4))
 
-        guard !enforcements.isEmpty else {
-            lawSectionStackView.addEmptyMessage("시행 예정 법률 항목이 없습니다.")
-            return
-        }
-
-        enforcements.prefix(5).forEach { enforcement in
-            let row = LawTimelineRowControl()
-            row.configure(with: enforcement)
-            row.onActivate = { [weak self] in
-                self?.onLawSelected?(enforcement)
-            }
-            lawSectionStackView.contentStackView.addArrangedSubview(row)
-        }
+        committeeSectionStackView.isHidden = top.isEmpty
+        committeeChartView.configure(with: top)
     }
 
-    private func upcomingLawCount(from enforcements: [LawEnforcementSnapshot]) -> Int {
-        let today = Self.dayFormatter.string(from: Date())
-        return enforcements.filter { $0.enforcementDate >= today }.count
-    }
-
-    private static let dayFormatter: DateFormatter = {
+    private static let headerDateFormatter: DateFormatter = {
         let formatter = DateFormatter()
-        formatter.calendar = Calendar(identifier: .gregorian)
         formatter.locale = Locale(identifier: "ko_KR")
-        formatter.dateFormat = "yyyy-MM-dd"
+        formatter.dateFormat = "yyyy년 M월 d일 EEEE"
         return formatter
     }()
 }
 
-private final class DashboardStatView: UIView {
+/// 오늘 발의 건수를 44/800으로 한 번만 크게 쓰고, 나머지 지표는 구분선 아래 19/800으로 내린다.
+private final class HeadlineStatView: UIView {
     private let countLabel: UILabel = {
         let label = UILabel()
-        label.font = Theme.Font.statNumber
+        label.font = Theme.Font.metricXL
         label.textColor = Theme.textColor
         label.adjustsFontSizeToFitWidth = true
-        label.minimumScaleFactor = 0.75
+        label.minimumScaleFactor = 0.6
         return label
     }()
 
-    private let titleLabel: UILabel = {
+    private let unitLabel: UILabel = {
         let label = UILabel()
-        label.font = Theme.Font.smallStrong
-        label.textColor = Theme.emptyLabelTextColor
-        label.numberOfLines = 1
+        label.text = "건"
+        label.font = UIFont.systemFont(ofSize: 17, weight: .bold)
+        label.textColor = Theme.textSecondary
         return label
     }()
 
-    private let accentView: UIView = {
-        let view = UIView()
-        view.layer.cornerRadius = 3
-        view.translatesAutoresizingMaskIntoConstraints = false
-        return view
-    }()
+    private let statusBadgeLabel = BadgeLabel(horizontalPadding: 10, verticalPadding: 5)
 
-    private let stackView: UIStackView = {
-        let stackView = UIStackView()
-        stackView.axis = .vertical
-        stackView.spacing = 4
-        stackView.translatesAutoresizingMaskIntoConstraints = false
-        return stackView
+    private let stageChangeStatView = SubStatView(title: "관심 법안 변동")
+    private let enforcementStatView = SubStatView(title: "시행 예정")
+
+    private let contentStackView: UIStackView = {
+        let stack = UIStackView()
+        stack.axis = .vertical
+        stack.spacing = 18
+        stack.translatesAutoresizingMaskIntoConstraints = false
+        return stack
     }()
 
     override init(frame: CGRect) {
@@ -364,34 +431,311 @@ private final class DashboardStatView: UIView {
     }
 
     private func setupView() {
-        backgroundColor = Theme.surfaceElevated
-        layer.cornerRadius = Theme.Radius.small
-        layer.borderWidth = 1
-        layer.borderColor = Theme.separator.cgColor
+        backgroundColor = Theme.cellBackgroundColor
+        layer.cornerRadius = Theme.Radius.card
+        layer.masksToBounds = true
 
-        addSubview(accentView)
-        addSubview(stackView)
-        stackView.addArrangedSubview(countLabel)
-        stackView.addArrangedSubview(titleLabel)
+        let countRow = UIStackView(arrangedSubviews: [countLabel, unitLabel, UIView(), statusBadgeLabel])
+        countRow.axis = .horizontal
+        countRow.alignment = .lastBaseline
+        countRow.spacing = 6
 
+        let dividerView = UIView()
+        dividerView.backgroundColor = Theme.separator
+        dividerView.translatesAutoresizingMaskIntoConstraints = false
+
+        let subStatRow = UIStackView(arrangedSubviews: [stageChangeStatView, dividerView, enforcementStatView])
+        subStatRow.axis = .horizontal
+        subStatRow.distribution = .fill
+        subStatRow.alignment = .fill
+        subStatRow.spacing = 16
+
+        addSubview(contentStackView)
+        contentStackView.addArrangedSubview(countRow)
+        contentStackView.addArrangedSubview(HairlineView())
+        contentStackView.addArrangedSubview(subStatRow)
+        contentStackView.setCustomSpacing(14, after: countRow)
+
+        let padding = Theme.Spacing.cardPadding
         NSLayoutConstraint.activate([
-            accentView.topAnchor.constraint(equalTo: topAnchor),
-            accentView.leadingAnchor.constraint(equalTo: leadingAnchor),
-            accentView.trailingAnchor.constraint(equalTo: trailingAnchor),
-            accentView.heightAnchor.constraint(equalToConstant: 5),
+            contentStackView.topAnchor.constraint(equalTo: topAnchor, constant: padding),
+            contentStackView.leadingAnchor.constraint(equalTo: leadingAnchor, constant: padding),
+            contentStackView.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -padding),
+            contentStackView.bottomAnchor.constraint(equalTo: bottomAnchor, constant: -padding),
 
-            stackView.topAnchor.constraint(equalTo: accentView.bottomAnchor, constant: 10),
-            stackView.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 12),
-            stackView.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -12),
-            stackView.bottomAnchor.constraint(equalTo: bottomAnchor, constant: -12),
-            heightAnchor.constraint(greaterThanOrEqualToConstant: 88)
+            dividerView.widthAnchor.constraint(equalToConstant: 1),
+            stageChangeStatView.widthAnchor.constraint(equalTo: enforcementStatView.widthAnchor)
         ])
     }
 
-    func configure(title: String, count: Int, tintColor: UIColor) {
+    func configure(with dashboard: HomeDashboard) {
+        countLabel.text = "\(dashboard.newProposals.count)"
+        stageChangeStatView.configure(count: dashboard.stageChanges.count)
+        enforcementStatView.configure(count: Self.upcomingLawCount(from: dashboard.lawEnforcements))
+
+        // The badge reports freshness, the one thing a cached load has to disclose.
+        if dashboard.updateFailed {
+            statusBadgeLabel.configure(text: "저장된 데이터", style: .muted)
+        } else {
+            statusBadgeLabel.configure(text: "최신", style: .progress)
+        }
+
+        accessibilityLabel = "오늘 발의 \(dashboard.newProposals.count)건"
+    }
+
+    private static func upcomingLawCount(from enforcements: [LawEnforcementSnapshot]) -> Int {
+        let today = dayFormatter.string(from: Date())
+        return enforcements.filter { $0.enforcementDate >= today }.count
+    }
+
+    private static let dayFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.calendar = Calendar(identifier: .gregorian)
+        formatter.locale = Locale(identifier: "ko_KR")
+        formatter.dateFormat = "yyyy-MM-dd"
+        return formatter
+    }()
+}
+
+private final class SubStatView: UIView {
+    private let titleLabel: UILabel = {
+        let label = UILabel()
+        label.font = Theme.Font.caption
+        label.textColor = Theme.textMuted
+        label.numberOfLines = 1
+        return label
+    }()
+
+    private let countLabel: UILabel = {
+        let label = UILabel()
+        label.font = Theme.Font.metricS
+        label.textColor = Theme.textColor
+        return label
+    }()
+
+    init(title: String) {
+        super.init(frame: .zero)
         titleLabel.text = title
+
+        let stack = UIStackView(arrangedSubviews: [titleLabel, countLabel])
+        stack.axis = .vertical
+        stack.spacing = 3
+        stack.translatesAutoresizingMaskIntoConstraints = false
+        addSubview(stack)
+
+        NSLayoutConstraint.activate([
+            stack.topAnchor.constraint(equalTo: topAnchor),
+            stack.leadingAnchor.constraint(equalTo: leadingAnchor),
+            stack.trailingAnchor.constraint(equalTo: trailingAnchor),
+            stack.bottomAnchor.constraint(equalTo: bottomAnchor)
+        ])
+    }
+
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
+
+    func configure(count: Int) {
         countLabel.text = "\(count)"
-        accentView.backgroundColor = tintColor
+        accessibilityLabel = "\(titleLabel.text ?? "") \(count)건"
+    }
+}
+
+/// 위원회별 발의 건수를 가로 막대로. 색은 하나(액센트)이고 순위는 명도로 내려간다.
+private final class CommitteeBreakdownView: UIView {
+    private let rowsStackView: UIStackView = {
+        let stack = UIStackView()
+        stack.axis = .vertical
+        stack.spacing = 14
+        stack.translatesAutoresizingMaskIntoConstraints = false
+        return stack
+    }()
+
+    private let cardView: UIView = {
+        let view = UIView()
+        view.backgroundColor = Theme.cellBackgroundColor
+        view.layer.cornerRadius = Theme.Radius.card
+        view.layer.masksToBounds = true
+        view.translatesAutoresizingMaskIntoConstraints = false
+        return view
+    }()
+
+    override init(frame: CGRect) {
+        super.init(frame: frame)
+        addSubview(cardView)
+        cardView.addSubview(rowsStackView)
+
+        let padding = Theme.Spacing.cardPadding
+        NSLayoutConstraint.activate([
+            cardView.topAnchor.constraint(equalTo: topAnchor),
+            cardView.leadingAnchor.constraint(equalTo: leadingAnchor),
+            cardView.trailingAnchor.constraint(equalTo: trailingAnchor),
+            cardView.bottomAnchor.constraint(equalTo: bottomAnchor),
+
+            rowsStackView.topAnchor.constraint(equalTo: cardView.topAnchor, constant: padding),
+            rowsStackView.leadingAnchor.constraint(equalTo: cardView.leadingAnchor, constant: 18),
+            rowsStackView.trailingAnchor.constraint(equalTo: cardView.trailingAnchor, constant: -18),
+            rowsStackView.bottomAnchor.constraint(equalTo: cardView.bottomAnchor, constant: -padding)
+        ])
+    }
+
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
+
+    func configure(with entries: [(name: String, count: Int)]) {
+        rowsStackView.arrangedSubviews.forEach { view in
+            rowsStackView.removeArrangedSubview(view)
+            view.removeFromSuperview()
+        }
+
+        let maxCount = max(entries.first?.count ?? 1, 1)
+        for (index, entry) in entries.enumerated() {
+            rowsStackView.addArrangedSubview(
+                CommitteeBarRow(
+                    name: entry.name,
+                    count: entry.count,
+                    ratio: CGFloat(entry.count) / CGFloat(maxCount),
+                    rank: index
+                )
+            )
+        }
+    }
+}
+
+private final class CommitteeBarRow: UIView {
+    /// Rank shades of the one accent - #1F5CD8 down to a pale tint, never a second hue.
+    private static let rankAlphas: [CGFloat] = [1.0, 0.72, 0.48, 0.28]
+
+    init(name: String, count: Int, ratio: CGFloat, rank: Int) {
+        super.init(frame: .zero)
+
+        let nameLabel = UILabel()
+        nameLabel.text = name
+        nameLabel.font = Theme.Font.metaStrong
+        nameLabel.textColor = Theme.textStrong
+        nameLabel.lineBreakMode = .byTruncatingTail
+
+        let countLabel = UILabel()
+        countLabel.text = "\(count)"
+        countLabel.font = Theme.Font.metaStrong
+        countLabel.textColor = Theme.textColor
+        countLabel.setContentHuggingPriority(.required, for: .horizontal)
+
+        let labelRow = UIStackView(arrangedSubviews: [nameLabel, countLabel])
+        labelRow.axis = .horizontal
+        labelRow.spacing = 8
+
+        let trackView = UIView()
+        trackView.backgroundColor = Theme.separator
+        trackView.layer.cornerRadius = 3
+        trackView.layer.masksToBounds = true
+        trackView.translatesAutoresizingMaskIntoConstraints = false
+
+        let barView = UIView()
+        barView.backgroundColor = Theme.accent.withAlphaComponent(
+            Self.rankAlphas[min(rank, Self.rankAlphas.count - 1)]
+        )
+        barView.layer.cornerRadius = 3
+        barView.layer.masksToBounds = true
+        barView.translatesAutoresizingMaskIntoConstraints = false
+        trackView.addSubview(barView)
+
+        let stack = UIStackView(arrangedSubviews: [labelRow, trackView])
+        stack.axis = .vertical
+        stack.spacing = 7
+        stack.translatesAutoresizingMaskIntoConstraints = false
+        addSubview(stack)
+
+        isAccessibilityElement = true
+        accessibilityLabel = "\(name) \(count)건"
+
+        NSLayoutConstraint.activate([
+            stack.topAnchor.constraint(equalTo: topAnchor),
+            stack.leadingAnchor.constraint(equalTo: leadingAnchor),
+            stack.trailingAnchor.constraint(equalTo: trailingAnchor),
+            stack.bottomAnchor.constraint(equalTo: bottomAnchor),
+
+            trackView.heightAnchor.constraint(equalToConstant: 6),
+            barView.topAnchor.constraint(equalTo: trackView.topAnchor),
+            barView.bottomAnchor.constraint(equalTo: trackView.bottomAnchor),
+            barView.leadingAnchor.constraint(equalTo: trackView.leadingAnchor),
+            barView.widthAnchor.constraint(
+                equalTo: trackView.widthAnchor,
+                multiplier: max(0.06, min(ratio, 1))
+            )
+        ])
+    }
+
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
+}
+
+/// 시행 예정/최근 시행 - one card of hairline-separated rows with a date badge.
+private final class LawEnforcementSectionView: UIView {
+    var onLawSelected: ((LawEnforcementSnapshot) -> Void)?
+
+    private let sectionStackView = DashboardSectionStackView(title: "시행 예정/최근 시행")
+
+    override init(frame: CGRect) {
+        super.init(frame: frame)
+        sectionStackView.translatesAutoresizingMaskIntoConstraints = false
+        addSubview(sectionStackView)
+
+        NSLayoutConstraint.activate([
+            sectionStackView.topAnchor.constraint(equalTo: topAnchor),
+            sectionStackView.leadingAnchor.constraint(equalTo: leadingAnchor),
+            sectionStackView.trailingAnchor.constraint(equalTo: trailingAnchor),
+            sectionStackView.bottomAnchor.constraint(equalTo: bottomAnchor)
+        ])
+    }
+
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
+
+    func configure(with enforcements: [LawEnforcementSnapshot], failed: Bool) {
+        sectionStackView.clearContent()
+        if failed {
+            sectionStackView.addStatusBadge("시행일 정보를 불러오지 못했어요")
+        }
+
+        guard !enforcements.isEmpty else {
+            // 실패 배지를 이미 띄웠다면 "항목이 없다"는 말은 사실이 아니다.
+            if !failed {
+                sectionStackView.addEmptyMessage("시행 예정 법률 항목이 없습니다.")
+            }
+            return
+        }
+
+        let rows = enforcements.prefix(5).map { enforcement -> UIView in
+            let row = LawTimelineRowControl()
+            row.configure(with: enforcement)
+            row.onActivate = { [weak self] in
+                self?.onLawSelected?(enforcement)
+            }
+            return row
+        }
+
+        let rowsStack = UIStackView()
+        rowsStack.axis = .vertical
+        rowsStack.spacing = 0
+        for (index, row) in rows.enumerated() {
+            rowsStack.addArrangedSubview(row)
+            if index < rows.count - 1 {
+                rowsStack.addArrangedSubview(HairlineView())
+            }
+        }
+
+        sectionStackView.contentStackView.addArrangedSubview(
+            CardView(
+                contentView: rowsStack,
+                horizontalPadding: Theme.Spacing.listPadding,
+                verticalPadding: 6,
+                cornerRadius: Theme.Radius.list
+            )
+        )
     }
 }
 
@@ -404,12 +748,7 @@ private final class DashboardSectionStackView: UIView {
         return stackView
     }()
 
-    private let titleLabel: UILabel = {
-        let label = UILabel()
-        label.font = Theme.Font.sectionTitle
-        label.textColor = Theme.textColor
-        return label
-    }()
+    private let titleLabel = SectionHeaderLabel(text: "")
 
     private let statusStackView: UIStackView = {
         let stackView = UIStackView()
@@ -438,20 +777,19 @@ private final class DashboardSectionStackView: UIView {
     }
 
     private func setupView() {
-        let spacer = UIView()
         headerStackView.addArrangedSubview(titleLabel)
         headerStackView.addArrangedSubview(statusStackView)
-        headerStackView.addArrangedSubview(spacer)
+        headerStackView.addArrangedSubview(UIView())
 
         addSubview(headerStackView)
         addSubview(contentStackView)
 
         NSLayoutConstraint.activate([
             headerStackView.topAnchor.constraint(equalTo: topAnchor),
-            headerStackView.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 2),
-            headerStackView.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -2),
+            headerStackView.leadingAnchor.constraint(equalTo: leadingAnchor),
+            headerStackView.trailingAnchor.constraint(equalTo: trailingAnchor),
 
-            contentStackView.topAnchor.constraint(equalTo: headerStackView.bottomAnchor, constant: 10),
+            contentStackView.topAnchor.constraint(equalTo: headerStackView.bottomAnchor, constant: 8),
             contentStackView.leadingAnchor.constraint(equalTo: leadingAnchor),
             contentStackView.trailingAnchor.constraint(equalTo: trailingAnchor),
             contentStackView.bottomAnchor.constraint(equalTo: bottomAnchor)
@@ -474,13 +812,9 @@ private final class DashboardSectionStackView: UIView {
     }
 
     func addStatusBadge(_ text: String) {
-        let label = DashboardStatusBadgeLabel()
-        label.text = text
-        label.translatesAutoresizingMaskIntoConstraints = false
+        let label = BadgeLabel(horizontalPadding: 7, verticalPadding: 4)
+        label.configure(text: text, style: .muted)
         statusStackView.addArrangedSubview(label)
-        NSLayoutConstraint.activate([
-            label.heightAnchor.constraint(equalToConstant: 24)
-        ])
     }
 }
 
@@ -488,7 +822,7 @@ private final class DashboardEmptyStateView: UIView {
     private let label: UILabel = {
         let label = UILabel()
         label.font = Theme.Font.emptyMessage
-        label.textColor = Theme.emptyLabelTextColor
+        label.textColor = Theme.textMuted
         label.numberOfLines = 0
         label.translatesAutoresizingMaskIntoConstraints = false
         return label
@@ -505,33 +839,40 @@ private final class DashboardEmptyStateView: UIView {
     }
 
     private func setupView() {
-        backgroundColor = Theme.surfaceElevated
-        layer.cornerRadius = Theme.Radius.small
+        backgroundColor = Theme.cellBackgroundColor
+        layer.cornerRadius = Theme.Radius.list
         addSubview(label)
 
         NSLayoutConstraint.activate([
-            label.topAnchor.constraint(equalTo: topAnchor, constant: 14),
-            label.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 14),
-            label.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -14),
-            label.bottomAnchor.constraint(equalTo: bottomAnchor, constant: -14)
+            label.topAnchor.constraint(equalTo: topAnchor, constant: Theme.Spacing.listPadding),
+            label.leadingAnchor.constraint(equalTo: leadingAnchor, constant: Theme.Spacing.listPadding),
+            label.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -Theme.Spacing.listPadding),
+            label.bottomAnchor.constraint(equalTo: bottomAnchor, constant: -Theme.Spacing.listPadding)
         ])
     }
 }
 
-private final class DashboardBillRowControl: UIControl {
+/// 관심 법안 변동 row: a 34pt icon tile, then title over a colored status line.
+private final class StageChangeRowControl: UIControl {
     var onActivate: (() -> Void)?
 
-    private let stageLabel = DashboardPillLabel()
-    private let titleLabel = DashboardTextLabel(font: Theme.Font.rowTitle, color: Theme.textColor)
-    private let metadataLabel = DashboardTextLabel(font: Theme.Font.captionText, color: Theme.emptyLabelTextColor)
-
-    private let stackView: UIStackView = {
-        let stackView = UIStackView()
-        stackView.axis = .vertical
-        stackView.spacing = 6
-        stackView.translatesAutoresizingMaskIntoConstraints = false
-        return stackView
+    private let iconTileView: UIView = {
+        let view = UIView()
+        view.layer.cornerRadius = Theme.Radius.iconTile
+        view.layer.masksToBounds = true
+        view.translatesAutoresizingMaskIntoConstraints = false
+        return view
     }()
+
+    private let iconImageView: UIImageView = {
+        let imageView = UIImageView()
+        imageView.contentMode = .scaleAspectFit
+        imageView.translatesAutoresizingMaskIntoConstraints = false
+        return imageView
+    }()
+
+    private let titleLabel = DashboardTextLabel(font: Theme.Font.rowValue, color: Theme.textColor)
+    private let statusLabel = DashboardTextLabel(font: Theme.Font.caption, color: Theme.accent)
 
     override init(frame: CGRect) {
         super.init(frame: frame)
@@ -546,28 +887,59 @@ private final class DashboardBillRowControl: UIControl {
         isAccessibilityElement = true
         accessibilityTraits = .button
         addGestureRecognizer(UITapGestureRecognizer(target: self, action: #selector(handleActivation)))
-        backgroundColor = Theme.surfaceElevated
-        layer.cornerRadius = Theme.Radius.small
-        layer.borderWidth = 1
-        layer.borderColor = Theme.separator.cgColor
 
-        addSubview(stackView)
-        stackView.addArrangedSubview(stageLabel)
-        stackView.addArrangedSubview(titleLabel)
-        stackView.addArrangedSubview(metadataLabel)
+        titleLabel.numberOfLines = 2
+        statusLabel.numberOfLines = 1
+
+        iconTileView.addSubview(iconImageView)
+
+        let labelsStack = UIStackView(arrangedSubviews: [titleLabel, statusLabel])
+        labelsStack.axis = .vertical
+        labelsStack.spacing = 2
+
+        let rowStack = UIStackView(arrangedSubviews: [iconTileView, labelsStack])
+        rowStack.axis = .horizontal
+        rowStack.spacing = 12
+        rowStack.alignment = .center
+        rowStack.translatesAutoresizingMaskIntoConstraints = false
+        addSubview(rowStack)
 
         NSLayoutConstraint.activate([
-            stackView.topAnchor.constraint(equalTo: topAnchor, constant: 12),
-            stackView.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 12),
-            stackView.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -12),
-            stackView.bottomAnchor.constraint(equalTo: bottomAnchor, constant: -12)
+            iconTileView.widthAnchor.constraint(equalToConstant: 34),
+            iconTileView.heightAnchor.constraint(equalToConstant: 34),
+            iconImageView.centerXAnchor.constraint(equalTo: iconTileView.centerXAnchor),
+            iconImageView.centerYAnchor.constraint(equalTo: iconTileView.centerYAnchor),
+            iconImageView.widthAnchor.constraint(equalToConstant: 18),
+
+            rowStack.topAnchor.constraint(equalTo: topAnchor, constant: 14),
+            rowStack.leadingAnchor.constraint(equalTo: leadingAnchor),
+            rowStack.trailingAnchor.constraint(equalTo: trailingAnchor),
+            rowStack.bottomAnchor.constraint(equalTo: bottomAnchor, constant: -14),
+            heightAnchor.constraint(greaterThanOrEqualToConstant: Theme.Spacing.touchTarget)
         ])
     }
 
     func configure(snapshot: BillSnapshot) {
-        stageLabel.configure(text: snapshot.stage.title, color: .systemIndigo)
         titleLabel.text = snapshot.title
-        metadataLabel.text = "\(snapshot.displayCommittee) · \(snapshot.proposedDate)"
+
+        // 배지와 같은 어휘를 쓴다. 가결만 초록이고, 폐기·철회·부결과 상태 미확인은 회색이다.
+        let style = snapshot.badgeStyle
+        let isPassed: Bool
+        switch style {
+        case .done: isPassed = true
+        case .neutral, .progress, .muted: isPassed = false
+        }
+        iconTileView.backgroundColor = style.background
+        iconImageView.image = UIImage(
+            systemName: isPassed ? "checkmark" : "arrow.right",
+            withConfiguration: UIImage.SymbolConfiguration(pointSize: 13, weight: .bold)
+        )
+        iconImageView.tintColor = style.foreground
+
+        let dateText = BillSnapshot.nonEmpty(snapshot.proposedDate).map { " · \($0)" } ?? ""
+        statusLabel.text = "\(snapshot.stage.title) 단계\(dateText)"
+        statusLabel.textColor = style.foreground
+
         accessibilityLabel = "\(snapshot.title), \(snapshot.stage.title)"
     }
 
@@ -588,14 +960,14 @@ private final class DashboardBillRowControl: UIControl {
 private final class HotBillCardControl: UIControl {
     var onActivate: (() -> Void)?
 
-    private let titleLabel = DashboardTextLabel(font: Theme.Font.cardTitle, color: Theme.textColor)
-    private let metadataLabel = DashboardTextLabel(font: Theme.Font.captionText, color: Theme.emptyLabelTextColor)
+    private let titleLabel = DashboardTextLabel(font: Theme.Font.cardHeading, color: Theme.textColor)
+    private let metadataLabel = DashboardTextLabel(font: Theme.Font.meta, color: Theme.textMuted)
 
-    private let reasonStackView: UIStackView = {
+    private let badgeStackView: UIStackView = {
         let stackView = UIStackView()
         stackView.axis = .horizontal
         stackView.spacing = 6
-        stackView.alignment = .leading
+        stackView.alignment = .center
         return stackView
     }()
 
@@ -620,44 +992,44 @@ private final class HotBillCardControl: UIControl {
         isAccessibilityElement = true
         accessibilityTraits = .button
         addGestureRecognizer(UITapGestureRecognizer(target: self, action: #selector(handleActivation)))
-        backgroundColor = Theme.surfaceElevated
-        layer.cornerRadius = Theme.Radius.small
-        layer.borderWidth = 1
-        layer.borderColor = UIColor.systemBlue.withAlphaComponent(0.18).cgColor
+        backgroundColor = Theme.cellBackgroundColor
+        layer.cornerRadius = Theme.Radius.list
+        layer.masksToBounds = true
 
         addSubview(stackView)
+        stackView.addArrangedSubview(badgeStackView)
         stackView.addArrangedSubview(titleLabel)
         stackView.addArrangedSubview(metadataLabel)
-        stackView.addArrangedSubview(reasonStackView)
 
+        let padding = Theme.Spacing.listPadding
         NSLayoutConstraint.activate([
-            stackView.topAnchor.constraint(equalTo: topAnchor, constant: 14),
-            stackView.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 14),
-            stackView.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -14),
-            stackView.bottomAnchor.constraint(lessThanOrEqualTo: bottomAnchor, constant: -14)
+            stackView.topAnchor.constraint(equalTo: topAnchor, constant: padding),
+            stackView.leadingAnchor.constraint(equalTo: leadingAnchor, constant: padding),
+            stackView.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -padding),
+            stackView.bottomAnchor.constraint(lessThanOrEqualTo: bottomAnchor, constant: -padding)
         ])
     }
 
     func configure(with hotBill: HotBillSnapshot) {
         titleLabel.text = hotBill.bill.title
-        titleLabel.numberOfLines = 3
-        metadataLabel.text = "\(hotBill.bill.stage.title) · \(hotBill.bill.displayCommittee)"
+        titleLabel.numberOfLines = 2
+        metadataLabel.text = hotBill.bill.displayProposer
 
-        reasonStackView.arrangedSubviews.forEach { view in
-            reasonStackView.removeArrangedSubview(view)
+        badgeStackView.arrangedSubviews.forEach { view in
+            badgeStackView.removeArrangedSubview(view)
             view.removeFromSuperview()
         }
 
-        hotBill.reasons.prefix(2).forEach { reason in
-            let horizontalPadding: CGFloat = reason == .recentlyProposed ? 5 : 6
-            let label = DashboardPillLabel(fontSize: 10, horizontalPadding: horizontalPadding, verticalPadding: 3)
-            label.configure(text: reason.title, color: .systemBlue)
-            reasonStackView.addArrangedSubview(label)
+        let stageBadge = BadgeLabel()
+        stageBadge.configure(text: hotBill.bill.stage.title, style: hotBill.bill.badgeStyle)
+        badgeStackView.addArrangedSubview(stageBadge)
+
+        if let reason = hotBill.reasons.first {
+            let reasonBadge = BadgeLabel()
+            reasonBadge.configure(text: reason.title, style: .neutral)
+            badgeStackView.addArrangedSubview(reasonBadge)
         }
-        let spacer = UIView()
-        spacer.setContentHuggingPriority(.defaultLow, for: .horizontal)
-        spacer.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
-        reasonStackView.addArrangedSubview(spacer)
+        badgeStackView.addArrangedSubview(UIView())
 
         let reasonText = hotBill.reasons.map(\.title).joined(separator: ", ")
         accessibilityLabel = reasonText.isEmpty ? hotBill.bill.title : "\(hotBill.bill.title), \(reasonText)"
@@ -680,17 +1052,20 @@ private final class HotBillCardControl: UIControl {
 private final class LawTimelineRowControl: UIControl {
     var onActivate: (() -> Void)?
 
-    private let dateLabel = DashboardPillLabel()
-    private let titleLabel = DashboardTextLabel(font: Theme.Font.rowTitle, color: Theme.textColor)
-    private let metadataLabel = DashboardTextLabel(font: Theme.Font.captionText, color: Theme.emptyLabelTextColor)
-    private let linkLabel = DashboardTextLabel(font: Theme.Font.smallStrong, color: .systemBlue)
+    private let dateBadgeLabel = BadgeLabel()
+    private let titleLabel = DashboardTextLabel(font: Theme.Font.rowValue, color: Theme.textColor)
+    private let metadataLabel = DashboardTextLabel(font: Theme.Font.meta, color: Theme.textMuted)
 
-    private let stackView: UIStackView = {
-        let stackView = UIStackView()
-        stackView.axis = .vertical
-        stackView.spacing = 6
-        stackView.translatesAutoresizingMaskIntoConstraints = false
-        return stackView
+    private let chevronImageView: UIImageView = {
+        let imageView = UIImageView(
+            image: UIImage(
+                systemName: "chevron.right",
+                withConfiguration: UIImage.SymbolConfiguration(pointSize: 12, weight: .bold)
+            )
+        )
+        imageView.tintColor = Theme.textDisabled
+        imageView.setContentHuggingPriority(.required, for: .horizontal)
+        return imageView
     }()
 
     override init(frame: CGRect) {
@@ -706,34 +1081,45 @@ private final class LawTimelineRowControl: UIControl {
         isAccessibilityElement = true
         accessibilityTraits = .button
         addGestureRecognizer(UITapGestureRecognizer(target: self, action: #selector(handleActivation)))
-        backgroundColor = Theme.surfaceElevated
-        layer.cornerRadius = Theme.Radius.small
-        layer.borderWidth = 1
-        layer.borderColor = Theme.separator.cgColor
 
-        addSubview(stackView)
-        stackView.addArrangedSubview(dateLabel)
-        stackView.addArrangedSubview(titleLabel)
-        stackView.addArrangedSubview(metadataLabel)
-        stackView.addArrangedSubview(linkLabel)
+        titleLabel.numberOfLines = 2
+        metadataLabel.numberOfLines = 1
+
+        let badgeRow = UIStackView(arrangedSubviews: [dateBadgeLabel, UIView()])
+        badgeRow.axis = .horizontal
+
+        let labelsStack = UIStackView(arrangedSubviews: [badgeRow, titleLabel, metadataLabel])
+        labelsStack.axis = .vertical
+        labelsStack.spacing = 6
+
+        let rowStack = UIStackView(arrangedSubviews: [labelsStack, chevronImageView])
+        rowStack.axis = .horizontal
+        rowStack.spacing = 12
+        rowStack.alignment = .center
+        rowStack.translatesAutoresizingMaskIntoConstraints = false
+        addSubview(rowStack)
 
         NSLayoutConstraint.activate([
-            stackView.topAnchor.constraint(equalTo: topAnchor, constant: 12),
-            stackView.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 12),
-            stackView.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -12),
-            stackView.bottomAnchor.constraint(equalTo: bottomAnchor, constant: -12)
+            rowStack.topAnchor.constraint(equalTo: topAnchor, constant: 14),
+            rowStack.leadingAnchor.constraint(equalTo: leadingAnchor),
+            rowStack.trailingAnchor.constraint(equalTo: trailingAnchor),
+            rowStack.bottomAnchor.constraint(equalTo: bottomAnchor, constant: -14)
         ])
     }
 
     func configure(with enforcement: LawEnforcementSnapshot) {
-        dateLabel.configure(text: enforcement.enforcementDate, color: .systemGreen)
+        // 완료 초록은 이미 시행된 법률에만. 예정은 진행(액센트)으로 둔다.
+        let isEnforced = enforcement.enforcementDate <= Self.dayFormatter.string(from: Date())
+        dateBadgeLabel.configure(
+            text: "\(enforcement.enforcementDate) 시행",
+            style: isEnforced ? .done : .progress
+        )
         titleLabel.text = enforcement.lawName
         metadataLabel.text = [
             enforcement.ministry,
             enforcement.lawType,
             enforcement.promulgationDate.map { "공포 \($0)" }
         ].compactMap { $0 }.joined(separator: " · ")
-        linkLabel.text = enforcement.matchedBillID == nil ? "법령 원문 보기" : "연결된 법안 보기"
         accessibilityLabel = "\(enforcement.lawName), 시행일 \(enforcement.enforcementDate)"
     }
 
@@ -749,82 +1135,14 @@ private final class LawTimelineRowControl: UIControl {
     private func activate() {
         onActivate?()
     }
-}
 
-private final class DashboardPillLabel: UILabel {
-    private var contentInsets: UIEdgeInsets
-
-    init(fontSize: CGFloat = 11, horizontalPadding: CGFloat = 7, verticalPadding: CGFloat = 4) {
-        self.contentInsets = UIEdgeInsets(
-            top: verticalPadding,
-            left: horizontalPadding,
-            bottom: verticalPadding,
-            right: horizontalPadding
-        )
-        super.init(frame: .zero)
-        font = .systemFont(ofSize: fontSize, weight: .semibold)
-        numberOfLines = 1
-        textAlignment = .center
-        layer.cornerRadius = Theme.Radius.small
-        layer.masksToBounds = true
-        setContentHuggingPriority(.required, for: .horizontal)
-        setContentCompressionResistancePriority(.required, for: .horizontal)
-    }
-
-    required init?(coder: NSCoder) {
-        fatalError("init(coder:) has not been implemented")
-    }
-
-    func configure(text: String, color: UIColor) {
-        self.text = text
-        textColor = color
-        backgroundColor = color.withAlphaComponent(0.12)
-    }
-
-    override func drawText(in rect: CGRect) {
-        super.drawText(in: rect.inset(by: contentInsets))
-    }
-
-    override var intrinsicContentSize: CGSize {
-        let size = super.intrinsicContentSize
-        return CGSize(
-            width: size.width + contentInsets.left + contentInsets.right,
-            height: size.height + contentInsets.top + contentInsets.bottom
-        )
-    }
-}
-
-private final class DashboardStatusBadgeLabel: UILabel {
-    private let contentInsets = UIEdgeInsets(top: 4, left: 7, bottom: 4, right: 7)
-
-    override init(frame: CGRect) {
-        super.init(frame: frame)
-        font = Theme.Font.tinyBadge
-        textColor = .systemRed
-        backgroundColor = UIColor.systemRed.withAlphaComponent(0.12)
-        textAlignment = .center
-        numberOfLines = 1
-        layer.cornerRadius = Theme.Radius.small
-        layer.masksToBounds = true
-        setContentHuggingPriority(.required, for: .horizontal)
-        setContentCompressionResistancePriority(.required, for: .horizontal)
-    }
-
-    required init?(coder: NSCoder) {
-        fatalError("init(coder:) has not been implemented")
-    }
-
-    override func drawText(in rect: CGRect) {
-        super.drawText(in: rect.inset(by: contentInsets))
-    }
-
-    override var intrinsicContentSize: CGSize {
-        let size = super.intrinsicContentSize
-        return CGSize(
-            width: size.width + contentInsets.left + contentInsets.right,
-            height: size.height + contentInsets.top + contentInsets.bottom
-        )
-    }
+    private static let dayFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.calendar = Calendar(identifier: .gregorian)
+        formatter.locale = Locale(identifier: "ko_KR")
+        formatter.dateFormat = "yyyy-MM-dd"
+        return formatter
+    }()
 }
 
 private final class DashboardTextLabel: UILabel {

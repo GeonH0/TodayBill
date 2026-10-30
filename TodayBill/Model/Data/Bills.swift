@@ -658,28 +658,49 @@ struct BillSummary: Codable, Equatable {
         let processedText = rawText
             .replacingOccurrences(of: "(?<=\\.)\\s+", with: "\n", options: .regularExpression)
             .trimmingCharacters(in: .whitespacesAndNewlines)
+        let contentText = stripLeadingCombinedHeading(from: processedText)
 
-        if let range = primaryContentMarkerRange(in: processedText) {
-            let proposalReason = String(processedText[..<range.lowerBound])
+        if let range = primaryContentMarkerRange(in: contentText) {
+            let proposalReason = stripLeadingProposalHeading(String(contentText[..<range.lowerBound]))
                 .trimmingCharacters(in: .whitespacesAndNewlines)
-            let keyContent = String(processedText[range.upperBound...])
+            let keyContent = stripLeadingKeyContentHeading(String(contentText[range.upperBound...]))
                 .trimmingCharacters(in: .whitespacesAndNewlines)
             return BillSummary(
                 proposalReason: proposalReason.isEmpty ? "제안 이유 정보가 없습니다." : proposalReason,
                 keyContent: keyContent.isEmpty ? "주요 내용 정보가 없습니다." : keyContent,
-                rawText: processedText
+                rawText: contentText
             )
         }
 
-        if let inferred = inferKeyContent(from: processedText) {
+        if let inferred = inferKeyContent(from: contentText) {
             return inferred
         }
 
+        let proposalReason = stripLeadingProposalHeading(contentText)
         return BillSummary(
-            proposalReason: processedText.isEmpty ? "요약 정보가 없습니다." : processedText,
+            proposalReason: proposalReason.isEmpty ? "요약 정보가 없습니다." : proposalReason,
             keyContent: unableToSeparateKeyContentText,
-            rawText: processedText
+            rawText: contentText
         )
+    }
+
+    private static func stripLeadingCombinedHeading(from text: String) -> String {
+        stripLeadingHeading(text, pattern: #"제안\s*이유\s*및\s*주요\s*내용"#)
+    }
+
+    private static func stripLeadingProposalHeading(_ text: String) -> String {
+        stripLeadingHeading(text, pattern: #"제안\s*이유"#)
+    }
+
+    private static func stripLeadingKeyContentHeading(_ text: String) -> String {
+        stripLeadingHeading(text, pattern: #"주요\s*(내용|골자|사항)"#)
+    }
+
+    private static func stripLeadingHeading(_ text: String, pattern: String) -> String {
+        let headingPattern = #"^\s*"# + pattern + #"\s*[:：]?\s*"#
+        return text
+            .replacingOccurrences(of: headingPattern, with: "", options: .regularExpression)
+            .trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
     private static func primaryContentMarkerRange(in text: String) -> Range<String.Index>? {
@@ -721,10 +742,10 @@ struct BillSummary: Codable, Equatable {
             let keyContent = String(mainText[candidateRange]).trimmingCharacters(in: .whitespacesAndNewlines)
             guard !keyContent.isEmpty else { continue }
 
-            let proposalReason = String(mainText[..<candidateRange.lowerBound])
+            let proposalReason = stripLeadingProposalHeading(String(mainText[..<candidateRange.lowerBound]))
                 .trimmingCharacters(in: .whitespacesAndNewlines)
             return BillSummary(
-                proposalReason: proposalReason.isEmpty ? mainText : proposalReason,
+                proposalReason: proposalReason.isEmpty ? stripLeadingProposalHeading(mainText) : proposalReason,
                 keyContent: keyContent,
                 rawText: text
             )
@@ -737,8 +758,8 @@ struct BillSummary: Codable, Equatable {
 
         if let keyContent = lines.last(where: { $0.contains("(안 ") || $0.contains("(안 제") }) {
             return BillSummary(
-                proposalReason: mainText,
-                keyContent: keyContent,
+                proposalReason: stripLeadingProposalHeading(mainText),
+                keyContent: stripLeadingKeyContentHeading(keyContent),
                 rawText: text
             )
         }
@@ -908,6 +929,14 @@ struct BillSnapshot: Codable, Equatable, Identifiable {
             return (proposalReason, keyContent)
         }
         return (repaired.proposalReason, repaired.keyContent)
+    }
+
+    /// 가결로 끝난 처리 결과. 원안가결 · 수정가결이 여기 들어온다.
+    /// 성공만 나열한다. 폐기 · 철회 · 부결처럼 통과가 아닌 결말은 표현이 열려 있어 빠뜨리기 쉽지만,
+    /// 가결은 그렇지 않다. 읽지 못한 값은 성공이 아닌 쪽으로 떨어지는 편이 안전하다.
+    var isPassed: Bool {
+        guard let result = Self.nonEmpty(procResult) else { return false }
+        return result.contains("가결")
     }
 
     var stage: BillStage {
@@ -1190,6 +1219,12 @@ extension BillEntity {
             summaryProposalReason = snapshot.summaryProposalReason
             summaryKeyContent = snapshot.summaryKeyContent
             summaryFetchedAt = snapshot.summaryFetchedAt
+        }
+
+        if isFavorite,
+           lastSeenStageKey == nil || lastSeenStageKey == BillStage.unknown.rawValue,
+           snapshot.stage != .unknown {
+            lastSeenStageKey = snapshot.stageKey
         }
     }
 }

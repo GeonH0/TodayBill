@@ -26,6 +26,7 @@ protocol BillRepositoryProtocol {
     func markStageSeen(id: String)
     func fetchSummary(for snapshot: BillSnapshot, completion: @escaping (Result<BillSnapshot, Error>) -> Void)
     func fetchVoteSummary(billID: String, age: Int, completion: @escaping (Result<BillVoteSummary?, Error>) -> Void)
+    func fetchRepresentative(proposer: String?, age: Int, completion: @escaping (Result<Representative?, Error>) -> Void)
     func cachedSnapshot(id: String) -> BillSnapshot?
 }
 
@@ -52,11 +53,12 @@ final class HomeDashboardCache {
     }
 }
 
-final class BillRepository: BillRepositoryProtocol {
+final class BillRepository: BillRepositoryProtocol, FavoriteRefreshing {
     static let shared = BillRepository()
 
     private let apiClient: OpenAssemblyAPIClient
     private let voteAPIClient: OpenAssemblyVoteAPIClient
+    private let representativeAPIClient: OpenAssemblyRepresentativeAPIClient
     private let summaryClient: AssemblySummaryClient
     private let lawInfoClient: LawInfoAPIClient
     private let coreDataManager: CoreDataManager
@@ -65,6 +67,7 @@ final class BillRepository: BillRepositoryProtocol {
     init(
         apiClient: OpenAssemblyAPIClient = .shared,
         voteAPIClient: OpenAssemblyVoteAPIClient = .shared,
+        representativeAPIClient: OpenAssemblyRepresentativeAPIClient = .shared,
         summaryClient: AssemblySummaryClient = AssemblySummaryClient(),
         lawInfoClient: LawInfoAPIClient = .shared,
         coreDataManager: CoreDataManager = .shared,
@@ -72,6 +75,7 @@ final class BillRepository: BillRepositoryProtocol {
     ) {
         self.apiClient = apiClient
         self.voteAPIClient = voteAPIClient
+        self.representativeAPIClient = representativeAPIClient
         self.summaryClient = summaryClient
         self.lawInfoClient = lawInfoClient
         self.coreDataManager = coreDataManager
@@ -245,6 +249,8 @@ final class BillRepository: BillRepositoryProtocol {
 
         if snapshot.isFavorite {
             StarBillManager.shared.addBillToStarred(snapshot.toStarredBill())
+            UserDefaults.standard.removeObject(forKey: StageChangeNotifier.lastSuccessfulRefreshKey)
+            UserDefaults.standard.removeObject(forKey: StageChangeNotifier.lastRefreshAttemptKey)
             if coreDataManager.fetchFavoriteSnapshots().count == 1 {
                 UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .badge, .sound]) { _, _ in }
             }
@@ -252,40 +258,85 @@ final class BillRepository: BillRepositoryProtocol {
             StarBillManager.shared.removeBillFromStarred(by: id)
             StageChangeNotifier.clearNotified(billID: id)
         }
+        NotificationCenter.default.post(name: StageChangeNotifier.favoritesDidChange, object: nil)
         completion(.success(snapshot))
     }
 
     func refreshFavoriteSnapshots(completion: @escaping (Result<[BillSnapshot], Error>) -> Void) {
-        let favorites = coreDataManager.fetchFavoriteSnapshots()
-        guard !favorites.isEmpty else {
-            completion(.success([]))
-            return
+        let cancellation = StageCheckCancellation()
+        refreshFavoriteSnapshots(cancellation: cancellation) { result in
+            cancellation.finish()
+            completion(result)
         }
+    }
 
-        let group = DispatchGroup()
-        var firstError: Error?
+    func refreshFavoriteSnapshots(
+        cancellation: StageCheckCancellation,
+        completion: @escaping (Result<[BillSnapshot], Error>) -> Void
+    ) {
+        DispatchQueue.main.async {
+            let favorites = self.coreDataManager.fetchFavoriteSnapshots()
+            var nextIndex = 0
+            var inFlight = 0
+            var successfulIDs = Set<String>()
+            var failedIDs: [String] = []
+            var firstError: Error?
+            var finished = false
 
-        favorites.forEach { snapshot in
-            group.enter()
-            apiClient.fetchDetail(id: snapshot.billID, age: snapshot.age) { [weak self] result in
-                defer { group.leave() }
-                switch result {
-                case .success(let rows):
-                    self?.coreDataManager.saveAll(rows)
-                case .failure(let error):
-                    firstError = firstError ?? error
+            func finish(_ result: Result<[BillSnapshot], Error>) {
+                guard !finished else { return }
+                finished = true
+                completion(result)
+            }
+
+            cancellation.onCancel {
+                DispatchQueue.main.async { finish(.failure(URLError(.cancelled))) }
+            }
+
+            func fetchNext() {
+                guard !finished else { return }
+                guard !cancellation.isCancelled else { finish(.failure(URLError(.cancelled))); return }
+                if nextIndex == favorites.count && inFlight == 0 {
+                    let refreshed = self.coreDataManager.fetchFavoriteSnapshots().filter { successfulIDs.contains($0.billID) }
+                    if let firstError {
+                        finish(.failure(FavoriteRefreshFailure(
+                            refreshedSnapshots: refreshed,
+                            failedBillIDs: failedIDs,
+                            underlyingError: firstError
+                        )))
+                    } else {
+                        finish(.success(refreshed))
+                    }
+                    return
+                }
+
+                // Bound concurrent requests so a large favorites list does not flood the API.
+                while inFlight < 4 && nextIndex < favorites.count && !cancellation.isCancelled {
+                    let snapshot = favorites[nextIndex]
+                    nextIndex += 1
+                    inFlight += 1
+                    let task = self.apiClient.fetchDetail(id: snapshot.billID, age: snapshot.age) { result in
+                        DispatchQueue.main.async {
+                            guard !finished, !cancellation.isCancelled else { return }
+                            inFlight -= 1
+                            switch result {
+                            case .success(let rows) where rows.contains(where: { $0.BILL_ID == snapshot.billID }):
+                                self.coreDataManager.saveAll(rows.filter { $0.BILL_ID == snapshot.billID })
+                                successfulIDs.insert(snapshot.billID)
+                            case .success:
+                                failedIDs.append(snapshot.billID)
+                                firstError = firstError ?? BillsRepositoryError.missingSnapshot
+                            case .failure(let error):
+                                failedIDs.append(snapshot.billID)
+                                firstError = firstError ?? error
+                            }
+                            fetchNext()
+                        }
+                    }
+                    if let task { cancellation.onCancel { task.cancel() } }
                 }
             }
-        }
-
-        group.notify(queue: .main) { [weak self] in
-            guard let self = self else { return }
-            let refreshed = self.coreDataManager.fetchFavoriteSnapshots()
-            if refreshed.isEmpty, let firstError {
-                completion(.failure(firstError))
-            } else {
-                completion(.success(refreshed))
-            }
+            fetchNext()
         }
     }
 
@@ -321,6 +372,19 @@ final class BillRepository: BillRepositoryProtocol {
         completion: @escaping (Result<BillVoteSummary?, Error>) -> Void
     ) {
         voteAPIClient.fetchVoteSummary(billID: billID, age: age, completion: completion)
+    }
+
+    func fetchRepresentative(
+        proposer: String?,
+        age: Int,
+        completion: @escaping (Result<Representative?, Error>) -> Void
+    ) {
+        guard let name = RepresentativeLookup.proposerName(from: proposer) else {
+            completion(.success(nil))
+            return
+        }
+
+        representativeAPIClient.fetchRepresentative(named: name, age: age, completion: completion)
     }
 
     func cachedSnapshot(id: String) -> BillSnapshot? {
@@ -486,7 +550,8 @@ final class SearchViewModel {
                 switch result {
                 case .success(let snapshots):
                     self.canLoadMore = !snapshots.isEmpty
-                    self.results = reset ? snapshots : self.mergeUnique(self.results + snapshots)
+                    let mergedResults = reset ? snapshots : self.mergeUnique(self.results + snapshots)
+                    self.results = BillSnapshot.sort(mergedResults, order: self.filter.sortOrder)
                     self.results.isEmpty
                     ? self.onStateChange?(.empty("검색 결과가 없습니다."))
                     : self.onStateChange?(.loaded(self.results))
@@ -545,7 +610,13 @@ final class FavoritesViewModel {
                     ? self?.onStateChange?(.empty("즐겨찾기한 법안이 없습니다.\n관심 있는 법안의 별을 눌러 저장해보세요."))
                     : self?.onStateChange?(.loaded(sections))
                 case .failure(let error):
-                    self?.onStateChange?(.error(error.localizedDescription))
+                    // Offline display is separate from a successful background refresh.
+                    let cached = self?.repository.favoriteSnapshots() ?? []
+                    if cached.isEmpty {
+                        self?.onStateChange?(.error(error.localizedDescription))
+                    } else {
+                        self?.onStateChange?(.loaded(BillRepository.makeTrackingSections(from: cached)))
+                    }
                 }
             }
         }
@@ -578,6 +649,7 @@ final class DetailViewModel {
     var onStateChange: ((ViewState<BillSnapshot>) -> Void)?
     var onSummaryUpdate: ((BillSnapshot) -> Void)?
     var onVoteSummaryUpdate: ((BillVoteSummary?) -> Void)?
+    var onRepresentativeUpdate: ((Representative?) -> Void)?
 
     init(billID: String, age: Int, repository: BillRepositoryProtocol = BillRepository.shared) {
         self.billID = billID
@@ -605,6 +677,7 @@ final class DetailViewModel {
                     self.onStateChange?(.loaded(visibleSnapshot))
                     self.refreshSummaryIfNeeded(snapshot: visibleSnapshot)
                     self.refreshVoteSummary(snapshot: visibleSnapshot)
+                    self.refreshRepresentative(snapshot: visibleSnapshot)
                 case .failure:
                     self.onStateChange?(.error("법안 정보를 불러오는 데 실패했습니다."))
                 }
@@ -663,6 +736,20 @@ final class DetailViewModel {
                     self.onVoteSummaryUpdate?(summary)
                 case .failure:
                     self.onVoteSummaryUpdate?(nil)
+                }
+            }
+        }
+    }
+
+    private func refreshRepresentative(snapshot: BillSnapshot) {
+        repository.fetchRepresentative(proposer: snapshot.proposer, age: snapshot.age) { [weak self] result in
+            guard let self else { return }
+            DispatchQueue.main.async {
+                switch result {
+                case .success(let representative):
+                    self.onRepresentativeUpdate?(representative)
+                case .failure:
+                    self.onRepresentativeUpdate?(nil)
                 }
             }
         }

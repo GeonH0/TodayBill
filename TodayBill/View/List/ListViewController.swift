@@ -33,7 +33,7 @@ class ListViewController: UIViewController {
     
     lazy var collectionView: ListView = {
         let layout = UICollectionViewFlowLayout()
-        layout.minimumLineSpacing = 16
+        layout.minimumLineSpacing = 10
         layout.sectionInset = UIEdgeInsets(
             top: 16,
             left: horizontalContentInset,
@@ -184,17 +184,17 @@ class ListViewController: UIViewController {
         let contentWidth = availableWidth - horizontalContentInset * 2
         let itemHeights = (0..<itemCount).map { index -> CGFloat in
             let billName = (usesSnapshots ? snapshotItems[index].title : items[index].name) as NSString
-            let textWidth = contentWidth - 56
+            let textWidth = contentWidth - Theme.Spacing.listPadding * 2
             let textHeight = billName.boundingRect(
                 with: CGSize(width: textWidth, height: .greatestFiniteMagnitude),
                 options: [.usesLineFragmentOrigin, .usesFontLeading],
-                attributes: [.font: Theme.Font.cardTitle],
+                attributes: [.font: Theme.Font.cardHeading],
                 context: nil
             ).height
-            return max(112, ceil(textHeight) + 74)
+            return max(116, ceil(textHeight) + 92)
         }
 
-        let spacing = CGFloat(max(0, itemCount - 1)) * 16
+        let spacing = CGFloat(max(0, itemCount - 1)) * 10
         return itemHeights.reduce(0, +) + spacing + 32
     }
     
@@ -248,13 +248,13 @@ extension ListViewController: UICollectionViewDataSource, UICollectionViewDelega
     func collectionView(_ collectionView: UICollectionView, layout collectionViewLayout: UICollectionViewLayout, sizeForItemAt indexPath: IndexPath) -> CGSize {
         let width = collectionView.bounds.width - horizontalContentInset * 2
         let billName = (usesSnapshots ? snapshotItems[indexPath.row].title : items[indexPath.row].name) as NSString
-        let textWidth = width - 56
+        let textWidth = width - Theme.Spacing.listPadding * 2
         let textHeight = billName.boundingRect(
             with: CGSize(width: textWidth, height: .greatestFiniteMagnitude),
             options: [.usesLineFragmentOrigin, .usesFontLeading],
-            attributes: [.font: Theme.Font.cardTitle],
+            attributes: [.font: Theme.Font.cardHeading],
             context: nil
         ).height
-        return CGSize(width: width, height: max(112, ceil(textHeight) + 74))
+        return CGSize(width: width, height: max(116, ceil(textHeight) + 92))
     }
 }

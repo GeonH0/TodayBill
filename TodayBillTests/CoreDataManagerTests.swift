@@ -163,6 +163,34 @@ final class CoreDataManagerTests: XCTestCase {
         XCTAssertEqual(plenary.detailInsightReasons(now: now), [.plenarySoon])
     }
 
+    func testRepresentativeLookupExtractsNameAndFormatsCurrentParty() throws {
+        let data = try XCTUnwrap(
+            #"{"HG_NM":"이주영","POLY_NM":"개혁신당","UNITS":"제22대"}"#
+                .data(using: .utf8)
+        )
+        let representative = try JSONDecoder().decode(Representative.self, from: data)
+
+        XCTAssertEqual(RepresentativeLookup.proposerName(from: "이주영의원 등 10인"), "이주영")
+        XCTAssertEqual(
+            RepresentativeLookup.displayText(
+                proposer: "이주영의원 등 10인",
+                representative: representative
+            ),
+            "이주영 의원 · 개혁신당"
+        )
+    }
+
+    func testRepresentativeLookupKeepsOriginalProposerWhenDirectoryHasNoMatch() {
+        XCTAssertEqual(
+            RepresentativeLookup.displayText(proposer: "정부", representative: nil),
+            "정부"
+        )
+        XCTAssertEqual(
+            RepresentativeLookup.displayText(proposer: "홍길동의원 등 12인", representative: nil),
+            "홍길동의원"
+        )
+    }
+
     func testFavoriteToggleUpdatesFavoriteAndLastSeenStageKey() {
         let manager = CoreDataManager.makeInMemory()
         let snapshot = BillSnapshot(
@@ -223,8 +251,17 @@ final class CoreDataManagerTests: XCTestCase {
             rawText: "제안이유 현행 제도를 정비할 필요가 있음. 주요 내용 관련 조항을 명확히 함."
         )
 
-        XCTAssertEqual(summary.proposalReason, "제안이유 현행 제도를 정비할 필요가 있음.")
+        XCTAssertEqual(summary.proposalReason, "현행 제도를 정비할 필요가 있음.")
         XCTAssertEqual(summary.keyContent, "관련 조항을 명확히 함.")
+    }
+
+    func testBillSummaryStripsLeadingSectionHeadings() {
+        let summary = BillSummary.split(
+            rawText: "제안이유 및 주요내용 제안이유 현행 제도를 보완할 필요가 있음. 주요내용 관련 절차를 정비함."
+        )
+
+        XCTAssertEqual(summary.proposalReason, "현행 제도를 보완할 필요가 있음.")
+        XCTAssertEqual(summary.keyContent, "관련 절차를 정비함.")
     }
 
     func testBillSummaryInfersKeyContentWhenMarkerIsMissing() {
@@ -293,6 +330,48 @@ final class CoreDataManagerTests: XCTestCase {
         XCTAssertTrue(scored.reasons.contains(.keywordMatch))
         XCTAssertTrue(scored.reasons.contains(.fastProgress))
         XCTAssertTrue(scored.reasons.contains(.trackedCommittee))
+    }
+
+    func testSearchViewModelSortsAccumulatedPagesBySelectedOrder() {
+        let oldSnapshot = BillSnapshot(
+            billID: "OLD",
+            age: 22,
+            title: "환경 오래된 법안",
+            proposedDate: "2026-01-01"
+        )
+        let newSnapshot = BillSnapshot(
+            billID: "NEW",
+            age: 22,
+            title: "환경 최신 법안",
+            proposedDate: "2026-03-01"
+        )
+        let repository = MockBillRepository(
+            dashboardResult: .success(HomeDashboard()),
+            searchResultsByPage: [
+                1: [oldSnapshot],
+                2: [newSnapshot]
+            ]
+        )
+        let viewModel = SearchViewModel(repository: repository)
+        viewModel.updateFilter(BillFilter(query: "환경", sortOrder: .latest))
+
+        let expectation = expectation(description: "loads and sorts accumulated search pages")
+        var requestedNextPage = false
+
+        viewModel.onStateChange = { (state: ViewState<[BillSnapshot]>) in
+            guard case .loaded(let snapshots) = state else { return }
+
+            if snapshots.count == 1, !requestedNextPage {
+                requestedNextPage = true
+                viewModel.loadNextPageIfNeeded()
+            } else if snapshots.count == 2 {
+                XCTAssertEqual(snapshots.map(\.billID), ["NEW", "OLD"])
+                expectation.fulfill()
+            }
+        }
+
+        viewModel.search()
+        wait(for: [expectation], timeout: 1)
     }
 
     func testLawNameNormalizationMatchesBillNamesBestEffort() {
@@ -456,9 +535,14 @@ final class CoreDataManagerTests: XCTestCase {
 
 private final class MockBillRepository: BillRepositoryProtocol {
     private let dashboardResult: Result<HomeDashboard, Error>
+    private let searchResultsByPage: [Int: [BillSnapshot]]
 
-    init(dashboardResult: Result<HomeDashboard, Error>) {
+    init(
+        dashboardResult: Result<HomeDashboard, Error>,
+        searchResultsByPage: [Int: [BillSnapshot]] = [:]
+    ) {
         self.dashboardResult = dashboardResult
+        self.searchResultsByPage = searchResultsByPage
     }
 
     func fetchHomeBills(date: Date, completion: @escaping (Result<[BillSnapshot], Error>) -> Void) {
@@ -482,7 +566,7 @@ private final class MockBillRepository: BillRepositoryProtocol {
     }
 
     func searchBills(filter: BillFilter, page: Int, completion: @escaping (Result<[BillSnapshot], Error>) -> Void) {
-        completion(.success([]))
+        completion(.success(searchResultsByPage[page] ?? []))
     }
 
     func fetchDetail(id: String, age: Int, completion: @escaping (Result<BillSnapshot, Error>) -> Void) {
@@ -505,6 +589,10 @@ private final class MockBillRepository: BillRepositoryProtocol {
     }
 
     func fetchVoteSummary(billID: String, age: Int, completion: @escaping (Result<BillVoteSummary?, Error>) -> Void) {
+        completion(.success(nil))
+    }
+
+    func fetchRepresentative(proposer: String?, age: Int, completion: @escaping (Result<Representative?, Error>) -> Void) {
         completion(.success(nil))
     }
 

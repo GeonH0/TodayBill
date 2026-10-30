@@ -16,6 +16,7 @@ final class DetailViewController: UIViewController {
     private lazy var viewModel = DetailViewModel(billID: billID, age: age)
         
     private var currentSnapshot: BillSnapshot?
+    private var currentRepresentative: Representative?
     
     // MARK: - Initializer
     init(billID: String, age: Int) {
@@ -35,7 +36,7 @@ final class DetailViewController: UIViewController {
     
     override func viewDidLoad() {
         super.viewDidLoad()
-        view.backgroundColor = Theme.cellBackgroundColor
+        view.backgroundColor = Theme.backgroundColor
         contentView.delegate = self
         contentView.proposalReasonExpandableView.delegate = self
         bindViewModel()
@@ -81,13 +82,22 @@ final class DetailViewController: UIViewController {
         viewModel.onVoteSummaryUpdate = { [weak self] summary in
             self?.contentView.updateVoteSummary(summary)
         }
+
+        viewModel.onRepresentativeUpdate = { [weak self] representative in
+            guard let self else { return }
+            self.currentRepresentative = representative
+            if let snapshot = self.currentSnapshot {
+                self.contentView.updateProposer(for: snapshot, representative: representative)
+            }
+        }
     }
 
     private func render(snapshot: BillSnapshot) {
         contentView.update(
             with: snapshot,
             proposalReason: snapshot.summaryProposalReason,
-            keyContent: snapshot.summaryKeyContent
+            keyContent: snapshot.summaryKeyContent,
+            representative: currentRepresentative
         )
     }
     
