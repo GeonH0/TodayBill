@@ -421,3 +421,11 @@ extension BillStage {
         }
     }
 }
+
+extension BillSnapshot {
+    /// `stage` only knows that processing finished, not how it ended. 폐기 · 철회 · 부결은
+    /// 끝난 것이지 통과한 것이 아니므로 성공 초록을 쓰지 않는다.
+    var badgeStyle: BadgeStyle {
+        isDiscarded ? .muted : stage.badgeStyle
+    }
+}

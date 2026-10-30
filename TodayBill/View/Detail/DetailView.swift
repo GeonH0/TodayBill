@@ -48,7 +48,6 @@ final class DetailView: UIView {
         label.textAlignment = .center
         label.numberOfLines = 1
         label.lineBreakMode = .byTruncatingTail
-        label.alpha = 0
         label.translatesAutoresizingMaskIntoConstraints = false
         return label
     }()
@@ -395,7 +394,7 @@ final class DetailView: UIView {
 
         headerTitleLabel.text = snapshot.title
         bodyTitleLabel.attributedText = Self.makeTitleText(snapshot.title)
-        stageBadgeLabel.configure(text: snapshot.stage.title, style: snapshot.stage.badgeStyle)
+        stageBadgeLabel.configure(text: snapshot.stage.title, style: snapshot.badgeStyle)
         ageBadgeLabel.configure(text: "제\(snapshot.age)대 국회", style: .neutral)
         headerMetaLabel.text = headerMetaText(for: snapshot)
         updateFavoriteButton(isFavorite: snapshot.isFavorite)
@@ -420,6 +419,17 @@ final class DetailView: UIView {
         keyContentLabel.attributedText = makeBodyText(from: keyText, isPlaceholder: keyText == "요약 준비 중")
 
         configureDetailLink(url: validatedDetailURL(from: snapshot.detailLink))
+    }
+
+    /// 대표의원 조회는 화면이 그려진 뒤에 끝난다. 전체를 다시 그리면 사용자가 펼쳐 둔
+    /// 제안이유가 접히므로, 대표발의자 행만 갱신한다.
+    func updateProposer(for snapshot: BillSnapshot, representative: Representative?) {
+        proposerRow.configure(
+            value: RepresentativeLookup.displayText(
+                proposer: snapshot.proposer,
+                representative: representative
+            )
+        )
     }
 
     func updateVoteSummary(_ summary: BillVoteSummary?) {
@@ -714,8 +724,13 @@ private final class DetailVoteSummaryView: UIView {
             view.removeFromSuperview()
         }
 
-        let total = max(segments.reduce(0) { $0 + $1.1 }, 1)
-        for (_, count, color) in segments where count > 0 {
+        let visible = segments.filter { $0.1 > 0 }
+        let total = max(visible.reduce(0) { $0 + $1.1 }, 1)
+        // The gaps between segments come out of the stack width before it is split, so each
+        // segment's share of the spacing scales with its own ratio and never goes negative.
+        let totalSpacing = barStackView.spacing * CGFloat(max(visible.count - 1, 0))
+        for (_, count, color) in visible {
+            let ratio = CGFloat(count) / CGFloat(total)
             let segment = UIView()
             segment.backgroundColor = color
             segment.layer.cornerRadius = 4
@@ -724,8 +739,8 @@ private final class DetailVoteSummaryView: UIView {
             // Widths are proportional to the vote split, so the bar is the chart.
             segment.widthAnchor.constraint(
                 equalTo: barStackView.widthAnchor,
-                multiplier: CGFloat(count) / CGFloat(total),
-                constant: -2
+                multiplier: ratio,
+                constant: -totalSpacing * ratio
             ).isActive = true
         }
     }

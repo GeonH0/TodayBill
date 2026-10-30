@@ -236,6 +236,8 @@ final class SearchView: UIView {
 
     func updateFilterSummary(_ summary: String) {
         filterButton.configuration?.title = summary
+        // 명시적 accessibilityLabel이 버튼 제목을 가리므로, 바뀐 요약을 직접 넣어준다.
+        filterButton.accessibilityLabel = "검색 필터, \(summary)"
     }
 
     /// Shows "검색 결과 24" beside the sort chip; `nil` hides the pair while idle.

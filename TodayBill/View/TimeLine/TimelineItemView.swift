@@ -100,7 +100,8 @@ final class TimelineItemView: UIView {
             connectorView.topAnchor.constraint(equalTo: dotView.bottomAnchor, constant: 4),
             connectorView.centerXAnchor.constraint(equalTo: railView.centerXAnchor),
             connectorView.widthAnchor.constraint(equalToConstant: 2),
-            connectorView.bottomAnchor.constraint(equalTo: railView.bottomAnchor),
+            // 다음 항목의 점은 자기 railView 위에서 4pt 내려가 시작하므로, 선도 그만큼 더 내린다.
+            connectorView.bottomAnchor.constraint(equalTo: railView.bottomAnchor, constant: 4),
 
             labelsStack.topAnchor.constraint(equalTo: topAnchor),
             labelsStack.leadingAnchor.constraint(equalTo: railView.trailingAnchor, constant: 14),

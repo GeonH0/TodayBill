@@ -931,6 +931,12 @@ struct BillSnapshot: Codable, Equatable, Identifiable {
         return (repaired.proposalReason, repaired.keyContent)
     }
 
+    /// 처리가 끝났지만 가결로 끝나지 않은 결과. 폐기 · 대안반영폐기 · 임기만료폐기 · 철회 · 부결을 모두 포함한다.
+    var isDiscarded: Bool {
+        guard let result = Self.nonEmpty(procResult) else { return false }
+        return ["폐기", "철회", "부결"].contains { result.contains($0) }
+    }
+
     var stage: BillStage {
         if Self.nonEmpty(procResult) != nil {
             return .completed

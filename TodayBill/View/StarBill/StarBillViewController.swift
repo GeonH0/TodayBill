@@ -147,10 +147,22 @@ final class StarBillViewController: UIViewController {
         viewModel.load(refresh: true)
     }
 
+    override func viewDidLayoutSubviews() {
+        super.viewDidLayoutSubviews()
+        layoutHeader(force: false)
+    }
+
     private func updateHeader() {
         headerView.configure(with: sections.flatMap { $0.snapshots })
-        // A self-sizing table header has to be measured by hand before the table lays out.
+        layoutHeader(force: true)
+    }
+
+    /// A self-sizing table header has to be measured by hand before the table lays out.
+    /// UIKit은 헤더의 폭만 테이블에 맞춰주고 높이는 기존 frame을 그대로 쓴다. 폭이 바뀌면
+    /// (기기 접기·펴기, 회전) 이전 폭 기준 높이가 남으므로 그때마다 다시 재야 한다.
+    private func layoutHeader(force: Bool) {
         let width = tableView.bounds.width > 0 ? tableView.bounds.width : view.bounds.width
+        guard width > 0, force || headerView.frame.width != width else { return }
         let height = headerView.systemLayoutSizeFitting(
             CGSize(width: width, height: UIView.layoutFittingCompressedSize.height),
             withHorizontalFittingPriority: .required,
@@ -241,7 +253,7 @@ private final class TrackingHeaderView: UIView {
 
     private let highlightCaptionLabel: UILabel = {
         let label = UILabel()
-        label.text = "이번 주 변동"
+        label.text = "확인하지 않은 변동"
         label.font = Theme.Font.badge
         label.textColor = Theme.onInkSecondary
         return label
@@ -438,8 +450,9 @@ private final class TrackingBillCell: UITableViewCell {
             mainStack.trailingAnchor.constraint(equalTo: cardView.trailingAnchor, constant: -padding),
             mainStack.bottomAnchor.constraint(equalTo: cardView.bottomAnchor, constant: -padding),
 
-            favoriteButton.widthAnchor.constraint(equalToConstant: 24),
-            favoriteButton.heightAnchor.constraint(equalToConstant: 24)
+            // 행 전체가 상세 화면을 열기 때문에, 별 버튼은 오탭이 나지 않을 만큼 커야 한다.
+            favoriteButton.widthAnchor.constraint(equalToConstant: 32),
+            favoriteButton.heightAnchor.constraint(equalToConstant: 32)
         ])
     }
 }

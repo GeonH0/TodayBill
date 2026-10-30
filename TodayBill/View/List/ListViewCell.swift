@@ -92,6 +92,8 @@ final class ListViewCell: UICollectionViewCell {
         contentView.addSubview(metaLabel)
         badgeStackView.addArrangedSubview(stageBadgeLabel)
         badgeStackView.addArrangedSubview(committeeBadgeLabel)
+        // 위원회 이름만 길이가 제한되지 않는다. 줄이 좁아지면 넘치지 말고 잘리게 둔다.
+        committeeBadgeLabel.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
         badgeStackView.addArrangedSubview(UIView())
     }
 
@@ -135,7 +137,7 @@ final class ListViewCell: UICollectionViewCell {
         titleLabel.text = snapshot.title
         currentItem = snapshot.toStarredBill()
         currentSnapshot = snapshot
-        stageBadgeLabel.configure(text: snapshot.stage.title, style: snapshot.stage.badgeStyle)
+        stageBadgeLabel.configure(text: snapshot.stage.title, style: snapshot.badgeStyle)
 
         let committee = snapshot.displayCommittee
         committeeBadgeLabel.isHidden = committee.isEmpty

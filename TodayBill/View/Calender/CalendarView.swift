@@ -301,6 +301,7 @@ final class HomeDashboardPanelView: UIView {
     }
 
     func configure(with dashboard: HomeDashboard) {
+        dateLabel.text = Self.headerDateFormatter.string(from: Date())
         headlineStatView.configure(with: dashboard)
         configureStageChanges(dashboard.stageChanges)
         configureHotBills(dashboard.hotBills)
@@ -701,7 +702,10 @@ private final class LawEnforcementSectionView: UIView {
         }
 
         guard !enforcements.isEmpty else {
-            sectionStackView.addEmptyMessage("시행 예정 법률 항목이 없습니다.")
+            // 실패 배지를 이미 띄웠다면 "항목이 없다"는 말은 사실이 아니다.
+            if !failed {
+                sectionStackView.addEmptyMessage("시행 예정 법률 항목이 없습니다.")
+            }
             return
         }
 
@@ -918,18 +922,23 @@ private final class StageChangeRowControl: UIControl {
     func configure(snapshot: BillSnapshot) {
         titleLabel.text = snapshot.title
 
-        let isCompleted = snapshot.stage == .completed
-        let tint = isCompleted ? Theme.success : Theme.accent
-        iconTileView.backgroundColor = isCompleted ? Theme.successSoft : Theme.accentSoft
+        // 배지와 같은 어휘를 쓴다. 가결만 초록이고, 폐기·철회·부결과 상태 미확인은 회색이다.
+        let style = snapshot.badgeStyle
+        let isPassed: Bool
+        switch style {
+        case .done: isPassed = true
+        case .neutral, .progress, .muted: isPassed = false
+        }
+        iconTileView.backgroundColor = style.background
         iconImageView.image = UIImage(
-            systemName: isCompleted ? "checkmark" : "arrow.right",
+            systemName: isPassed ? "checkmark" : "arrow.right",
             withConfiguration: UIImage.SymbolConfiguration(pointSize: 13, weight: .bold)
         )
-        iconImageView.tintColor = tint
+        iconImageView.tintColor = style.foreground
 
         let dateText = BillSnapshot.nonEmpty(snapshot.proposedDate).map { " · \($0)" } ?? ""
         statusLabel.text = "\(snapshot.stage.title) 단계\(dateText)"
-        statusLabel.textColor = tint
+        statusLabel.textColor = style.foreground
 
         accessibilityLabel = "\(snapshot.title), \(snapshot.stage.title)"
     }
@@ -1012,7 +1021,7 @@ private final class HotBillCardControl: UIControl {
         }
 
         let stageBadge = BadgeLabel()
-        stageBadge.configure(text: hotBill.bill.stage.title, style: hotBill.bill.stage.badgeStyle)
+        stageBadge.configure(text: hotBill.bill.stage.title, style: hotBill.bill.badgeStyle)
         badgeStackView.addArrangedSubview(stageBadge)
 
         if let reason = hotBill.reasons.first {

@@ -87,7 +87,7 @@ final class DetailViewController: UIViewController {
             guard let self else { return }
             self.currentRepresentative = representative
             if let snapshot = self.currentSnapshot {
-                self.render(snapshot: snapshot)
+                self.contentView.updateProposer(for: snapshot, representative: representative)
             }
         }
     }
