@@ -50,6 +50,7 @@
 		3C73C6557B6625FD705BC2D7 /* WidgetSnapshotStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1086D70575B843C9141FEE1B /* WidgetSnapshotStore.swift */; };
 		634D012B8A6592A994EA3AE6 /* StageChangeNotifier.swift in Sources */ = {isa = PBXBuildFile; fileRef = 28D85FC115A3484901EA025E /* StageChangeNotifier.swift */; };
 		674D7EBCB2E793B27CC4C977 /* WidgetSnapshotStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6C98BA6AC6F6D7B2ADB3C536 /* WidgetSnapshotStoreTests.swift */; };
+		704F3416450F9A00FD61EED8 /* WidgetSnapshotUpdater.swift in Sources */ = {isa = PBXBuildFile; fileRef = 099AD9D2EAD99AC778C65955 /* WidgetSnapshotUpdater.swift */; };
 		81C6E3997AE96840FCC7C20B /* BillWidgetSnapshot.swift in Sources */ = {isa = PBXBuildFile; fileRef = EB06E62A222725A79B023383 /* BillWidgetSnapshot.swift */; };
 		A1B2C3D4E5F6012345678902 /* CoreDataManagerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F6012345678901 /* CoreDataManagerTests.swift */; };
 		AEAD489AD2EDB6FFC11DE242 /* WidgetSnapshotBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 554346505A855513F215DB51 /* WidgetSnapshotBuilder.swift */; };
@@ -67,6 +68,7 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		099AD9D2EAD99AC778C65955 /* WidgetSnapshotUpdater.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = WidgetSnapshotUpdater.swift; sourceTree = "<group>"; };
 		1086D70575B843C9141FEE1B /* WidgetSnapshotStore.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = WidgetSnapshotStore.swift; path = Widget/WidgetSnapshotStore.swift; sourceTree = "<group>"; };
 		1D0BE6372D48879200B730F2 /* StarBillManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StarBillManager.swift; sourceTree = "<group>"; };
 		1D0BE63B2D4907FA00B730F2 /* StarredBill.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StarredBill.swift; sourceTree = "<group>"; };
@@ -116,6 +118,7 @@
 		A1B2C3D4E5F6012345678901 /* CoreDataManagerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoreDataManagerTests.swift; sourceTree = "<group>"; };
 		A1B2C3D4E5F6012345678904 /* TodayBillTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = TodayBillTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		EB06E62A222725A79B023383 /* BillWidgetSnapshot.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = BillWidgetSnapshot.swift; path = Widget/BillWidgetSnapshot.swift; sourceTree = "<group>"; };
+		F9EDCDB52531BDF0DA0AC46D /* TodayBill.entitlements */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.entitlements; path = TodayBill.entitlements; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -186,6 +189,7 @@
 				1D30EB232B0C3157006C1588 /* LaunchScreen.storyboard */,
 				1D30EB212B0C3157006C1588 /* Assets.xcassets */,
 				1D30EB262B0C3157006C1588 /* Info.plist */,
+				F9EDCDB52531BDF0DA0AC46D /* TodayBill.entitlements */,
 			);
 			path = TodayBill;
 			sourceTree = "<group>";
@@ -266,6 +270,7 @@
 				1D30EB182B0C3156006C1588 /* AppDelegate.swift */,
 				1D30EB1A2B0C3156006C1588 /* SceneDelegate.swift */,
 				28D85FC115A3484901EA025E /* StageChangeNotifier.swift */,
+				099AD9D2EAD99AC778C65955 /* WidgetSnapshotUpdater.swift */,
 			);
 			path = Core;
 			sourceTree = "<group>";
@@ -491,6 +496,7 @@
 				81C6E3997AE96840FCC7C20B /* BillWidgetSnapshot.swift in Sources */,
 				3C73C6557B6625FD705BC2D7 /* WidgetSnapshotStore.swift in Sources */,
 				AEAD489AD2EDB6FFC11DE242 /* WidgetSnapshotBuilder.swift in Sources */,
+				704F3416450F9A00FD61EED8 /* WidgetSnapshotUpdater.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -654,6 +660,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = TodayBill/TodayBill.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = 6763324T69;
@@ -684,6 +691,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = TodayBill/TodayBill.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = 6763324T69;

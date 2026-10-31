@@ -184,6 +184,8 @@ final class StageChangeNotifier {
 
     private func deliver(_ snapshots: [BillSnapshot], refreshError: Error?, run: Run) {
         guard isActive(run) else { return }
+        // 포그라운드 진입과 BGAppRefreshTask가 모두 이 경로를 지난다. 앱을 열지 않아도 위젯이 갱신된다.
+        WidgetSnapshotUpdater.updateFavorites(snapshots)
         let finalResult: Result<Void, Error> = refreshError.map { .failure($0) } ?? .success(())
         let keys = defaults.dictionary(forKey: Self.notifiedStageKeysDefaultsKey) as? [String: String] ?? [:]
         let candidates = Self.billsToNotify(from: snapshots, notifiedStageKeys: keys)

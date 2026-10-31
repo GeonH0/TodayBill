@@ -101,6 +101,7 @@ final class CalenderViewController: UIViewController {
             case .loaded(let dashboard):
                 self.currentDashboard = dashboard
                 self.contentView.updateDashboard(dashboard)
+                WidgetSnapshotUpdater.updateTodayProposalCount(dashboard.newProposals.count)
                 let snapshots = self.selectedSnapshots(from: dashboard)
                 if let requestedDateString = self.formattedDate(self.requestedDate), self.isUserSelectingDate {
                     self.selectedDate = requestedDateString
