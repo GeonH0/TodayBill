@@ -46,7 +46,10 @@
 		1DD96EEE2D4E6AF4005FD3AF /* TimelineItemView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1DD96EED2D4E6AF4005FD3AF /* TimelineItemView.swift */; };
 		1DDB23322DBBADE600490A1B /* BillEntity.xcdatamodeld in Sources */ = {isa = PBXBuildFile; fileRef = 1DDB23302DBBADE600490A1B /* BillEntity.xcdatamodeld */; };
 		1DE634B62D698574007716C8 /* Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1DE634B52D698574007716C8 /* Theme.swift */; };
+		3C73C6557B6625FD705BC2D7 /* WidgetSnapshotStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1086D70575B843C9141FEE1B /* WidgetSnapshotStore.swift */; };
 		634D012B8A6592A994EA3AE6 /* StageChangeNotifier.swift in Sources */ = {isa = PBXBuildFile; fileRef = 28D85FC115A3484901EA025E /* StageChangeNotifier.swift */; };
+		674D7EBCB2E793B27CC4C977 /* WidgetSnapshotStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6C98BA6AC6F6D7B2ADB3C536 /* WidgetSnapshotStoreTests.swift */; };
+		81C6E3997AE96840FCC7C20B /* BillWidgetSnapshot.swift in Sources */ = {isa = PBXBuildFile; fileRef = EB06E62A222725A79B023383 /* BillWidgetSnapshot.swift */; };
 		A1B2C3D4E5F6012345678902 /* CoreDataManagerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F6012345678901 /* CoreDataManagerTests.swift */; };
 		E921D2057F4A1D9CC250AABE /* StageChangeNotifierTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DAD0E70A0F78EA233046B9E /* StageChangeNotifierTests.swift */; };
 /* End PBXBuildFile section */
@@ -62,6 +65,7 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		1086D70575B843C9141FEE1B /* WidgetSnapshotStore.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = WidgetSnapshotStore.swift; path = Widget/WidgetSnapshotStore.swift; sourceTree = "<group>"; };
 		1D0BE6372D48879200B730F2 /* StarBillManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StarBillManager.swift; sourceTree = "<group>"; };
 		1D0BE63B2D4907FA00B730F2 /* StarredBill.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StarredBill.swift; sourceTree = "<group>"; };
 		1D0E76662B10668300581776 /* Representative.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Representative.swift; sourceTree = "<group>"; };
@@ -103,9 +107,11 @@
 		1DDB23312DBBADE600490A1B /* BillEntity.xcdatamodel */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcdatamodel; path = BillEntity.xcdatamodel; sourceTree = "<group>"; };
 		1DE634B52D698574007716C8 /* Theme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Theme.swift; sourceTree = "<group>"; };
 		28D85FC115A3484901EA025E /* StageChangeNotifier.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StageChangeNotifier.swift; sourceTree = "<group>"; };
+		6C98BA6AC6F6D7B2ADB3C536 /* WidgetSnapshotStoreTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = WidgetSnapshotStoreTests.swift; sourceTree = "<group>"; };
 		6DAD0E70A0F78EA233046B9E /* StageChangeNotifierTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StageChangeNotifierTests.swift; sourceTree = "<group>"; };
 		A1B2C3D4E5F6012345678901 /* CoreDataManagerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoreDataManagerTests.swift; sourceTree = "<group>"; };
 		A1B2C3D4E5F6012345678904 /* TodayBillTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = TodayBillTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		EB06E62A222725A79B023383 /* BillWidgetSnapshot.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = BillWidgetSnapshot.swift; path = Widget/BillWidgetSnapshot.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -128,6 +134,15 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		1C8E44D969675D3E27A4E731 /* Widget */ = {
+			isa = PBXGroup;
+			children = (
+				EB06E62A222725A79B023383 /* BillWidgetSnapshot.swift */,
+				1086D70575B843C9141FEE1B /* WidgetSnapshotStore.swift */,
+			);
+			name = Widget;
+			sourceTree = "<group>";
+		};
 		1D1E27A32D4FC6BF00F10850 /* TimeLine */ = {
 			isa = PBXGroup;
 			children = (
@@ -177,6 +192,7 @@
 				1DA31D7F2D64DA5D00EB1552 /* Service */,
 				1DA31D7E2D64DA4D00EB1552 /* Repository */,
 				1DA31D7D2D64DA3D00EB1552 /* Data */,
+				1C8E44D969675D3E27A4E731 /* Widget */,
 			);
 			path = Model;
 			sourceTree = "<group>";
@@ -317,6 +333,7 @@
 			children = (
 				A1B2C3D4E5F6012345678901 /* CoreDataManagerTests.swift */,
 				6DAD0E70A0F78EA233046B9E /* StageChangeNotifierTests.swift */,
+				6C98BA6AC6F6D7B2ADB3C536 /* WidgetSnapshotStoreTests.swift */,
 			);
 			path = TodayBillTests;
 			sourceTree = "<group>";
@@ -465,6 +482,8 @@
 				1D69B1A42D43501D00EB70F0 /* SearchViewController.swift in Sources */,
 				1D6476B92D45283B002A61B3 /* ListViewController.swift in Sources */,
 				634D012B8A6592A994EA3AE6 /* StageChangeNotifier.swift in Sources */,
+				81C6E3997AE96840FCC7C20B /* BillWidgetSnapshot.swift in Sources */,
+				3C73C6557B6625FD705BC2D7 /* WidgetSnapshotStore.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -474,6 +493,7 @@
 			files = (
 				A1B2C3D4E5F6012345678902 /* CoreDataManagerTests.swift in Sources */,
 				E921D2057F4A1D9CC250AABE /* StageChangeNotifierTests.swift in Sources */,
+				674D7EBCB2E793B27CC4C977 /* WidgetSnapshotStoreTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
