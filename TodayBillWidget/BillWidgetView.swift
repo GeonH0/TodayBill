@@ -6,7 +6,7 @@ struct BillWidgetView: View {
     let entry: BillWidgetEntry
 
     /// 이보다 오래된 스냅샷은 하단에 상대 시각을 덧붙인다.
-    private static let stalenessThreshold: TimeInterval = 6 * 60 * 60
+    static let stalenessThreshold: TimeInterval = 6 * 60 * 60
     /// 중간 위젯이 담는 줄 수. 큰 위젯은 `BillWidgetSnapshot.maxRows`까지 담는다.
     private static let mediumRowLimit = 2
 
@@ -123,6 +123,7 @@ struct BillWidgetView_Previews: PreviewProvider {
             preview(noChanges, "변동 없음 · 중간", .systemMedium)
             preview(empty, "즐겨찾기 없음 · 중간", .systemMedium)
             preview(nil, "스냅샷 없음 · 중간", .systemMedium)
+            preview(stale, "오래된 스냅샷 · 중간", .systemMedium)
         }
     }
 
@@ -133,6 +134,14 @@ struct BillWidgetView_Previews: PreviewProvider {
             BillWidgetSnapshot.Row(billID: "1", age: 22, title: "주택임대차보호법 일부개정법률안", stageTitle: "제안", hasChange: false),
             BillWidgetSnapshot.Row(billID: "2", age: 22, title: "건축법 일부개정법률안", stageTitle: "위원회", hasChange: false)
         ],
+        changeCount: 0,
+        todayProposalCount: 37
+    )
+
+    private static let stale = BillWidgetSnapshot(
+        generatedAt: Date().addingTimeInterval(-9 * 60 * 60),
+        favoriteCount: 2,
+        rows: noChanges.rows,
         changeCount: 0,
         todayProposalCount: 37
     )
