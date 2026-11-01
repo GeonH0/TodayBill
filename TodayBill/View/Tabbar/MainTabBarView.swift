@@ -101,6 +101,13 @@ final class MainTabBarView: UIView {
         updateItemAppearance()
     }
 
+    /// Lights the item at `index` without notifying the delegate, for tab changes made in code.
+    func select(at index: Int) {
+        guard items.indices.contains(index) else { return }
+        currentSelectedIndex = index
+        updateItemAppearance()
+    }
+
     override func layoutSubviews() {
         super.layoutSubviews()
         separatorView.frame = CGRect(x: 0, y: 0, width: bounds.width, height: 1)

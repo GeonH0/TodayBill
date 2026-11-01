@@ -1,3 +1,10 @@
+//
+//  AppInitializer.swift
+//  TodayBill
+//
+//  Created by 김건호 on 1/23/25.
+//
+
 import UIKit
 
 class AppInitializer {

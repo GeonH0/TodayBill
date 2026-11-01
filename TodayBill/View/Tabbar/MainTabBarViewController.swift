@@ -87,6 +87,9 @@ final class MainTabBarViewController: UIViewController {
         
         let selectedViewController = viewControllers[index]
         
+        // Keep the highlight in step with the content, including when we return early below.
+        customTabBar.select(at: index)
+        
         if currentViewController == selectedViewController {
             return
         }
