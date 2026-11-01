@@ -58,3 +58,32 @@ final class WidgetSnapshotStoreTests: XCTestCase {
         XCTAssertNil(store.read())
     }
 }
+
+extension WidgetSnapshotStoreTests {
+    func testWriteCatchBranchWhenDirectoryIsActuallyAFile() throws {
+        let blocked = directory.appendingPathComponent("not-a-directory")
+        try Data("block".utf8).write(to: blocked)
+        let store = WidgetSnapshotStore(directory: blocked)
+        XCTAssertFalse(store.write(BillWidgetSnapshot(generatedAt: Date(), favoriteCount: 0, rows: [], changeCount: 0, todayProposalCount: 0)))
+        XCTAssertNil(store.read())
+    }
+
+    func testValidWriteRecoversAfterCorruptFile() throws {
+        let store = WidgetSnapshotStore(directory: directory)
+        try Data("{}".utf8).write(to: directory.appendingPathComponent("widget-snapshot.json"))
+        XCTAssertNil(store.read())
+        let snapshot = BillWidgetSnapshot(generatedAt: Date(), favoriteCount: 0, rows: [], changeCount: 0, todayProposalCount: 12)
+        XCTAssertTrue(store.write(snapshot))
+        XCTAssertEqual(store.read(), snapshot)
+    }
+
+    func testAtomicReplacementLeavesLatestCompleteSnapshot() {
+        let store = WidgetSnapshotStore(directory: directory)
+        for count in 0..<50 {
+            let snapshot = BillWidgetSnapshot(generatedAt: Date(), favoriteCount: count, rows: [], changeCount: 0, todayProposalCount: count)
+            XCTAssertTrue(store.write(snapshot))
+            XCTAssertEqual(store.read(), snapshot)
+        }
+        XCTAssertEqual(try FileManager.default.contentsOfDirectory(atPath: directory.path), ["widget-snapshot.json"])
+    }
+}

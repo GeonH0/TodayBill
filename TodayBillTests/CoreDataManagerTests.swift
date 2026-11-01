@@ -1,4 +1,5 @@
 import XCTest
+import UIKit
 @testable import TodayBill
 
 final class CoreDataManagerTests: XCTestCase {
@@ -534,6 +535,9 @@ final class CoreDataManagerTests: XCTestCase {
 }
 
 private final class MockBillRepository: BillRepositoryProtocol {
+    var holdSearch = false
+    var searchRequests: [(BillFilter, Int)] = []
+    var pendingSearchCompletions: [(Result<[BillSnapshot], Error>) -> Void] = []
     private let dashboardResult: Result<HomeDashboard, Error>
     private let searchResultsByPage: [Int: [BillSnapshot]]
 
@@ -566,7 +570,9 @@ private final class MockBillRepository: BillRepositoryProtocol {
     }
 
     func searchBills(filter: BillFilter, page: Int, completion: @escaping (Result<[BillSnapshot], Error>) -> Void) {
-        completion(.success(searchResultsByPage[page] ?? []))
+        searchRequests.append((filter, page))
+        if holdSearch { pendingSearchCompletions.append(completion) }
+        else { completion(.success(searchResultsByPage[page] ?? [])) }
     }
 
     func fetchDetail(id: String, age: Int, completion: @escaping (Result<BillSnapshot, Error>) -> Void) {
@@ -599,4 +605,114 @@ private final class MockBillRepository: BillRepositoryProtocol {
     func cachedSnapshot(id: String) -> BillSnapshot? {
         nil
     }
+}
+
+
+/// Diagnostic tests pin the observed defects; they are not assertions of desired behavior.
+final class SearchFilterInspectionTests: XCTestCase {
+    func testReproducesFilterChangeBeingDroppedWhileOldSearchIsLoading() {
+        let repository = MockBillRepository(dashboardResult: .success(HomeDashboard()))
+        repository.holdSearch = true
+        let model = SearchViewModel(repository: repository)
+        model.search(query: "환경")
+        var newFilter = model.filter
+        newFilter.status = .completed
+        model.updateFilter(newFilter)
+        model.search(reset: true)
+        XCTAssertEqual(repository.searchRequests.count, 1, "The new filter request was dropped")
+        let done = expectation(description: "stale result under new filter")
+        model.onStateChange = { state in
+            if case .loaded(let snapshots) = state {
+                XCTAssertEqual(model.filter.status, .completed)
+                XCTAssertFalse(snapshots[0].matches(filter: model.filter))
+                done.fulfill()
+            }
+        }
+        repository.pendingSearchCompletions[0](.success([BillSnapshot(billID: "QA-OLD", age: 22, title: "환경 법안")]))
+        wait(for: [done], timeout: 2)
+    }
+
+    func testReproducesClearedSearchBeingReplacedByLateResults() {
+        let repository = MockBillRepository(dashboardResult: .success(HomeDashboard()))
+        repository.holdSearch = true
+        let model = SearchViewModel(repository: repository)
+        model.search(query: "환경")
+        model.clearResults()
+        XCTAssertTrue(model.filter.normalizedQuery.isEmpty)
+        let done = expectation(description: "late result resurrects cleared search")
+        model.onStateChange = { state in
+            if case .loaded(let snapshots) = state {
+                XCTAssertTrue(model.filter.normalizedQuery.isEmpty)
+                XCTAssertEqual(snapshots.first?.billID, "QA-LATE")
+                done.fulfill()
+            }
+        }
+        repository.pendingSearchCompletions[0](.success([BillSnapshot(billID: "QA-LATE", age: 22, title: "환경 법안")]))
+        wait(for: [done], timeout: 2)
+    }
+
+    func testReproducesFilteredEmptyFirstPageHidingMatchingSecondPage() {
+        let configuration = URLSessionConfiguration.ephemeral
+        configuration.protocolClasses = [FilterPagingURLProtocol.self]
+        let session = URLSession(configuration: configuration)
+        defer { session.invalidateAndCancel() }
+        let repository = BillRepository(apiClient: OpenAssemblyAPIClient(session: session), coreDataManager: CoreDataManager.makeInMemory())
+        let model = SearchViewModel(repository: repository)
+        let filter = BillFilter(query: "환경", status: .completed)
+        model.updateFilter(filter)
+        let empty = expectation(description: "first raw page filtered to zero")
+        model.onStateChange = { state in
+            if case .empty = state { empty.fulfill() }
+        }
+        model.search()
+        wait(for: [empty], timeout: 3)
+        XCTAssertFalse(model.canLoadMore)
+        model.loadNextPageIfNeeded()
+        XCTAssertEqual(model.currentPage, 1, "No second page requested by the model")
+        let next = expectation(description: "matching data exists on page two")
+        repository.searchBills(filter: filter, page: 2) { result in
+            switch result {
+            case .success(let snapshots): XCTAssertEqual(snapshots.map(\.billID), ["QA-MATCH"])
+            case .failure(let error): XCTFail("\(error)")
+            }
+            next.fulfill()
+        }
+        wait(for: [next], timeout: 3)
+    }
+
+    @MainActor
+    func testFilterMenuContainsFourteenUnsectionedActions() throws {
+        let search = SearchViewController()
+        let window = UIWindow(frame: CGRect(x: 0, y: 0, width: 402, height: 874))
+        window.rootViewController = UINavigationController(rootViewController: search)
+        window.tintColor = Theme.accent
+        window.makeKeyAndVisible()
+        defer { window.isHidden = true; window.rootViewController = nil }
+        search.loadViewIfNeeded()
+        search.showFilters()
+        let alert = try XCTUnwrap(search.presentedViewController as? UIAlertController)
+        XCTAssertEqual(alert.preferredStyle, .actionSheet)
+        XCTAssertEqual(alert.actions.count, 14)
+        XCTAssertEqual(alert.actions.first?.title, "전체 상태")
+        XCTAssertTrue(alert.actions.contains { $0.title == "소관 위원회 입력" })
+        XCTAssertTrue(alert.actions.contains { $0.title == "필터 초기화" })
+        let presented = expectation(for: NSPredicate { _, _ in !alert.isBeingPresented }, evaluatedWith: nil)
+        wait(for: [presented], timeout: 3)
+        alert.dismiss(animated: false)
+    }
+}
+
+private final class FilterPagingURLProtocol: URLProtocol {
+    override class func canInit(with request: URLRequest) -> Bool { true }
+    override class func canonicalRequest(for request: URLRequest) -> URLRequest { request }
+    override func startLoading() {
+        let page = URLComponents(url: request.url!, resolvingAgainstBaseURL: false)?.queryItems?.first { $0.name == "pIndex" }?.value
+        var row = ["BILL_ID": page == "2" ? "QA-MATCH" : "QA-NONMATCH", "BILL_NO": "123", "BILL_NAME": "환경 법안", "PROPOSE_DT": "2026-01-01", "AGE": "22", "DETAIL_LINK": "https://example.com", "PROPOSER": "QA", "MEMBER_LIST": "QA"]
+        if page == "2" { row["PROC_RESULT"] = "가결" }
+        let data = try! JSONSerialization.data(withJSONObject: ["nzmimeepazxkubdpn": [["row": [row]]]])
+        client?.urlProtocol(self, didReceive: HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!, cacheStoragePolicy: .notAllowed)
+        client?.urlProtocol(self, didLoad: data)
+        client?.urlProtocolDidFinishLoading(self)
+    }
+    override func stopLoading() {}
 }

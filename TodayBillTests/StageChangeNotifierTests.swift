@@ -685,3 +685,141 @@ private final class ControlledFavoriteURLProtocol: URLProtocol {
     }
     override func stopLoading() { if Self.mode == .hold { Self.onStop?() } }
 }
+
+extension StageNotificationDeliveryTests {
+    func testPartialRefreshDoesNotShrinkTenFavoritesToSevenInSharedWidgetFile() throws {
+        let directory = try XCTUnwrap(FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: WidgetSnapshotStore.appGroupIdentifier))
+        let file = directory.appendingPathComponent("widget-snapshot.json")
+        let backup = try? Data(contentsOf: file)
+        defer {
+            if let backup { try? backup.write(to: file, options: .atomic) }
+            else { try? FileManager.default.removeItem(at: file) }
+        }
+        let favorites = (1...10).map { changed("QA-\($0)") }
+        let previous = WidgetSnapshotBuilder.make(previous: nil, favorites: favorites, todayProposalCount: 37, now: Date(timeIntervalSince1970: 1))
+        let store = WidgetSnapshotStore()
+        XCTAssertTrue(store.write(previous))
+        let repository = StubFavoriteRefresher(favorites)
+        repository.result = .failure(FavoriteRefreshFailure(refreshedSnapshots: Array(favorites.prefix(7)), failedBillIDs: Array(favorites.suffix(3)).map(\.billID), underlyingError: URLError(.timedOut)))
+        let center = StubStageNotificationCenter()
+        center.status = .denied
+        let notifier = makeNotifier(repository, center)
+        let done = expectation(description: "partial refresh wrote widget")
+        notifier.run { result in
+            if case .success = result { XCTFail("Partial error was lost") }
+            done.fulfill()
+        }
+        wait(for: [done], timeout: 5)
+        let actual = try XCTUnwrap(store.read())
+        XCTAssertEqual(actual.todayProposalCount, 37)
+        XCTAssertNil(defaults.object(forKey: StageChangeNotifier.lastSuccessfulRefreshKey))
+        XCTExpectFailure("Known Task 3 defect: partial refresh writes 7 as total favorites instead of 10") {
+            XCTAssertEqual(actual.favoriteCount, 10)
+        }
+    }
+}
+
+final class WidgetProposalCountIntegrationTests: XCTestCase {
+    private func dashboard(dates: [String]) throws -> HomeDashboard {
+        let manager = CoreDataManager.makeInMemory()
+        manager.saveSnapshots(dates.enumerated().map { index, date in
+            BillSnapshot(billID: "QA-COUNT-\(index)", age: 22, title: "QA", proposedDate: date)
+        })
+        let config = URLSessionConfiguration.ephemeral
+        config.protocolClasses = [ReleaseQAOfflineURLProtocol.self]
+        let session = URLSession(configuration: config)
+        defer { session.invalidateAndCancel() }
+        let suite = "TodayBill.WidgetCountQA.\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suite)!
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let repository = BillRepository(apiClient: OpenAssemblyAPIClient(session: session), lawInfoClient: LawInfoAPIClient(session: session), coreDataManager: manager, dashboardCache: HomeDashboardCache(defaults: defaults))
+        let done = expectation(description: "offline dashboard")
+        var captured: Result<HomeDashboard, Error>?
+        repository.fetchHomeDashboard(date: Date()) { result in captured = result; done.fulfill() }
+        wait(for: [done], timeout: 5)
+        return try XCTUnwrap(captured).get()
+    }
+
+    private func formatted(_ date: Date) -> String {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "yyyy-MM-dd"
+        return formatter.string(from: date)
+    }
+
+    func testWidgetInputReportsAllFourteenTodayProposals() throws {
+        let value = try dashboard(dates: Array(repeating: formatted(Date()), count: 14))
+        XCTAssertEqual(value.selectedDateBills.count, 14)
+        XCTExpectFailure("Known integration defect: widget input uses a dashboard preview capped at 10") {
+            XCTAssertEqual(value.newProposals.count, 14)
+        }
+    }
+
+    func testWidgetInputDoesNotCountYesterdaysBillsAsToday() throws {
+        let yesterday = Calendar.current.date(byAdding: .day, value: -1, to: Date())!
+        let value = try dashboard(dates: Array(repeating: formatted(yesterday), count: 3))
+        XCTExpectFailure("Known integration defect: no bills today falls back to the latest earlier date") {
+            XCTAssertEqual(value.newProposals.count, 0)
+        }
+    }
+}
+
+extension StageNotificationDeliveryTests {
+    private func withPreservedWidgetFile(_ check: (WidgetSnapshotStore) throws -> Void) throws {
+        let directory = try XCTUnwrap(FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: WidgetSnapshotStore.appGroupIdentifier))
+        let file = directory.appendingPathComponent("widget-snapshot.json")
+        let backup = try? Data(contentsOf: file)
+        defer {
+            if let backup { try? backup.write(to: file, options: .atomic) }
+            else { try? FileManager.default.removeItem(at: file) }
+        }
+        try check(WidgetSnapshotStore())
+    }
+
+    func testCachedFavoriteReadAndRemovalReachTheSharedWidgetFile() throws {
+        try withPreservedWidgetFile { store in
+            let repository = StubFavoriteRefresher([changed("QA-CACHED")])
+            let center = StubStageNotificationCenter()
+            center.status = .denied
+            let notifier = makeNotifier(repository, center)
+            let initial = expectation(description: "favorite change")
+            notifier.run(refresh: false) { _ in initial.fulfill() }
+            wait(for: [initial], timeout: 3)
+            XCTAssertEqual(store.read()?.favoriteCount, 1)
+            XCTAssertEqual(store.read()?.rows.first?.billID, "QA-CACHED")
+            XCTAssertEqual(store.read()?.changeCount, 1)
+            var seen = repository.snapshots[0]
+            seen.lastSeenStageKey = seen.stageKey
+            repository.snapshots = [seen]
+            let read = expectation(description: "mark seen")
+            notifier.run(refresh: false) { _ in read.fulfill() }
+            wait(for: [read], timeout: 3)
+            XCTAssertEqual(store.read()?.favoriteCount, 1)
+            XCTAssertEqual(store.read()?.changeCount, 0)
+            XCTAssertEqual(store.read()?.rows.first?.hasChange, false)
+            repository.snapshots = []
+            let removed = expectation(description: "last favorite removed")
+            notifier.run(refresh: false) { _ in removed.fulfill() }
+            wait(for: [removed], timeout: 3)
+            XCTAssertEqual(store.read()?.favoriteCount, 0)
+            XCTAssertEqual(store.read()?.rows, [])
+            XCTAssertEqual(repository.refreshCount, 0)
+        }
+    }
+
+    func testTotalRefreshFailureLeavesTheExistingWidgetFileUnchanged() throws {
+        try withPreservedWidgetFile { store in
+            let previous = WidgetSnapshotBuilder.make(previous: nil, favorites: [changed()], todayProposalCount: 37, now: Date(timeIntervalSince1970: 1))
+            XCTAssertTrue(store.write(previous))
+            let repository = StubFavoriteRefresher([changed()])
+            repository.result = .failure(URLError(.notConnectedToInternet))
+            let notifier = makeNotifier(repository, StubStageNotificationCenter())
+            let done = expectation(description: "total refresh failure")
+            notifier.run { result in
+                if case .success = result { XCTFail("Failure must stay visible") }
+                done.fulfill()
+            }
+            wait(for: [done], timeout: 3)
+            XCTAssertEqual(store.read(), previous)
+        }
+    }
+}
