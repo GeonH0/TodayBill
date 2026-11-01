@@ -161,7 +161,7 @@ struct Theme {
     struct Metric {
         /// Body copy is set at line-height 1.65; `body` is 14pt, so 14 * 0.65 ≈ 9.
         static let bodyLineSpacing: CGFloat = 9
-        static let tabBarContentHeight: CGFloat = 60
+        static let tabBarContentHeight: CGFloat = 52
     }
 
     struct Layout {
@@ -171,7 +171,7 @@ struct Theme {
         static let maxContentWidth: CGFloat = 680
 
         /// A short pose — landscape, or the cover screen turned sideways — cannot
-        /// spare 60pt for a tab bar, so it loses its labels and gets shorter.
+        /// spare 52pt for a tab bar, so it loses its labels and gets shorter.
         static func tabBarContentHeight(for traits: UITraitCollection) -> CGFloat {
             traits.verticalSizeClass == .compact ? 44 : Metric.tabBarContentHeight
         }

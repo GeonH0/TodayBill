@@ -18,6 +18,8 @@ protocol MainTabBarViewDelegate: AnyObject {
 /// so the state survives without relying on the accent color alone.
 final class MainTabBarView: UIView {
 
+    private static let contentTopInset: CGFloat = 6
+
     weak var delegate: MainTabBarViewDelegate?
 
     private var items: [TabItemView] = []
@@ -47,14 +49,20 @@ final class MainTabBarView: UIView {
         fatalError("init(coder:) has not been implemented")
     }
 
+    private lazy var itemStackTopConstraint = itemStackView.topAnchor.constraint(
+        equalTo: topAnchor, constant: Self.contentTopInset
+    )
+
     private lazy var itemStackHeightConstraint = itemStackView.heightAnchor.constraint(
-        equalToConstant: Theme.Metric.tabBarContentHeight - 9
+        equalToConstant: Theme.Metric.tabBarContentHeight - Self.contentTopInset
     )
 
     /// Drops the labels and shortens the bar when the screen is short.
     func setCompact(_ compact: Bool) {
         let content = compact ? 44 : Theme.Metric.tabBarContentHeight
-        itemStackHeightConstraint.constant = content - 9
+        let topInset = compact ? 0 : Self.contentTopInset
+        itemStackTopConstraint.constant = topInset
+        itemStackHeightConstraint.constant = content - topInset
         items.forEach { $0.setCompact(compact) }
     }
 
@@ -64,7 +72,7 @@ final class MainTabBarView: UIView {
         addSubview(itemStackView)
 
         NSLayoutConstraint.activate([
-            itemStackView.topAnchor.constraint(equalTo: topAnchor, constant: 9),
+            itemStackTopConstraint,
             itemStackView.leadingAnchor.constraint(greaterThanOrEqualTo: safeAreaLayoutGuide.leadingAnchor, constant: 12),
             itemStackView.trailingAnchor.constraint(lessThanOrEqualTo: safeAreaLayoutGuide.trailingAnchor, constant: -12),
             itemStackView.centerXAnchor.constraint(equalTo: safeAreaLayoutGuide.centerXAnchor),
