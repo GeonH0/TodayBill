@@ -31,6 +31,7 @@ struct BillWidgetView: View {
         }
         .padding(14)
         .widgetContainerBackground(WidgetTheme.background)
+        .widgetURL(URL(string: changeCount > 0 ? "todaybill://favorites" : "todaybill://home"))
     }
 
     private var header: some View {
@@ -66,22 +67,35 @@ struct BillWidgetView: View {
     }
 
     private func rowView(_ row: BillWidgetSnapshot.Row) -> some View {
-        HStack(spacing: 6) {
-            Circle()
-                .fill(row.hasChange ? WidgetTheme.accent : Color.clear)
-                .frame(width: 5, height: 5)
-            Text(row.title)
-                .font(.caption)
-                .fontWeight(row.hasChange ? .semibold : .regular)
-                .foregroundColor(WidgetTheme.primaryText)
-                .lineLimit(1)
-                .truncationMode(.tail)
-            Spacer(minLength: 4)
-            Text(row.stageTitle)
-                .font(.caption2)
-                .foregroundColor(row.hasChange ? WidgetTheme.accent : WidgetTheme.secondaryText)
-                .layoutPriority(1)
+        Link(destination: Self.detailURL(for: row)) {
+            HStack(spacing: 6) {
+                Circle()
+                    .fill(row.hasChange ? WidgetTheme.accent : Color.clear)
+                    .frame(width: 5, height: 5)
+                Text(row.title)
+                    .font(.caption)
+                    .fontWeight(row.hasChange ? .semibold : .regular)
+                    .foregroundColor(WidgetTheme.primaryText)
+                    .lineLimit(1)
+                    .truncationMode(.tail)
+                Spacer(minLength: 4)
+                Text(row.stageTitle)
+                    .font(.caption2)
+                    .foregroundColor(row.hasChange ? WidgetTheme.accent : WidgetTheme.secondaryText)
+                    .layoutPriority(1)
+            }
         }
+    }
+
+    /// 상세 화면은 billID와 age를 둘 다 요구한다.
+    private static func detailURL(for row: BillWidgetSnapshot.Row) -> URL {
+        var components = URLComponents()
+        components.scheme = "todaybill"
+        components.host = "bill"
+        components.path = "/\(row.billID)"
+        components.queryItems = [URLQueryItem(name: "age", value: String(row.age))]
+        // 구성 요소가 모두 고정이라 실패할 수 없다.
+        return components.url ?? URL(string: "todaybill://favorites")!
     }
 
     private func message(_ text: String) -> some View {
