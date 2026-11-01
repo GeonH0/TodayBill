@@ -8,76 +8,38 @@
 import Foundation
 import UIKit
 
-/// Design tokens for the "뉴트럴 그레이 바탕 · 흰 카드 · 단일 액센트" tone.
-///
-/// Two surface layers make the depth (background + white card), one accent carries "진행",
-/// and green is reserved for "완료". Hierarchy comes from type size and weight, not from color.
+/// Warm white and charcoal, matching the calendar app icon.
+/// Hierarchy and status use contrast, labels, symbols, and weight rather than party-like hues.
 struct Theme {
-
     // MARK: - Surfaces
 
-    /// Screen background. #F2F4F6 in light.
-    static let backgroundColor = dynamic(light: 0xF2F4F6, dark: 0x0F1114)
-
-    /// Card / list-row surface sitting on `backgroundColor`. #FFFFFF in light.
-    static let cellBackgroundColor = dynamic(light: 0xFFFFFF, dark: 0x191C21)
-
-    /// Near-black surface for the one emphasized card per screen (알림 유도, 주간 변동).
-    static let inkSurface = dynamic(light: 0x17181C, dark: 0x262B33)
-
-    /// Neutral fill for tracks, unfilled progress segments and inactive chips. #E5E8EB in light.
-    static let fill = dynamic(light: 0xE5E8EB, dark: 0x2C313A)
-
-    /// 1px divider inside cards. Uses a tint rather than a shadow to separate content.
-    static let separator = dynamic(light: 0xF2F4F6, dark: 0x23272E)
-
-    /// 1px line above the tab bar.
-    static let border = dynamic(light: 0xEDEFF2, dark: 0x272C34)
+    static let backgroundColor = dynamic(light: 0xF4F3F0, dark: 0x121211)
+    static let cellBackgroundColor = dynamic(light: 0xFFFEFC, dark: 0x1D1D1B)
+    static let inkSurface = dynamic(light: 0x292927, dark: 0x30302D)
+    static let fill = dynamic(light: 0xE5E3DE, dark: 0x33332F)
+    static let separator = dynamic(light: 0xF1F0EC, dark: 0x292926)
+    static let border = dynamic(light: 0xE6E4DF, dark: 0x363633)
 
     // MARK: - Accents
 
-    /// The single accent. Used for "진행 중", selected state and primary actions.
-    static let accent = dynamic(light: 0x1F5CD8, dark: 0x4E86F0)
-
-    /// Accent wash behind progress badges and accent icon tiles.
-    static let accentSoft = UIColor { trait in
-        trait.userInterfaceStyle == .dark
-            ? UIColor(hex: 0x4E86F0).withAlphaComponent(0.18)
-            : UIColor(hex: 0xEEF3FE)
-    }
-
-    /// Reserved for "완료" only - never used as a generic accent.
-    static let success = dynamic(light: 0x0E8A5F, dark: 0x34C98D)
-
-    static let successSoft = UIColor { trait in
-        trait.userInterfaceStyle == .dark
-            ? UIColor(hex: 0x34C98D).withAlphaComponent(0.18)
-            : UIColor(hex: 0xE7F5EF)
-    }
+    /// Charcoal emphasis for selection, progress, and primary actions.
+    static let accent = dynamic(light: 0x5C5B57, dark: 0xD9D6CE)
+    static let accentSoft = dynamic(light: 0xEAE8E2, dark: 0x353530)
+    static let onAccent = dynamic(light: 0xFFFFFF, dark: 0x252521)
+    /// Completion stays neutral; checkmarks and status text distinguish it.
+    static let success = dynamic(light: 0x45443F, dark: 0xD4D2C9)
+    static let successSoft = dynamic(light: 0xE9E7E1, dark: 0x353530)
 
     // MARK: - Text
 
-    /// Primary text. #17181C in light.
-    static let textColor = dynamic(light: 0x17181C, dark: 0xF2F4F6)
-
-    /// Slightly softened primary, for dense rows. #333D4B in light.
-    static let textStrong = dynamic(light: 0x333D4B, dark: 0xDCE1E8)
-
-    /// Body copy. #4E5968 in light.
-    static let textSecondary = dynamic(light: 0x4E5968, dark: 0xA7B0BC)
-
-    /// Meta text - dates, counts, captions. #8B95A1 in light.
-    static let textMuted = dynamic(light: 0x8B95A1, dark: 0x7C8794)
-
-    /// Retired / expired content, and the trailing half of a dimmed row. #B0B8C1 in light.
-    static let textDisabled = dynamic(light: 0xB0B8C1, dark: 0x5E6875)
-
-    /// Legacy name for the muted meta tone.
+    static let textColor = dynamic(light: 0x252521, dark: 0xF4F3ED)
+    static let textStrong = dynamic(light: 0x3C3C36, dark: 0xDEDDD5)
+    static let textSecondary = dynamic(light: 0x64645D, dark: 0xBDBCB3)
+    static let textMuted = dynamic(light: 0x929188, dark: 0x95948B)
+    static let textDisabled = dynamic(light: 0xB4B3AB, dark: 0x6F6F66)
     static let emptyLabelTextColor = textMuted
-
-    /// Text drawn on `inkSurface`.
     static let onInkPrimary = UIColor.white
-    static let onInkSecondary = dynamic(light: 0x98A2B0, dark: 0x98A2B0)
+    static let onInkSecondary = dynamic(light: 0xB2B1A8, dark: 0xB2B1A8)
 
     // MARK: - Type
 
@@ -161,7 +123,8 @@ struct Theme {
     struct Metric {
         /// Body copy is set at line-height 1.65; `body` is 14pt, so 14 * 0.65 ≈ 9.
         static let bodyLineSpacing: CGFloat = 9
-        static let tabBarContentHeight: CGFloat = 52
+        /// Visual height; interactive tab items retain a 44pt target.
+        static let tabBarContentHeight: CGFloat = 40
     }
 
     struct Layout {
@@ -170,8 +133,7 @@ struct Theme {
         /// the column instead of stretching every card across the screen.
         static let maxContentWidth: CGFloat = 680
 
-        /// A short pose — landscape, or the cover screen turned sideways — cannot
-        /// spare 52pt for a tab bar, so it loses its labels and gets shorter.
+        /// Landscape keeps the minimum touch height and hides the tab labels.
         static func tabBarContentHeight(for traits: UITraitCollection) -> CGFloat {
             traits.verticalSizeClass == .compact ? 44 : Metric.tabBarContentHeight
         }

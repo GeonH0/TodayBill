@@ -7,147 +7,57 @@
 
 import UIKit
 
+/// Owns tab selection and child navigation; layout lives in the container view.
 final class MainTabBarViewController: UIViewController {
-    private let contentContainerView = UIView()
-    private let customTabBar = MainTabBarView()
-    private var tabBarHeightConstraint: NSLayoutConstraint?
-    private var contentBottomToTabBarConstraint: NSLayoutConstraint?
-    private var contentBottomToViewConstraint: NSLayoutConstraint?
-    private var viewControllers: [UIViewController] = []
-    private var currentViewController: UIViewController?
-    private var isCustomTabBarHidden = false
-    private var tabBarContentHeight: CGFloat {
-        Theme.Layout.tabBarContentHeight(for: traitCollection)
+    private let containerView = MainTabBarContainerView()
+    private(set) var viewControllers: [UIViewController] = []
+    private(set) var selectedIndex = 0
+    private(set) var selectedViewController: UIViewController?
+
+    override func loadView() {
+        view = containerView
+        containerView.tabBar.delegate = self
     }
-    
-    override func viewDidLoad() {
-        super.viewDidLoad()
-        setupContentContainerView()
-        setupTabBar()
-    }
-    
-    override func viewDidLayoutSubviews() {
-        super.viewDidLayoutSubviews()
-        updateTabBarHeight()
-    }
-    
+
     func setViewControllers(_ controllers: [UIViewController], symbolNames: [String], titles: [String]) {
         viewControllers = controllers
         controllers.compactMap { $0 as? UINavigationController }.forEach { $0.delegate = self }
-        customTabBar.configure(symbolNames: symbolNames, titles: titles)
+        containerView.tabBar.configure(symbolNames: symbolNames, titles: titles)
         selectTab(at: 0)
     }
-    
-    private func setupContentContainerView() {
-        view.backgroundColor = Theme.backgroundColor
-        contentContainerView.translatesAutoresizingMaskIntoConstraints = false
-        contentContainerView.backgroundColor = Theme.backgroundColor
-        contentContainerView.clipsToBounds = true
-        view.addSubview(contentContainerView)
-    }
-    
-    private func setupTabBar() {
-        customTabBar.translatesAutoresizingMaskIntoConstraints = false
-        customTabBar.delegate = self
-        view.addSubview(customTabBar)
-        customTabBar.backgroundColor = Theme.cellBackgroundColor
-        tabBarHeightConstraint = customTabBar.heightAnchor.constraint(equalToConstant: tabBarContentHeight)
-        contentBottomToTabBarConstraint = contentContainerView.bottomAnchor.constraint(equalTo: customTabBar.topAnchor)
-        contentBottomToViewConstraint = contentContainerView.bottomAnchor.constraint(equalTo: view.bottomAnchor)
-        NSLayoutConstraint.activate([
-            contentContainerView.topAnchor.constraint(equalTo: view.topAnchor),
-            contentContainerView.leadingAnchor.constraint(greaterThanOrEqualTo: view.safeAreaLayoutGuide.leadingAnchor),
-            contentContainerView.trailingAnchor.constraint(lessThanOrEqualTo: view.safeAreaLayoutGuide.trailingAnchor),
-            contentContainerView.centerXAnchor.constraint(equalTo: view.safeAreaLayoutGuide.centerXAnchor),
-            contentContainerView.widthAnchor.constraint(lessThanOrEqualToConstant: Theme.Layout.maxContentWidth),
-            contentBottomToTabBarConstraint!,
-            
-            customTabBar.leadingAnchor.constraint(equalTo: view.leadingAnchor),
-            customTabBar.trailingAnchor.constraint(equalTo: view.trailingAnchor),
-            customTabBar.bottomAnchor.constraint(equalTo: view.bottomAnchor),
-            tabBarHeightConstraint!
-        ])
-        contentBottomToViewConstraint?.isActive = false
 
-        // Fill the safe area whenever it is narrower than the cap above.
-        let fullWidth = contentContainerView.widthAnchor.constraint(
-            equalTo: view.safeAreaLayoutGuide.widthAnchor
-        )
-        fullWidth.priority = .defaultHigh
-        fullWidth.isActive = true
-    }
-    
-    private func updateTabBarHeight() {
-        customTabBar.setCompact(traitCollection.verticalSizeClass == .compact)
-        tabBarHeightConstraint?.constant = tabBarContentHeight + view.safeAreaInsets.bottom
-    }
-    
+    /// Shared by touch input, widget links, and stage-change notifications.
     func selectTab(at index: Int) {
-        guard index >= 0 && index < viewControllers.count else { return }
-        
-        let selectedViewController = viewControllers[index]
-        
-        // Keep the highlight in step with the content, including when we return early below.
-        customTabBar.select(at: index)
-        
-        if currentViewController == selectedViewController {
-            return
-        }
-        
-        let oldViewController = currentViewController
-        addChild(selectedViewController)
-        selectedViewController.view.translatesAutoresizingMaskIntoConstraints = false
-        contentContainerView.addSubview(selectedViewController.view)
+        guard viewControllers.indices.contains(index) else { return }
+        loadViewIfNeeded()
+        containerView.tabBar.select(at: index)
+        let next = viewControllers[index]
+        selectedIndex = index
+        guard selectedViewController !== next else { return }
+
+        let previous = selectedViewController
+        addChild(next)
+        next.view.translatesAutoresizingMaskIntoConstraints = false
+        containerView.contentView.addSubview(next.view)
         NSLayoutConstraint.activate([
-            selectedViewController.view.topAnchor.constraint(equalTo: contentContainerView.topAnchor),
-            selectedViewController.view.leadingAnchor.constraint(equalTo: contentContainerView.leadingAnchor),
-            selectedViewController.view.trailingAnchor.constraint(equalTo: contentContainerView.trailingAnchor),
-            selectedViewController.view.bottomAnchor.constraint(equalTo: contentContainerView.bottomAnchor)
+            next.view.topAnchor.constraint(equalTo: containerView.contentView.topAnchor),
+            next.view.leadingAnchor.constraint(equalTo: containerView.contentView.leadingAnchor),
+            next.view.trailingAnchor.constraint(equalTo: containerView.contentView.trailingAnchor),
+            next.view.bottomAnchor.constraint(equalTo: containerView.contentView.bottomAnchor)
         ])
-        selectedViewController.didMove(toParent: self)
-        
-        oldViewController?.willMove(toParent: nil)
-        oldViewController?.view.removeFromSuperview()
-        oldViewController?.removeFromParent()
-        
-        currentViewController = selectedViewController
-        updateCustomTabBarVisibility(for: selectedViewController, animated: false)
+        next.didMove(toParent: self)
+        previous?.willMove(toParent: nil)
+        previous?.view.removeFromSuperview()
+        previous?.removeFromParent()
+        selectedViewController = next
+        updateTabBarVisibility(for: next, animated: false)
     }
 
-    private func updateCustomTabBarVisibility(for viewController: UIViewController, animated: Bool) {
-        let navigationController = viewController as? UINavigationController
-        let topViewController = navigationController?.topViewController ?? viewController
-        let isRoot = navigationController?.viewControllers.first === topViewController
-        let shouldHide = topViewController.hidesBottomBarWhenPushed && !isRoot
-        setCustomTabBarHidden(shouldHide, animated: animated)
-    }
-
-    private func setCustomTabBarHidden(_ hidden: Bool, animated: Bool) {
-        guard hidden != isCustomTabBarHidden else { return }
-        isCustomTabBarHidden = hidden
-
-        contentBottomToTabBarConstraint?.isActive = !hidden
-        contentBottomToViewConstraint?.isActive = hidden
-
-        if !hidden {
-            customTabBar.isHidden = false
-        }
-
-        let changes = {
-            self.customTabBar.alpha = hidden ? 0 : 1
-            self.view.layoutIfNeeded()
-        }
-
-        let completion: (Bool) -> Void = { _ in
-            self.customTabBar.isHidden = hidden
-        }
-
-        if animated {
-            UIView.animate(withDuration: 0.22, delay: 0, options: [.curveEaseInOut], animations: changes, completion: completion)
-        } else {
-            changes()
-            completion(true)
-        }
+    private func updateTabBarVisibility(for controller: UIViewController, animated: Bool) {
+        let navigation = controller as? UINavigationController
+        let top = navigation?.topViewController ?? controller
+        let isRoot = navigation?.viewControllers.first === top
+        containerView.setTabBarHidden(top.hidesBottomBarWhenPushed && !isRoot, animated: animated)
     }
 }
 
@@ -158,11 +68,8 @@ extension MainTabBarViewController: MainTabBarViewDelegate {
 }
 
 extension MainTabBarViewController: UINavigationControllerDelegate {
-    func navigationController(
-        _ navigationController: UINavigationController,
-        willShow viewController: UIViewController,
-        animated: Bool
-    ) {
-        updateCustomTabBarVisibility(for: navigationController, animated: animated)
+    func navigationController(_ navigationController: UINavigationController, willShow viewController: UIViewController, animated: Bool) {
+        guard navigationController === selectedViewController else { return }
+        updateTabBarVisibility(for: navigationController, animated: animated)
     }
 }

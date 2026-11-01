@@ -30,6 +30,7 @@ class AppInitializer {
         self.favoritesNavigationController = starViewController
 
         // 네비게이션 컨트롤러 설정
+        window?.tintColor = Theme.accent
         window?.rootViewController = tabBarViewController
         window?.makeKeyAndVisible()
     }

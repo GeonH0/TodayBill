@@ -221,7 +221,7 @@ extension SearchViewController: SearchViewDelegate {
             self?.updateFilter { $0.sortOrder = $0.sortOrder == .latest ? .oldest : .latest }
         })
 
-        alert.addAction(UIAlertAction(title: "필터 초기화", style: .destructive) { [weak self] _ in
+        alert.addAction(UIAlertAction(title: "필터 초기화", style: .default) { [weak self] _ in
             self?.updateFilter {
                 $0.status = nil
                 $0.favoriteOnly = false

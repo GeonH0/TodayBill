@@ -1,12 +1,22 @@
 import SwiftUI
+import UIKit
 import WidgetKit
 
-/// 위젯이 쓰는 색만. 앱 `Theme`와 같은 시스템 색을 가리키지만 SwiftUI 타입이고 타겟이 다르다.
+/// The app's warm-white/charcoal palette, expressed for the widget target.
 enum WidgetTheme {
-    static let background = Color(.systemGroupedBackground)
-    static let primaryText = Color(.label)
-    static let secondaryText = Color(.secondaryLabel)
-    static let accent = Color(.link)
+    static let background = color(light: 0xF4F3F0, dark: 0x121211)
+    static let primaryText = color(light: 0x252521, dark: 0xF4F3ED)
+    static let secondaryText = color(light: 0x64645D, dark: 0xBDBCB3)
+    static let accent = color(light: 0x5C5B57, dark: 0xD9D6CE)
+
+    private static func color(light: UInt32, dark: UInt32) -> Color {
+        Color(UIColor { traits in
+            let hex = traits.userInterfaceStyle == .dark ? dark : light
+            return UIColor(red: CGFloat((hex >> 16) & 0xFF) / 255,
+                           green: CGFloat((hex >> 8) & 0xFF) / 255,
+                           blue: CGFloat(hex & 0xFF) / 255, alpha: 1)
+        })
+    }
 }
 
 extension View {
