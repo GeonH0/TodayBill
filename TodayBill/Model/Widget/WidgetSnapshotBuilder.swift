@@ -10,24 +10,34 @@ enum WidgetSnapshotBuilder {
         todayProposalCount: Int?,
         now: Date
     ) -> BillWidgetSnapshot {
-        let changes: [BillWidgetSnapshot.Change]
+        let rows: [BillWidgetSnapshot.Row]
         let changeCount: Int
         let favoriteCount: Int
 
         if let favorites {
             let changed = favorites.filter(\.hasUnseenStageChange)
-            changes = changed.prefix(BillWidgetSnapshot.maxChanges).map {
-                BillWidgetSnapshot.Change(
-                    billID: $0.billID,
-                    age: $0.age,
-                    title: $0.title,
-                    stageTitle: $0.stage.title
-                )
-            }
+            // 변동이 있는 법안이 먼저. 남는 자리는 최근에 담은 법안으로 채워, 변동이 없는
+            // 날에도 위젯이 빈 자리가 되지 않게 한다.
+            let unchanged = favorites
+                .filter { !$0.hasUnseenStageChange }
+                .sorted {
+                    ($0.favoriteCreatedAt ?? .distantPast) > ($1.favoriteCreatedAt ?? .distantPast)
+                }
+            rows = (changed + unchanged)
+                .prefix(BillWidgetSnapshot.maxRows)
+                .map {
+                    BillWidgetSnapshot.Row(
+                        billID: $0.billID,
+                        age: $0.age,
+                        title: $0.title,
+                        stageTitle: $0.stage.title,
+                        hasChange: $0.hasUnseenStageChange
+                    )
+                }
             changeCount = changed.count
             favoriteCount = favorites.count
         } else {
-            changes = previous?.changes ?? []
+            rows = previous?.rows ?? []
             changeCount = previous?.changeCount ?? 0
             favoriteCount = previous?.favoriteCount ?? 0
         }
@@ -35,7 +45,7 @@ enum WidgetSnapshotBuilder {
         return BillWidgetSnapshot(
             generatedAt: now,
             favoriteCount: favoriteCount,
-            changes: changes,
+            rows: rows,
             changeCount: changeCount,
             todayProposalCount: todayProposalCount ?? previous?.todayProposalCount ?? 0
         )

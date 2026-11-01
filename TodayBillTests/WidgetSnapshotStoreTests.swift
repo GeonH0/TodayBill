@@ -19,8 +19,10 @@ final class WidgetSnapshotStoreTests: XCTestCase {
         let snapshot = BillWidgetSnapshot(
             generatedAt: Date(timeIntervalSince1970: 1_700_000_000),
             favoriteCount: 4,
-            changes: [
-                BillWidgetSnapshot.Change(billID: "A1", age: 22, title: "테스트 법안", stageTitle: "위원회")
+            rows: [
+                BillWidgetSnapshot.Row(
+                    billID: "A1", age: 22, title: "테스트 법안", stageTitle: "위원회", hasChange: true
+                )
             ],
             changeCount: 3,
             todayProposalCount: 37
@@ -50,7 +52,7 @@ final class WidgetSnapshotStoreTests: XCTestCase {
 
         XCTAssertFalse(store.write(
             BillWidgetSnapshot(
-                generatedAt: Date(), favoriteCount: 0, changes: [], changeCount: 0, todayProposalCount: 0
+                generatedAt: Date(), favoriteCount: 0, rows: [], changeCount: 0, todayProposalCount: 0
             )
         ))
         XCTAssertNil(store.read())
