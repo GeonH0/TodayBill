@@ -1063,6 +1063,41 @@ extension StageNotificationDeliveryTests {
 }
 
 extension StageNotificationDeliveryTests {
+    func testPostRegistrationReadFailurePreservesHistoryAndReportsFailureUntilRecovery() throws {
+        try withPreservedWidgetFile { _ in
+            let bill = changed("POSTCHECK-FAIL")
+            let repository = StubFavoriteRefresher([bill])
+            let center = StubStageNotificationCenter()
+            let notifier = makeNotifier(repository, center)
+            defaults.set(["OTHER": "recorded-stage"], forKey: StageChangeNotifier.notifiedStageKeysDefaultsKey)
+            center.onAdd = { repository.readError = URLError(.cannotOpenFile) }
+            let failed = expectation(description: "post-registration read failure")
+            notifier.run(refresh: false) { result in
+                if case .success = result { XCTFail("A history-read failure must not report success") }
+                failed.fulfill()
+            }
+            wait(for: [failed], timeout: 3)
+            XCTAssertEqual(center.requests.count, 1, "Registration succeeded before the read failed")
+            XCTAssertEqual(history, ["OTHER": "recorded-stage"])
+            XCTAssertNotNil(defaults.string(forKey: StageChangeNotifier.lastErrorKey))
+
+            repository.readError = nil
+            center.onAdd = nil
+            let recovered = expectation(description: "history recorded after recovery")
+            notifier.run(refresh: false) { result in
+                if case .failure(let error) = result { XCTFail("Recovery failed: \(error)") }
+                recovered.fulfill()
+            }
+            wait(for: [recovered], timeout: 3)
+            XCTAssertEqual(history, ["OTHER": "recorded-stage", bill.billID: bill.stageKey])
+            XCTAssertNil(defaults.string(forKey: StageChangeNotifier.lastErrorKey))
+            let subsequent = expectation(description: "recorded stage is not sent again")
+            notifier.run(refresh: false) { _ in subsequent.fulfill() }
+            wait(for: [subsequent], timeout: 3)
+            XCTAssertEqual(center.requests.count, 2)
+        }
+    }
+
     func testPreNotificationReadFailureIsReportedAndDoesNotSend() throws {
         try withPreservedWidgetFile { _ in
             let repository = StubFavoriteRefresher([changed("PRECHECK-FAIL")])

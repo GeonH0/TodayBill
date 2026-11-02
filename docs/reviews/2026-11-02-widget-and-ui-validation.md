@@ -11,7 +11,7 @@
 
 Environment: iPhone 17 Pro, iOS 26.3.1 Simulator, arm64, Debug.
 
-The app and embedded widget extension built successfully, and the app launched. The final full suite executed **119 tests: 119 passed, 0 expected failures, 0 failures, 0 skipped**. The previous seven expected-failure cases now assert correct behavior directly. Existing Core Data duplicate BillEntity model warnings remain in test logs.
+The app and embedded widget extension built successfully, and the app launched. The final full suite executed **120 tests: 120 passed, 0 expected failures, 0 failures, 0 skipped**. The previous seven expected-failure cases now assert correct behavior directly. Existing Core Data duplicate BillEntity model warnings remain in test logs.
 
 Coverage includes persistence/corruption/write failure, row ordering and limits, partial refresh with failed favorites preserved, actual repository removal/read mutations writing to the App Group, cache/source freshness, legacy cache migration, unknown versus confirmed-zero counts, proposal date rollover, malformed URLs, root restoration on repeated deep links, real window-hosted nonzero safe-area layout, touch sizing, and light/dark contrast including muted text.
 
@@ -61,6 +61,12 @@ Eight additional regression tests cover these paths. All 117 tests pass with no 
 
 Final full suite: **119 passed, 0 expected failures, 0 failures, 0 skipped**. These follow-up fixes are committed separately and submitted for another review; the latest pushed commit should be checked before merging.
 
+## Post-registration history-read follow-up
+
+[CodeRabbit review of d04e05e](https://github.com/GeonH0/TodayBill/pull/30#pullrequestreview-5733579635) raised one Minor follow-up: the favorites read after successful notification registration still converted a database error to an empty list. That final read now uses Result and reports failure without updating notification history. The regression test injects an error specifically after registration, confirms the old history is preserved and the run reports failure, then verifies successful recovery and suppression after history has been recorded.
+
+Full suite after this change: **120 passed, 0 expected failures, 0 failures, 0 skipped**. Notification registration has already succeeded at this failure point; propagating the error does not retract an already delivered notification or guarantee exactly-once delivery across registration and history persistence.
+
 ## Search-filter follow-up
 
 - Reset omits the committee filter.
@@ -76,7 +82,7 @@ See [the follow-up implementation plan](../plans/2026-11-02-search-filter-improv
 - The current proposal API request fetches at most 1,000 records. A full-size response does not establish the complete daily total, so it produces an unknown count rather than a potentially truncated number. Full pagination/server-count support remains future work.
 - Actual home-screen widget placement and widget taps are not visually verified. Earlier app-host renders are not equivalent to WidgetKit home-screen rendering.
 - Six-hour and midnight transitions are verified with deterministic model tests, not an elapsed wall-clock device run. Actual background scheduling, iOS 16.4 runtime behavior, and physical-device provisioning remain unverified.
-- Local final result bundle: `/tmp/todaybill-pr30-final-followups-2026-11-02.xcresult` (not committed).
+- Local final result bundle: `/tmp/todaybill-post-notification-read-fix.xcresult` (not committed).
 
 ## Repeat the tests
 

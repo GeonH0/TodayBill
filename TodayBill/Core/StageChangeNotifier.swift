@@ -228,7 +228,9 @@ final class StageChangeNotifier {
                         }
                         // Scheduling has succeeded. Merge with current history, not the earlier copy.
                         var updatedKeys = self.defaults.dictionary(forKey: Self.notifiedStageKeysDefaultsKey) as? [String: String] ?? [:]
-                        let current = self.repository.favoriteSnapshots()
+                        let current: [BillSnapshot]
+                        do { current = try self.repository.favoriteSnapshotsResult().get() }
+                        catch { self.finish(run, result: .failure(error)); return }
                         for bill in toNotify where current.contains(where: {
                             $0.billID == bill.billID && $0.stageKey == bill.stageKey && $0.hasUnseenStageChange
                         }) {
