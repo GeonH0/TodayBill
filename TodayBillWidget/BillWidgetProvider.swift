@@ -21,18 +21,9 @@ struct BillWidgetProvider: TimelineProvider {
     func getTimeline(in context: Context, completion: @escaping (Timeline<BillWidgetEntry>) -> Void) {
         let now = Date()
         let snapshot = store.read()
-        var entries = [BillWidgetEntry(date: now, snapshot: snapshot)]
-
-        // 신선도 표시는 entry.date로 판정한다. 엔트리가 하나뿐이면 그 시각이 고정돼
-        // 위젯이 오래 떠 있어도 "N시간 전"이 영영 뜨지 않는다. 경계 시점에 한 번 더 그리게 한다.
-        if let generatedAt = snapshot?.generatedAt {
-            let threshold = generatedAt.addingTimeInterval(BillWidgetView.stalenessThreshold)
-            if threshold > now {
-                entries.append(BillWidgetEntry(date: threshold, snapshot: snapshot))
-            }
-        }
-
-        // 앱이 쓸 때마다 reloadTimelines를 부르므로 여기서는 느슨한 주기만 둔다.
+        // Midnight invalidates yesterday's count even if the next reload is delayed.
+        let dates = [now] + (snapshot?.refreshBoundaries(after: now) ?? [])
+        let entries = dates.map { BillWidgetEntry(date: $0, snapshot: snapshot) }
         completion(Timeline(entries: entries, policy: .after(now.addingTimeInterval(60 * 60))))
     }
 
@@ -48,6 +39,6 @@ struct BillWidgetProvider: TimelineProvider {
             BillWidgetSnapshot.Row(billID: "5", age: 22, title: "도시 및 주거환경정비법 일부개정법률안", stageTitle: "본회의", hasChange: false)
         ],
         changeCount: 3,
-        todayProposalCount: 37
+        todayProposalCount: 37, favoritesUpdatedAt: Date(), proposalDate: Date(), proposalsUpdatedAt: Date()
     )
 }

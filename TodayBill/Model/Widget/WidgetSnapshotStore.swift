@@ -34,13 +34,12 @@ struct WidgetSnapshotStore {
         }
     }
 
-    /// 파일이 없거나 깨졌으면 nil. 깨진 파일은 다음 쓰기를 막지 않도록 지운다.
+    /// A failed read never deletes the path: it may already contain a newer atomic write.
     func read() -> BillWidgetSnapshot? {
         guard let fileURL, let data = try? Data(contentsOf: fileURL) else { return nil }
         do {
             return try JSONDecoder().decode(BillWidgetSnapshot.self, from: data)
         } catch {
-            try? FileManager.default.removeItem(at: fileURL)
             return nil
         }
     }

@@ -6,7 +6,7 @@ struct BillWidgetView: View {
     let entry: BillWidgetEntry
 
     /// 이보다 오래된 스냅샷은 하단에 상대 시각을 덧붙인다.
-    static let stalenessThreshold: TimeInterval = 6 * 60 * 60
+    static let stalenessThreshold = BillWidgetSnapshot.stalenessThreshold
     /// 중간 위젯이 담는 줄 수. 큰 위젯은 `BillWidgetSnapshot.maxRows`까지 담는다.
     private static let mediumRowLimit = 2
 
@@ -26,8 +26,10 @@ struct BillWidgetView: View {
             Divider()
             content
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-            Divider()
-            footer
+            if entry.snapshot != nil {
+                Divider()
+                footer
+            }
         }
         .padding(14)
         .widgetContainerBackground(WidgetTheme.background)
@@ -40,9 +42,11 @@ struct BillWidgetView: View {
                 .font(.caption).fontWeight(.semibold)
                 .foregroundColor(WidgetTheme.secondaryText)
             Spacer()
-            Text(changeCount > 0 ? "\(changeCount)건 변동" : "변동 없음")
-                .font(.caption2).fontWeight(.bold)
-                .foregroundColor(changeCount > 0 ? WidgetTheme.accent : WidgetTheme.secondaryText)
+            if entry.snapshot?.favoriteCount != nil {
+                Text(changeCount > 0 ? "\(changeCount)건 변동" : "변동 없음")
+                    .font(.caption2).fontWeight(.bold)
+                    .foregroundColor(changeCount > 0 ? WidgetTheme.accent : WidgetTheme.secondaryText)
+            }
         }
     }
 
@@ -50,6 +54,8 @@ struct BillWidgetView: View {
     private var content: some View {
         if entry.snapshot == nil {
             message("앱을 한 번 열어주세요")
+        } else if entry.snapshot?.favoriteCount == nil {
+            message("관심 법안을 확인 중입니다")
         } else if visibleRows.isEmpty {
             message("담아둔 법안이 없습니다")
         } else {
@@ -105,26 +111,31 @@ struct BillWidgetView: View {
     }
 
     private var footer: some View {
-        HStack(spacing: 4) {
-            Text("오늘 발의 \(entry.snapshot?.todayProposalCount ?? 0)건")
+        VStack(alignment: .leading, spacing: 2) {
+            Text(entry.snapshot?.proposalCount(on: entry.date).map { "오늘 발의 \($0)건" } ?? "오늘 발의 건수 미확인")
                 .font(.caption2)
                 .foregroundColor(WidgetTheme.secondaryText)
-            if let staleness {
-                Text("· \(staleness)")
-                    .font(.caption2)
-                    .foregroundColor(WidgetTheme.secondaryText)
+            if entry.snapshot?.favoriteCount != nil && entry.snapshot?.favoriteCount != 0 {
+                if let refreshedAt = entry.snapshot?.favoritesUpdatedAt {
+                    if entry.date.timeIntervalSince(refreshedAt) >= Self.stalenessThreshold {
+                        HStack(spacing: 0) {
+                            Text("관심 정보 · ")
+                            Text(refreshedAt, style: .relative)
+                            Text(" 전")
+                        }
+                        .font(.caption2)
+                        .foregroundColor(WidgetTheme.secondaryText)
+                    }
+                } else {
+                    Text("관심 정보 갱신 시각 미확인")
+                        .font(.caption2)
+                        .foregroundColor(WidgetTheme.secondaryText)
+                }
             }
-            Spacer()
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
-    /// 캐시만 보여주는 화면은 신선도를 밝혀야 한다.
-    private var staleness: String? {
-        guard let generatedAt = entry.snapshot?.generatedAt else { return nil }
-        let age = entry.date.timeIntervalSince(generatedAt)
-        guard age >= Self.stalenessThreshold else { return nil }
-        return "\(Int(age / 3600))시간 전"
-    }
 }
 
 // `#Preview` 매크로는 iOS 17+ 전용이라 16.4 타깃에서 컴파일되지 않는다.
@@ -149,7 +160,7 @@ struct BillWidgetView_Previews: PreviewProvider {
             BillWidgetSnapshot.Row(billID: "2", age: 22, title: "건축법 일부개정법률안", stageTitle: "위원회", hasChange: false)
         ],
         changeCount: 0,
-        todayProposalCount: 37
+        todayProposalCount: 37, favoritesUpdatedAt: Date(), proposalDate: Date(), proposalsUpdatedAt: Date()
     )
 
     private static let stale = BillWidgetSnapshot(
@@ -157,11 +168,11 @@ struct BillWidgetView_Previews: PreviewProvider {
         favoriteCount: 2,
         rows: noChanges.rows,
         changeCount: 0,
-        todayProposalCount: 37
+        todayProposalCount: 37, favoritesUpdatedAt: Date().addingTimeInterval(-9 * 60 * 60), proposalDate: Date(), proposalsUpdatedAt: Date()
     )
 
     private static let empty = BillWidgetSnapshot(
-        generatedAt: Date(), favoriteCount: 0, rows: [], changeCount: 0, todayProposalCount: 37
+        generatedAt: Date(), favoriteCount: 0, rows: [], changeCount: 0, todayProposalCount: 37, favoritesUpdatedAt: Date(), proposalDate: Date(), proposalsUpdatedAt: Date()
     )
 
     private static func preview(

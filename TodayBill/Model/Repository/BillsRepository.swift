@@ -82,70 +82,93 @@ final class BillRepository: BillRepositoryProtocol, FavoriteRefreshing {
         self.dashboardCache = dashboardCache
     }
 
+    private struct HomeBillSource {
+        let snapshots: [BillSnapshot]
+        let count: Int?
+        let countDate: Date?
+        let countUpdatedAt: Date?
+        let isUsingCache: Bool
+        let failed: Bool
+    }
+
     func fetchHomeBills(date: Date, completion: @escaping (Result<[BillSnapshot], Error>) -> Void) {
+        fetchHomeBillSource(date: date, forceRefresh: false) { completion($0.map(\.snapshots)) }
+    }
+
+    private func fetchHomeBillSource(date: Date, forceRefresh: Bool,
+                                     completion: @escaping (Result<HomeBillSource, Error>) -> Void) {
         guard let formattedDate = formatDate(date) else {
             completion(.failure(BillsRepositoryError.dateConversionFailed))
             return
         }
-
         let cached = coreDataManager.fetchSnapshots(for: formattedDate)
-        if !cached.isEmpty {
-            completion(.success(cached))
+        let previous = dashboardCache.load()
+        func cachedSource(_ snapshots: [BillSnapshot], failed: Bool) -> HomeBillSource {
+            let dateIsToday = previous?.todayProposalDate.map { Calendar.current.isDateInToday($0) } ?? false
+            return HomeBillSource(snapshots: snapshots,
+                                  count: dateIsToday ? previous?.todayProposalCount : nil,
+                                  countDate: dateIsToday ? previous?.todayProposalDate : nil,
+                                  countUpdatedAt: dateIsToday ? previous?.todayProposalsUpdatedAt : nil,
+                                  isUsingCache: true, failed: failed)
+        }
+        if !forceRefresh && !cached.isEmpty {
+            completion(.success(cachedSource(cached, failed: false)))
             return
         }
-
         apiClient.fetchBills(page: 1, age: 22) { [weak self] result in
-            guard let self = self else { return }
-
+            guard let self else { return }
             switch result {
             case .success(let rows):
                 self.coreDataManager.saveAll(rows)
-                let requestedDateSnapshots = self.coreDataManager.fetchSnapshots(for: formattedDate)
-                if !requestedDateSnapshots.isEmpty {
-                    completion(.success(requestedDateSnapshots))
-                } else {
-                    completion(.success(self.coreDataManager.fetchLatestSnapshots()))
-                }
+                let selected = self.coreDataManager.fetchSnapshots(for: formattedDate)
+                let now = Date()
+                let today = self.formatDate(now) ?? ""
+                // A full-size page may be truncated. Do not claim it is the whole day's count.
+                let count = rows.count < 1000 ? Set(rows.filter { $0.PROPOSE_DT == today }.map(\.BILL_ID)).count : nil
+                completion(.success(HomeBillSource(
+                    snapshots: selected.isEmpty ? self.coreDataManager.fetchLatestSnapshots() : selected,
+                    count: count, countDate: count == nil ? nil : now,
+                    countUpdatedAt: count == nil ? nil : now, isUsingCache: false, failed: false
+                )))
             case .failure(let error):
                 let fallback = self.coreDataManager.fetchLatestSnapshots()
-                fallback.isEmpty ? completion(.failure(error)) : completion(.success(fallback))
+                fallback.isEmpty ? completion(.failure(error)) : completion(.success(cachedSource(fallback, failed: true)))
             }
         }
     }
 
     func fetchHomeDashboard(date: Date, completion: @escaping (Result<HomeDashboard, Error>) -> Void) {
-        fetchHomeBills(date: date) { [weak self] billResult in
-            guard let self = self else { return }
+        fetchHomeDashboard(date: date, forceRefresh: false, completion: completion)
+    }
 
+    private func fetchHomeDashboard(date: Date, forceRefresh: Bool,
+                                    completion: @escaping (Result<HomeDashboard, Error>) -> Void) {
+        fetchHomeBillSource(date: date, forceRefresh: forceRefresh) { [weak self] billResult in
+            guard let self else { return }
             switch billResult {
-            case .success(let selectedDateBills):
-                let range = LawEnforcementDateRange.aroundToday()
-                self.fetchLawEnforcements(range: range) { lawResult in
-                    var failedSections: [HomeDashboardSection] = []
-                    var lawEnforcements: [LawEnforcementSnapshot] = []
-                    var isUsingCache = false
-
+            case .success(let source):
+                self.fetchLawEnforcements(range: .aroundToday()) { lawResult in
+                    var failedSections: [HomeDashboardSection] = source.failed ? [.newProposals, .selectedDateBills] : []
+                    var laws: [LawEnforcementSnapshot] = []
+                    var isUsingCache = source.isUsingCache
                     switch lawResult {
-                    case .success(let snapshots):
-                        lawEnforcements = snapshots
+                    case .success(let values): laws = values
                     case .failure:
                         failedSections.append(.lawEnforcements)
                         if let cached = self.dashboardCache.load() {
-                            lawEnforcements = cached.lawEnforcements
-                            isUsingCache = !lawEnforcements.isEmpty
+                            laws = cached.lawEnforcements
+                            isUsingCache = isUsingCache || !laws.isEmpty
                         }
                     }
-
-                    var dashboard = self.makeHomeDashboard(
-                        selectedDateBills: selectedDateBills,
-                        lawEnforcements: lawEnforcements,
-                        failedSections: failedSections
-                    )
+                    var dashboard = self.makeHomeDashboard(selectedDateBills: source.snapshots,
+                                                            lawEnforcements: laws,
+                                                            failedSections: failedSections)
+                    dashboard.todayProposalCount = source.count
+                    dashboard.todayProposalDate = source.countDate
+                    dashboard.todayProposalsUpdatedAt = source.countUpdatedAt
                     dashboard.isUsingCache = isUsingCache
-
-                    if failedSections.isEmpty {
-                        self.dashboardCache.save(dashboard)
-                    }
+                    // Persist verified proposal metadata even if another section failed.
+                    if !source.failed { self.dashboardCache.save(dashboard) }
                     completion(.success(dashboard))
                 }
             case .failure(let error):
@@ -153,9 +176,7 @@ final class BillRepository: BillRepositoryProtocol, FavoriteRefreshing {
                     cached.isUsingCache = true
                     cached.failedSections = HomeDashboardSection.allCases
                     completion(.success(cached))
-                } else {
-                    completion(.failure(error))
-                }
+                } else { completion(.failure(error)) }
             }
         }
     }
@@ -198,7 +219,7 @@ final class BillRepository: BillRepositoryProtocol, FavoriteRefreshing {
     }
 
     func refreshHomeDashboard(completion: @escaping (Result<HomeDashboard, Error>) -> Void) {
-        fetchHomeDashboard(date: Date(), completion: completion)
+        fetchHomeDashboard(date: Date(), forceRefresh: true, completion: completion)
     }
 
     func searchBills(filter: BillFilter, page: Int, completion: @escaping (Result<[BillSnapshot], Error>) -> Void) {
@@ -258,6 +279,7 @@ final class BillRepository: BillRepositoryProtocol, FavoriteRefreshing {
             StarBillManager.shared.removeBillFromStarred(by: id)
             StageChangeNotifier.clearNotified(billID: id)
         }
+        WidgetSnapshotUpdater.updateFavorites(coreDataManager.fetchFavoriteSnapshots())
         NotificationCenter.default.post(name: StageChangeNotifier.favoritesDidChange, object: nil)
         completion(.success(snapshot))
     }
@@ -342,6 +364,7 @@ final class BillRepository: BillRepositoryProtocol, FavoriteRefreshing {
 
     func markStageSeen(id: String) {
         coreDataManager.markStageSeen(id: id)
+        WidgetSnapshotUpdater.updateFavorites(coreDataManager.fetchFavoriteSnapshots())
     }
 
     func fetchSummary(for snapshot: BillSnapshot, completion: @escaping (Result<BillSnapshot, Error>) -> Void) {
@@ -420,7 +443,7 @@ final class BillRepository: BillRepositoryProtocol, FavoriteRefreshing {
         let latestSnapshots = coreDataManager.fetchLatestSnapshots()
         let dashboardSource = recentSnapshots.isEmpty ? selectedDateBills : recentSnapshots
         let todaySnapshots = formatDate(Date()).map { coreDataManager.fetchSnapshots(for: $0) } ?? []
-        let newProposalsSource = todaySnapshots.isEmpty ? latestSnapshots : todaySnapshots
+        let newProposalsSource = todaySnapshots
         let favorites = coreDataManager.fetchFavoriteSnapshots()
         let matchedLawEnforcements = LawBillMatcher.match(
             lawEnforcements: lawEnforcements,

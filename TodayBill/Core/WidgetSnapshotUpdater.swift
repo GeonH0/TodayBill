@@ -1,27 +1,44 @@
 import Foundation
 import WidgetKit
 
-/// 앱의 갱신 지점에서 위젯 스냅샷을 다시 쓴다.
-/// 실패는 삼킨다 — 위젯이 늦는 것이지 앱이 망가지는 것은 아니다.
+/// All in-app read/modify/write operations share a lock; the extension only reads.
 enum WidgetSnapshotUpdater {
     private static let store = WidgetSnapshotStore()
+    private static let lock = NSLock()
 
-    static func updateFavorites(_ favorites: [BillSnapshot]) {
-        update(favorites: favorites, todayProposalCount: nil)
+    static func updateFavorites(_ favorites: [BillSnapshot], refreshedIDs: Set<String> = []) {
+        update(favorites: favorites, refreshedIDs: refreshedIDs)
     }
 
-    static func updateTodayProposalCount(_ count: Int) {
-        update(favorites: nil, todayProposalCount: count)
+    static func updateTodayProposalCount(_ count: Int, for date: Date = Date(), refreshedAt: Date = Date()) {
+        update(todayProposalCount: count, proposalDate: date, proposalsUpdatedAt: refreshedAt)
     }
 
-    private static func update(favorites: [BillSnapshot]?, todayProposalCount: Int?) {
+    static func updateDashboard(_ dashboard: HomeDashboard, now: Date = Date()) {
+        guard !dashboard.failedSections.contains(.newProposals),
+              let count = dashboard.todayProposalCount,
+              let date = dashboard.todayProposalDate,
+              let refreshedAt = dashboard.todayProposalsUpdatedAt,
+              Calendar.current.isDate(date, inSameDayAs: now) else { return }
+        updateTodayProposalCount(count, for: date, refreshedAt: refreshedAt)
+    }
+
+    private static func update(favorites: [BillSnapshot]? = nil, refreshedIDs: Set<String> = [],
+                               todayProposalCount: Int? = nil, proposalDate: Date? = nil,
+                               proposalsUpdatedAt: Date? = nil) {
+        lock.lock()
+        let previous = store.read()
+        if let incoming = proposalsUpdatedAt, let stored = previous?.proposalsUpdatedAt, incoming < stored {
+            lock.unlock()
+            return
+        }
         let snapshot = WidgetSnapshotBuilder.make(
-            previous: store.read(),
-            favorites: favorites,
-            todayProposalCount: todayProposalCount,
-            now: Date()
+            previous: previous, favorites: favorites, todayProposalCount: todayProposalCount,
+            now: Date(), refreshedFavoriteIDs: refreshedIDs,
+            proposalDate: proposalDate, proposalsUpdatedAt: proposalsUpdatedAt
         )
-        guard store.write(snapshot) else { return }
-        WidgetCenter.shared.reloadTimelines(ofKind: BillWidgetSnapshot.kind)
+        let written = store.write(snapshot)
+        lock.unlock()
+        if written { WidgetCenter.shared.reloadTimelines(ofKind: BillWidgetSnapshot.kind) }
     }
 }

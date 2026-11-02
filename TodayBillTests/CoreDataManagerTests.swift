@@ -696,6 +696,7 @@ final class SearchFilterInspectionTests: XCTestCase {
         XCTAssertEqual(alert.actions.first?.title, "전체 상태")
         XCTAssertTrue(alert.actions.contains { $0.title == "소관 위원회 입력" })
         XCTAssertTrue(alert.actions.contains { $0.title == "필터 초기화" })
+        XCTAssertEqual(alert.actions.first { $0.title == "필터 초기화" }?.style, .default)
         let presented = expectation(for: NSPredicate { _, _ in !alert.isBeingPresented }, evaluatedWith: nil)
         wait(for: [presented], timeout: 3)
         alert.dismiss(animated: false)

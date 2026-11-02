@@ -713,29 +713,33 @@ extension StageNotificationDeliveryTests {
         let actual = try XCTUnwrap(store.read())
         XCTAssertEqual(actual.todayProposalCount, 37)
         XCTAssertNil(defaults.object(forKey: StageChangeNotifier.lastSuccessfulRefreshKey))
-        XCTExpectFailure("Known Task 3 defect: partial refresh writes 7 as total favorites instead of 10") {
-            XCTAssertEqual(actual.favoriteCount, 10)
-        }
+        XCTAssertEqual(actual.favoriteCount, 10)
+        XCTAssertEqual(actual.changeCount, 10)
+        XCTAssertNil(actual.favoritesUpdatedAt, "Never-refreshed failed bills must not appear fresh")
     }
 }
 
 final class WidgetProposalCountIntegrationTests: XCTestCase {
-    private func dashboard(dates: [String]) throws -> HomeDashboard {
+    private func dashboard(dates: [String], networkFails: Bool = false) throws -> HomeDashboard {
+        ProposalCountURLProtocol.dates = dates
+        ProposalCountURLProtocol.networkFails = networkFails
         let manager = CoreDataManager.makeInMemory()
-        manager.saveSnapshots(dates.enumerated().map { index, date in
-            BillSnapshot(billID: "QA-COUNT-\(index)", age: 22, title: "QA", proposedDate: date)
-        })
+        if networkFails {
+            manager.saveSnapshots(dates.enumerated().map { index, date in
+                BillSnapshot(billID: "QA-COUNT-\(index)", age: 22, title: "QA", proposedDate: date)
+            })
+        }
         let config = URLSessionConfiguration.ephemeral
-        config.protocolClasses = [ReleaseQAOfflineURLProtocol.self]
+        config.protocolClasses = [ProposalCountURLProtocol.self]
         let session = URLSession(configuration: config)
         defer { session.invalidateAndCancel() }
         let suite = "TodayBill.WidgetCountQA.\(UUID().uuidString)"
         let defaults = UserDefaults(suiteName: suite)!
         defer { defaults.removePersistentDomain(forName: suite) }
         let repository = BillRepository(apiClient: OpenAssemblyAPIClient(session: session), lawInfoClient: LawInfoAPIClient(session: session), coreDataManager: manager, dashboardCache: HomeDashboardCache(defaults: defaults))
-        let done = expectation(description: "offline dashboard")
+        let done = expectation(description: "dashboard count result")
         var captured: Result<HomeDashboard, Error>?
-        repository.fetchHomeDashboard(date: Date()) { result in captured = result; done.fulfill() }
+        repository.refreshHomeDashboard { result in captured = result; done.fulfill() }
         wait(for: [done], timeout: 5)
         return try XCTUnwrap(captured).get()
     }
@@ -749,18 +753,63 @@ final class WidgetProposalCountIntegrationTests: XCTestCase {
     func testWidgetInputReportsAllFourteenTodayProposals() throws {
         let value = try dashboard(dates: Array(repeating: formatted(Date()), count: 14))
         XCTAssertEqual(value.selectedDateBills.count, 14)
-        XCTExpectFailure("Known integration defect: widget input uses a dashboard preview capped at 10") {
-            XCTAssertEqual(value.newProposals.count, 14)
-        }
+        XCTAssertEqual(value.newProposals.count, 10, "Preview stays capped")
+        XCTAssertEqual(value.todayProposalCount, 14, "Count is independent from preview")
+        XCTAssertNotNil(value.todayProposalsUpdatedAt)
     }
 
     func testWidgetInputDoesNotCountYesterdaysBillsAsToday() throws {
         let yesterday = Calendar.current.date(byAdding: .day, value: -1, to: Date())!
         let value = try dashboard(dates: Array(repeating: formatted(yesterday), count: 3))
-        XCTExpectFailure("Known integration defect: no bills today falls back to the latest earlier date") {
-            XCTAssertEqual(value.newProposals.count, 0)
-        }
+        XCTAssertEqual(value.newProposals.count, 0)
+        XCTAssertEqual(value.todayProposalCount, 0, "Fresh response confirms zero today")
     }
+
+    func testOfflineFallbackDoesNotInventOrRefreshTodaysCount() throws {
+        let yesterday = Calendar.current.date(byAdding: .day, value: -1, to: Date())!
+        let value = try dashboard(dates: [formatted(yesterday)], networkFails: true)
+        XCTAssertNil(value.todayProposalCount)
+        XCTAssertNil(value.todayProposalsUpdatedAt)
+        XCTAssertTrue(value.failedSections.contains(.newProposals))
+    }
+
+    func testTruncatedNetworkPageDoesNotPretendToBeTheFullDayCount() throws {
+        let value = try dashboard(dates: Array(repeating: formatted(Date()), count: 1000))
+        XCTAssertNil(value.todayProposalCount)
+        XCTAssertEqual(value.newProposals.count, 10)
+    }
+
+    func testNewFieldsDecodeAsUnknownFromOldDashboardCache() throws {
+        let value = HomeDashboard(newProposals: [BillSnapshot(billID: "OLD", age: 22, title: "old")])
+        let data = try JSONEncoder().encode(value)
+        var json = try XCTUnwrap(JSONSerialization.jsonObject(with: data) as? [String: Any])
+        for key in ["todayProposalCount", "todayProposalDate", "todayProposalsUpdatedAt"] { json.removeValue(forKey: key) }
+        let decoded = try JSONDecoder().decode(HomeDashboard.self, from: JSONSerialization.data(withJSONObject: json))
+        XCTAssertNil(decoded.todayProposalCount)
+        XCTAssertEqual(decoded.newProposals.count, 1)
+    }
+}
+
+private final class ProposalCountURLProtocol: URLProtocol {
+    static var dates: [String] = []
+    static var networkFails = false
+    override class func canInit(with request: URLRequest) -> Bool { true }
+    override class func canonicalRequest(for request: URLRequest) -> URLRequest { request }
+    override func startLoading() {
+        guard !Self.networkFails, request.url?.host == "open.assembly.go.kr" else {
+            client?.urlProtocol(self, didFailWithError: URLError(.notConnectedToInternet))
+            return
+        }
+        let rows = Self.dates.enumerated().map { index, date in
+            ["BILL_ID": "QA-COUNT-\(index)", "BILL_NO": "123", "BILL_NAME": "QA", "PROPOSE_DT": date,
+             "AGE": "22", "DETAIL_LINK": "https://example.com", "PROPOSER": "QA", "MEMBER_LIST": "QA"]
+        }
+        let data = try! JSONSerialization.data(withJSONObject: ["nzmimeepazxkubdpn": [["row": rows]]])
+        client?.urlProtocol(self, didReceive: HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!, cacheStoragePolicy: .notAllowed)
+        client?.urlProtocol(self, didLoad: data)
+        client?.urlProtocolDidFinishLoading(self)
+    }
+    override func stopLoading() {}
 }
 
 extension StageNotificationDeliveryTests {
@@ -821,5 +870,141 @@ extension StageNotificationDeliveryTests {
             wait(for: [done], timeout: 3)
             XCTAssertEqual(store.read(), previous)
         }
+    }
+}
+
+
+extension StageNotificationDeliveryTests {
+    func testPartialAndCachedRunsPreserveFailedBillsAndTheirSourceAge() throws {
+        try withPreservedWidgetFile { store in
+            let bills = (1...10).map { changed("QA-AGE-\($0)") }
+            let oldDate = Date().addingTimeInterval(-9 * 3600)
+            let old = WidgetSnapshotBuilder.make(previous: nil, favorites: bills, todayProposalCount: nil,
+                                                 now: oldDate, refreshedFavoriteIDs: Set(bills.map(\.billID)))
+            XCTAssertTrue(store.write(old))
+            let repository = StubFavoriteRefresher(bills)
+            repository.result = .failure(FavoriteRefreshFailure(refreshedSnapshots: Array(bills.prefix(7)),
+                failedBillIDs: Array(bills.suffix(3)).map(\.billID), underlyingError: URLError(.timedOut)))
+            let center = StubStageNotificationCenter()
+            center.status = .denied
+            let notifier = makeNotifier(repository, center)
+            let done = expectation(description: "partial keeps old source age")
+            notifier.run { _ in done.fulfill() }
+            wait(for: [done], timeout: 3)
+            XCTAssertEqual(store.read()?.favoriteCount, 10)
+            XCTAssertEqual(store.read()?.changeCount, 10)
+            XCTAssertEqual(store.read()?.favoritesUpdatedAt, oldDate)
+            XCTAssertEqual(store.read()?.favoriteRefreshDates?["QA-AGE-10"], oldDate)
+            let cached = expectation(description: "cached pass does not refresh timestamps")
+            let before = store.read()?.favoriteRefreshDates
+            notifier.run(refresh: false) { _ in cached.fulfill() }
+            wait(for: [cached], timeout: 3)
+            XCTAssertEqual(store.read()?.favoritesUpdatedAt, oldDate)
+            XCTAssertEqual(store.read()?.favoriteRefreshDates, before)
+        }
+    }
+
+    func testRealRepositoryRemovalAndReadMutationsWriteWidgetImmediately() throws {
+        try withPreservedWidgetFile { store in
+            let manager = CoreDataManager.makeInMemory()
+            let initial = BillSnapshot(billID: "QA-MUTATE-A", age: 22, title: "A", proposedDate: "2026-01-01")
+            _ = manager.setFavorite(snapshot: initial, isFavorite: true)
+            _ = manager.setFavorite(snapshot: BillSnapshot(billID: "QA-MUTATE-B", age: 22, title: "B"), isFavorite: true)
+            var changed = initial
+            changed.committeeDate = "2026-02-01"
+            manager.saveSnapshots([changed])
+            let favorites = manager.fetchFavoriteSnapshots()
+            let oldDate = Date().addingTimeInterval(-9 * 3600)
+            XCTAssertTrue(store.write(WidgetSnapshotBuilder.make(previous: nil, favorites: favorites,
+                todayProposalCount: nil, now: oldDate, refreshedFavoriteIDs: Set(favorites.map(\.billID)))))
+            let repository = BillRepository(coreDataManager: manager)
+            repository.toggleFavorite(id: "QA-MUTATE-B") { result in
+                if case .failure(let error) = result { XCTFail("\(error)") }
+            }
+            XCTAssertEqual(store.read()?.favoriteCount, 1)
+            XCTAssertEqual(store.read()?.rows.first?.billID, "QA-MUTATE-A")
+            XCTAssertEqual(store.read()?.changeCount, 1)
+            XCTAssertEqual(store.read()?.favoritesUpdatedAt, oldDate)
+            repository.markStageSeen(id: "QA-MUTATE-A")
+            XCTAssertEqual(store.read()?.changeCount, 0)
+            XCTAssertEqual(store.read()?.rows.first?.hasChange, false)
+            XCTAssertEqual(store.read()?.favoritesUpdatedAt, oldDate)
+            repository.toggleFavorite(id: "QA-MUTATE-A") { _ in }
+            XCTAssertEqual(store.read()?.favoriteCount, 0)
+            XCTAssertEqual(store.read()?.rows, [])
+        }
+    }
+
+    func testDashboardDoesNotOverwriteWithFailedUndatedOrOlderCounts() throws {
+        try withPreservedWidgetFile { store in
+            let now = Date()
+            let sourceDate = now.addingTimeInterval(-3600)
+            let initial = BillWidgetSnapshot(generatedAt: sourceDate, favoriteCount: 1, rows: [], changeCount: 0,
+                todayProposalCount: 37, favoritesUpdatedAt: sourceDate, proposalDate: now, proposalsUpdatedAt: sourceDate)
+            XCTAssertTrue(store.write(initial))
+            let failed = HomeDashboard(todayProposalCount: 99, todayProposalDate: now,
+                todayProposalsUpdatedAt: now, failedSections: [.newProposals])
+            WidgetSnapshotUpdater.updateDashboard(failed)
+            XCTAssertEqual(store.read(), initial)
+            WidgetSnapshotUpdater.updateDashboard(HomeDashboard(newProposals: []))
+            XCTAssertEqual(store.read(), initial)
+            let yesterday = Calendar.current.date(byAdding: .day, value: -1, to: now)!
+            WidgetSnapshotUpdater.updateDashboard(HomeDashboard(todayProposalCount: 99, todayProposalDate: yesterday, todayProposalsUpdatedAt: now))
+            XCTAssertEqual(store.read(), initial)
+            WidgetSnapshotUpdater.updateDashboard(HomeDashboard(todayProposalCount: 99, todayProposalDate: now,
+                todayProposalsUpdatedAt: sourceDate.addingTimeInterval(-3600)))
+            XCTAssertEqual(store.read(), initial, "Late cached results cannot overwrite newer data")
+            WidgetSnapshotUpdater.updateDashboard(HomeDashboard(todayProposalCount: 0, todayProposalDate: now,
+                todayProposalsUpdatedAt: now, isUsingCache: true, failedSections: [.lawEnforcements]))
+            XCTAssertEqual(store.read()?.proposalCount(on: now), 0, "Failure of another section does not discard a verified count")
+            XCTAssertEqual(store.read()?.favoritesUpdatedAt, sourceDate)
+        }
+    }
+}
+
+extension WidgetProposalCountIntegrationTests {
+    func testFreshEmptyResponseConfirmsZeroInsteadOfAnUnknownCount() throws {
+        let value = try dashboard(dates: [])
+        XCTAssertEqual(value.todayProposalCount, 0)
+        XCTAssertTrue(value.hasVisibleContent)
+    }
+
+    func testCachedAndFailedHomeResultsPreserveTheCountSourceTimestamp() throws {
+        ProposalCountURLProtocol.dates = Array(repeating: formatted(Date()), count: 14)
+        ProposalCountURLProtocol.networkFails = false
+        let configuration = URLSessionConfiguration.ephemeral
+        configuration.protocolClasses = [ProposalCountURLProtocol.self]
+        let session = URLSession(configuration: configuration)
+        defer { session.invalidateAndCancel() }
+        let suite = "TodayBill.CountCache.\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suite)!
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let repository = BillRepository(apiClient: OpenAssemblyAPIClient(session: session),
+            lawInfoClient: LawInfoAPIClient(session: session), coreDataManager: .makeInMemory(),
+            dashboardCache: HomeDashboardCache(defaults: defaults))
+        var first: HomeDashboard?
+        let fresh = expectation(description: "fresh count source")
+        repository.refreshHomeDashboard { result in first = try? result.get(); fresh.fulfill() }
+        wait(for: [fresh], timeout: 3)
+        let sourceTime = try XCTUnwrap(first?.todayProposalsUpdatedAt)
+        let cached = expectation(description: "cached source time")
+        repository.fetchHomeDashboard(date: Date()) { result in
+            let value = try? result.get()
+            XCTAssertEqual(value?.todayProposalCount, 14)
+            XCTAssertEqual(value?.todayProposalsUpdatedAt, sourceTime)
+            XCTAssertEqual(value?.isUsingCache, true)
+            cached.fulfill()
+        }
+        wait(for: [cached], timeout: 3)
+        ProposalCountURLProtocol.networkFails = true
+        let failed = expectation(description: "failed fetch remains marked failed")
+        repository.refreshHomeDashboard { result in
+            let value = try? result.get()
+            XCTAssertEqual(value?.todayProposalCount, 14, "Previously verified cache remains usable")
+            XCTAssertEqual(value?.todayProposalsUpdatedAt, sourceTime)
+            XCTAssertEqual(value?.failedSections.contains(.newProposals), true)
+            failed.fulfill()
+        }
+        wait(for: [failed], timeout: 3)
     }
 }

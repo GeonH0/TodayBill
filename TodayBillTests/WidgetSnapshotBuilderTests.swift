@@ -132,15 +132,15 @@ final class WidgetSnapshotBuilderTests: XCTestCase {
         XCTAssertEqual(snapshot.todayProposalCount, 5)
     }
 
-    func testFallsBackToZeroWithNoPreviousSnapshotAndNoInput() {
+    func testKeepsMissingInputsUnknownWithoutAPreviousSnapshot() {
         let snapshot = WidgetSnapshotBuilder.make(
             previous: nil, favorites: nil, todayProposalCount: nil, now: now
         )
 
         XCTAssertTrue(snapshot.rows.isEmpty)
         XCTAssertEqual(snapshot.changeCount, 0)
-        XCTAssertEqual(snapshot.favoriteCount, 0)
-        XCTAssertEqual(snapshot.todayProposalCount, 0)
+        XCTAssertNil(snapshot.favoriteCount)
+        XCTAssertNil(snapshot.todayProposalCount)
     }
 
     // stageKey는 `stage.rawValue`로 시작한다 (Bills.swift:967). committeeDate만 채우면
@@ -268,16 +268,12 @@ final class WidgetDeepLinkIntegrationTests: XCTestCase {
 
     func testNonPositiveAgeIsRejected() {
         for age in [0, -1] {
-            XCTExpectFailure("Known router defect: non-positive assembly ages are accepted") {
-                XCTAssertFalse(route("todaybill://bill/QA?age=\(age)"))
-            }
+            XCTAssertFalse(route("todaybill://bill/QA?age=\(age)"))
         }
     }
 
     func testExtraPathSegmentsAreRejected() {
-        XCTExpectFailure("Known router defect: lastPathComponent silently drops preceding segments") {
-            XCTAssertFalse(route("todaybill://bill/unexpected/QA?age=22"))
-        }
+        XCTAssertFalse(route("todaybill://bill/unexpected/QA?age=22"))
     }
 }
 
@@ -295,19 +291,16 @@ extension WidgetSnapshotBuilderTests {
 
     func testFavoritesOnlyFirstWriteDoesNotInventAKnownProposalCount() {
         let value = WidgetSnapshotBuilder.make(previous: nil, favorites: [], todayProposalCount: nil, now: now)
-        XCTExpectFailure("Known snapshot defect: unknown proposal count is represented as zero") {
-            XCTAssertNil(value.todayProposalCount as Int?)
-        }
+        XCTAssertNil(value.todayProposalCount)
     }
 
     func testDashboardOnlyRefreshDoesNotMakeOldFavoritesAppearFresh() {
         let oldDate = now.addingTimeInterval(-9 * 3600)
-        let old = WidgetSnapshotBuilder.make(previous: nil, favorites: [makeChanged(id: "OLD")], todayProposalCount: 1, now: oldDate)
+        let old = WidgetSnapshotBuilder.make(previous: nil, favorites: [makeChanged(id: "OLD")], todayProposalCount: 1, now: oldDate, refreshedFavoriteIDs: ["OLD"])
         let value = WidgetSnapshotBuilder.make(previous: old, favorites: nil, todayProposalCount: 2, now: now)
         XCTAssertEqual(value.rows, old.rows)
-        XCTExpectFailure("Known freshness defect: one component refresh resets the timestamp for retained old data") {
-            XCTAssertEqual(value.generatedAt, oldDate)
-        }
+        XCTAssertEqual(value.generatedAt, now, "File-write time is independent of source freshness")
+        XCTAssertEqual(value.favoritesUpdatedAt, oldDate)
     }
 }
 
@@ -320,7 +313,7 @@ final class TabBarLayoutTests: XCTestCase {
         }
     }
 
-    func testPortraitItemsStayCenteredAcrossWidthsAndBottomInsets() throws {
+    func testPortraitItemsStayCenteredAcrossWidthsAndBarHeights() throws {
         for width: CGFloat in [320, 402, 768] {
             for bottomInset: CGFloat in [0, 21, 34] {
                 let bar = MainTabBarView(frame: CGRect(x: 0, y: 0, width: width, height: max(44, Theme.Metric.tabBarContentHeight + bottomInset)))
@@ -345,6 +338,42 @@ final class TabBarLayoutTests: XCTestCase {
                     }
                 }
             }
+        }
+    }
+
+    func testHostedContainerUsesRealBottomSafeAreaAndCentersItems() throws {
+        let scene = try XCTUnwrap(UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }.first)
+        let previousKeyWindow = scene.windows.first(where: \.isKeyWindow)
+        let window = UIWindow(windowScene: scene)
+        let controller = UIViewController()
+        let container = MainTabBarContainerView()
+        controller.view = container
+        window.rootViewController = controller
+        window.makeKeyAndVisible()
+        defer {
+            window.isHidden = true
+            window.rootViewController = nil
+            previousKeyWindow?.makeKey()
+        }
+        window.layoutIfNeeded()
+        container.setNeedsLayout()
+        container.layoutIfNeeded()
+        guard container.safeAreaInsets.bottom > 0 else {
+            throw XCTSkip("This device has no home-indicator safe area")
+        }
+        container.tabBar.configure(symbolNames: ["house", "magnifyingglass", "star"], titles: ["홈", "검색", "관심"])
+        container.tabBar.layoutIfNeeded()
+        XCTAssertEqual(container.tabBar.bounds.height,
+                       max(44, Theme.Metric.tabBarContentHeight + container.safeAreaInsets.bottom), accuracy: 0.5)
+        XCTAssertEqual(container.contentView.frame.maxY, container.tabBar.frame.minY, accuracy: 0.5)
+        XCTAssertEqual(container.tabBar.frame.maxY, container.bounds.maxY, accuracy: 0.5)
+        for control in descendants(UIControl.self, in: container.tabBar) {
+            XCTAssertGreaterThanOrEqual(control.bounds.height, 44)
+            let image = try XCTUnwrap(descendants(UIImageView.self, in: control).first)
+            let label = try XCTUnwrap(descendants(UILabel.self, in: control).first)
+            let group = image.convert(image.bounds, to: container.tabBar)
+                .union(label.convert(label.bounds, to: container.tabBar))
+            XCTAssertEqual(group.midY, container.tabBar.bounds.midY, accuracy: 0.5)
         }
     }
 
@@ -379,7 +408,9 @@ final class ThemeContrastTests: XCTestCase {
             ("secondary text", Theme.textSecondary, Theme.cellBackgroundColor),
             ("selected tab", Theme.accent, Theme.cellBackgroundColor),
             ("accent badge", Theme.accent, Theme.accentSoft),
-            ("primary action", Theme.onAccent, Theme.accent)
+            ("primary action", Theme.onAccent, Theme.accent),
+            ("muted text", Theme.textMuted, Theme.cellBackgroundColor),
+            ("muted on page", Theme.textMuted, Theme.backgroundColor)
         ]
         for style: UIUserInterfaceStyle in [.light, .dark] {
             let traits = UITraitCollection(userInterfaceStyle: style)
@@ -390,5 +421,108 @@ final class ThemeContrastTests: XCTestCase {
                 XCTAssertGreaterThanOrEqual(contrast, 4.5, "\(name), \(style)")
             }
         }
+    }
+}
+
+
+extension WidgetSnapshotBuilderTests {
+    func testPartialRefreshAndReadEditsPreserveTheOldestSourceDate() {
+        let oldDate = now.addingTimeInterval(-9 * 3600)
+        let bills = [makeChanged(id: "A"), makeChanged(id: "B")]
+        let previous = WidgetSnapshotBuilder.make(previous: nil, favorites: bills, todayProposalCount: 37,
+                                                  now: oldDate, refreshedFavoriteIDs: ["A", "B"],
+                                                  proposalDate: oldDate, proposalsUpdatedAt: oldDate)
+        let partial = WidgetSnapshotBuilder.make(previous: previous, favorites: bills, todayProposalCount: nil,
+                                                 now: now, refreshedFavoriteIDs: ["A"])
+        XCTAssertEqual(partial.favoriteCount, 2)
+        XCTAssertEqual(partial.favoritesUpdatedAt, oldDate)
+        XCTAssertEqual(partial.favoriteRefreshDates?["A"], now)
+        XCTAssertEqual(partial.favoriteRefreshDates?["B"], oldDate)
+        var readBills = bills
+        readBills[0].lastSeenStageKey = readBills[0].stageKey
+        let local = WidgetSnapshotBuilder.make(previous: partial, favorites: readBills, todayProposalCount: nil, now: now.addingTimeInterval(60))
+        XCTAssertEqual(local.changeCount, 1)
+        XCTAssertEqual(local.favoritesUpdatedAt, oldDate)
+        XCTAssertEqual(local.proposalsUpdatedAt, oldDate)
+    }
+
+    func testProposalOnlyWriteLeavesFavoritesUnknown() {
+        let value = WidgetSnapshotBuilder.make(previous: nil, favorites: nil, todayProposalCount: 14,
+                                                now: now, proposalDate: now, proposalsUpdatedAt: now)
+        XCTAssertNil(value.favoriteCount)
+        XCTAssertEqual(value.proposalCount(on: now), 14)
+    }
+
+    func testCarryForwardDoesNotCallYesterdaysCountToday() throws {
+        let old = WidgetSnapshotBuilder.make(previous: nil, favorites: [], todayProposalCount: 14,
+                                             now: now, proposalDate: now, proposalsUpdatedAt: now)
+        let tomorrow = try XCTUnwrap(Calendar.current.date(byAdding: .day, value: 1, to: now))
+        let carried = WidgetSnapshotBuilder.make(previous: old, favorites: [], todayProposalCount: nil, now: tomorrow)
+        XCTAssertEqual(carried.todayProposalCount, 14, "Historical value is retained")
+        XCTAssertEqual(carried.proposalDate, now)
+        XCTAssertNil(carried.proposalCount(on: tomorrow))
+    }
+
+    func testSourceStalenessAndMidnightHaveIndependentTimelineBoundaries() throws {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = try XCTUnwrap(TimeZone(secondsFromGMT: 9 * 3600))
+        let day = calendar.startOfDay(for: now)
+        let morning = day.addingTimeInterval(9 * 3600)
+        let source = morning.addingTimeInterval(-3600)
+        let snapshot = BillWidgetSnapshot(generatedAt: morning, favoriteCount: 1, rows: [], changeCount: 0,
+                                          todayProposalCount: 14, favoritesUpdatedAt: source,
+                                          proposalDate: morning, proposalsUpdatedAt: morning)
+        let midnight = try XCTUnwrap(calendar.date(byAdding: .day, value: 1, to: day))
+        XCTAssertEqual(snapshot.refreshBoundaries(after: morning, calendar: calendar),
+                       [source.addingTimeInterval(6 * 3600), midnight])
+        XCTAssertNil(snapshot.proposalCount(on: midnight, calendar: calendar))
+        XCTAssertTrue(snapshot.refreshBoundaries(after: midnight, calendar: calendar).isEmpty)
+    }
+
+    func testAddingAnUnrefreshedFavoriteDoesNotInventItsFreshness() {
+        let old = WidgetSnapshotBuilder.make(previous: nil, favorites: [makeChanged(id: "A")],
+                                             todayProposalCount: nil, now: now, refreshedFavoriteIDs: ["A"])
+        let added = WidgetSnapshotBuilder.make(previous: old, favorites: [makeChanged(id: "A"), makeChanged(id: "B")],
+                                               todayProposalCount: nil, now: now.addingTimeInterval(60))
+        XCTAssertEqual(added.favoriteCount, 2)
+        XCTAssertNil(added.favoritesUpdatedAt)
+        let removed = WidgetSnapshotBuilder.make(previous: added, favorites: [makeChanged(id: "A")],
+                                                 todayProposalCount: nil, now: now.addingTimeInterval(120))
+        XCTAssertEqual(removed.favoritesUpdatedAt, now)
+    }
+}
+
+extension WidgetSnapshotStoreTests {
+    func testLegacySnapshotLoadsWithoutTrustingItsInventedZeroOrWriteTime() throws {
+        let raw = "{\"generatedAt\":100,\"favoriteCount\":0,\"rows\":[],\"changeCount\":0,\"todayProposalCount\":0}"
+        let legacy = try JSONDecoder().decode(BillWidgetSnapshot.self, from: Data(raw.utf8))
+        XCTAssertNil(legacy.favoriteCount)
+        XCTAssertNil(legacy.favoritesUpdatedAt)
+        XCTAssertNil(legacy.proposalCount(on: Date()))
+        let encoded = try JSONEncoder().encode(legacy)
+        XCTAssertEqual(try JSONDecoder().decode(BillWidgetSnapshot.self, from: encoded), legacy)
+    }
+}
+
+extension WidgetDeepLinkIntegrationTests {
+    func testHomeAndFavoritesLinksPopAlreadySelectedDetailStacks() throws {
+        for (url, index) in [("todaybill://home", 0), ("todaybill://favorites", 2)] {
+            root.selectTab(at: index)
+            let navigation = try XCTUnwrap(root.selectedViewController as? UINavigationController)
+            navigation.pushViewController(DetailViewController(billID: "QA-POP", age: 22), animated: false)
+            XCTAssertTrue(route(url))
+            XCTAssertEqual(root.selectedIndex, index)
+            XCTAssertEqual(navigation.viewControllers.count, 1)
+            XCTAssertFalse(tabBar.isHidden)
+        }
+    }
+
+    func testParserRejectsAmbiguousOrMalformedRoutesWithoutUIKitSideEffects() {
+        for value in ["todaybill://bill/A?age=22&age=21", "todaybill://bill/A/B?age=22",
+                      "todaybill://bill/A%2FB?age=22", "todaybill://home/detail", "todaybill://favorites/detail",
+                      "todaybill://user@bill/A?age=22", "todaybill://bill:123/A?age=22"] {
+            XCTAssertNil(AppDeepLink(url: URL(string: value)!), value)
+        }
+        XCTAssertEqual(AppDeepLink(url: URL(string: "todaybill://bill/A?age=22")!), .bill(id: "A", age: 22))
     }
 }

@@ -1,31 +1,87 @@
 import Foundation
 
-/// 위젯이 그리는 데 필요한 전부. 앱이 쓰고 위젯 익스텐션이 읽는다.
-/// 위젯은 이 값 외에 어떤 저장소나 네트워크도 건드리지 않는다.
+/// App-owned cache. File generation time is deliberately separate from source freshness.
 struct BillWidgetSnapshot: Codable, Equatable {
-    /// 위젯 타임라인을 다시 불러올 때 쓰는 식별자.
     static let kind = "TodayBillStatusWidget"
-    /// 큰 위젯이 담는 줄 수. 중간 위젯은 이 중 앞의 일부만 그린다.
     static let maxRows = 5
+    static let stalenessThreshold: TimeInterval = 6 * 60 * 60
 
-    /// 이 스냅샷을 만든 시각. 위젯이 신선도를 표시하는 데 쓴다.
+    let schemaVersion: Int
     let generatedAt: Date
-    /// 담아둔 법안 수. 0이면 "변동 없음"이 아니라 "담아둔 법안이 없음"이다.
-    let favoriteCount: Int
-    /// 담아둔 법안을 변동 있는 것부터 담는다. 최대 `maxRows`줄.
+    /// nil means favorites have not been read; zero is a confirmed empty list.
+    let favoriteCount: Int?
     let rows: [Row]
-    /// 전체 변동 건수. 담긴 줄 수보다 클 수 있다.
     let changeCount: Int
-    let todayProposalCount: Int
+    let todayProposalCount: Int?
+    let favoritesUpdatedAt: Date?
+    let proposalDate: Date?
+    let proposalsUpdatedAt: Date?
+    /// Only successful network refreshes advance these dates; local edits do not.
+    let favoriteRefreshDates: [String: Date]?
+
+    init(generatedAt: Date, favoriteCount: Int?, rows: [Row], changeCount: Int,
+         todayProposalCount: Int?, favoritesUpdatedAt: Date? = nil,
+         proposalDate: Date? = nil, proposalsUpdatedAt: Date? = nil,
+         favoriteRefreshDates: [String: Date]? = nil) {
+        self.schemaVersion = 2
+        self.generatedAt = generatedAt
+        self.favoriteCount = favoriteCount
+        self.rows = rows
+        self.changeCount = changeCount
+        self.todayProposalCount = todayProposalCount
+        self.favoritesUpdatedAt = favoritesUpdatedAt
+        self.proposalDate = proposalDate
+        self.proposalsUpdatedAt = proposalsUpdatedAt
+        self.favoriteRefreshDates = favoriteRefreshDates
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case schemaVersion, generatedAt, favoriteCount, rows, changeCount, todayProposalCount
+        case favoritesUpdatedAt, proposalDate, proposalsUpdatedAt, favoriteRefreshDates
+    }
+
+    init(from decoder: Decoder) throws {
+        let values = try decoder.container(keyedBy: CodingKeys.self)
+        let version = try values.decodeIfPresent(Int.self, forKey: .schemaVersion) ?? 1
+        self.init(
+            generatedAt: try values.decode(Date.self, forKey: .generatedAt),
+            // Version 1 could have invented zero or written a partial favorites list.
+            favoriteCount: version >= 2 ? try values.decodeIfPresent(Int.self, forKey: .favoriteCount) : nil,
+            rows: try values.decode([Row].self, forKey: .rows),
+            changeCount: try values.decode(Int.self, forKey: .changeCount),
+            todayProposalCount: try values.decodeIfPresent(Int.self, forKey: .todayProposalCount),
+            favoritesUpdatedAt: try values.decodeIfPresent(Date.self, forKey: .favoritesUpdatedAt),
+            proposalDate: try values.decodeIfPresent(Date.self, forKey: .proposalDate),
+            proposalsUpdatedAt: try values.decodeIfPresent(Date.self, forKey: .proposalsUpdatedAt),
+            favoriteRefreshDates: try values.decodeIfPresent([String: Date].self, forKey: .favoriteRefreshDates)
+        )
+    }
+
+    /// Schedule source staleness and day rollover independently of file writes/reloads.
+    func refreshBoundaries(after date: Date, calendar: Calendar = .current) -> [Date] {
+        var dates = Set<Date>()
+        if let favoritesUpdatedAt {
+            let boundary = favoritesUpdatedAt.addingTimeInterval(Self.stalenessThreshold)
+            if boundary > date { dates.insert(boundary) }
+        }
+        if proposalCount(on: date, calendar: calendar) != nil,
+           let midnight = calendar.date(byAdding: .day, value: 1, to: calendar.startOfDay(for: date)) {
+            dates.insert(midnight)
+        }
+        return dates.sorted()
+    }
+
+    /// Older files without the new optional dates decode, but cannot invent today's count.
+    func proposalCount(on date: Date, calendar: Calendar = .current) -> Int? {
+        guard let proposalDate, calendar.isDate(proposalDate, inSameDayAs: date) else { return nil }
+        return todayProposalCount
+    }
 
     struct Row: Codable, Equatable {
         let billID: String
-        /// 상세 화면을 여는 데 필요하다. `DetailViewController(billID:age:)`는 둘 다 요구한다.
         let age: Int
         let title: String
-        /// "위원회", "법사위" 등 — `BillStage.title`
         let stageTitle: String
-        /// 확인하지 않은 단계 변동이 있는 줄. 위젯이 강조에 쓴다.
         let hasChange: Bool
     }
 }

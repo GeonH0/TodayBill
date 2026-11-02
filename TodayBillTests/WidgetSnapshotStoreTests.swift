@@ -38,13 +38,13 @@ final class WidgetSnapshotStoreTests: XCTestCase {
         XCTAssertNil(store.read())
     }
 
-    func testReadDiscardsACorruptFile() throws {
+    func testCorruptReadDoesNotDeleteAPathThatMayHaveBeenReplaced() throws {
         let store = WidgetSnapshotStore(directory: directory)
         let url = directory.appendingPathComponent("widget-snapshot.json")
         try Data("not json".utf8).write(to: url)
 
         XCTAssertNil(store.read())
-        XCTAssertFalse(FileManager.default.fileExists(atPath: url.path))
+        XCTAssertTrue(FileManager.default.fileExists(atPath: url.path))
     }
 
     func testWriteReportsFailureWhenThereIsNoDirectory() {

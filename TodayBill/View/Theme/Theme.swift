@@ -35,7 +35,7 @@ struct Theme {
     static let textColor = dynamic(light: 0x252521, dark: 0xF4F3ED)
     static let textStrong = dynamic(light: 0x3C3C36, dark: 0xDEDDD5)
     static let textSecondary = dynamic(light: 0x64645D, dark: 0xBDBCB3)
-    static let textMuted = dynamic(light: 0x929188, dark: 0x95948B)
+    static let textMuted = dynamic(light: 0x6F6E67, dark: 0x95948B)
     static let textDisabled = dynamic(light: 0xB4B3AB, dark: 0x6F6F66)
     static let emptyLabelTextColor = textMuted
     static let onInkPrimary = UIColor.white

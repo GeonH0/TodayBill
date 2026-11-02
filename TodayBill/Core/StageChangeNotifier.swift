@@ -151,10 +151,10 @@ final class StageChangeNotifier {
                     switch result {
                     case .success(let snapshots):
                         self.defaults.set(self.now(), forKey: Self.lastSuccessfulRefreshKey)
-                        self.deliver(snapshots, refreshError: nil, run: run)
+                        self.deliver(snapshots, refreshError: nil, run: run, refreshedIDs: Set(snapshots.map(\.billID)))
                     case .failure(let error):
                         if let partial = error as? FavoriteRefreshFailure {
-                            self.deliver(partial.refreshedSnapshots, refreshError: error, run: run)
+                            self.deliver(partial.refreshedSnapshots, refreshError: error, run: run, refreshedIDs: Set(partial.refreshedSnapshots.map(\.billID)))
                         } else {
                             self.finish(run, result: .failure(error))
                         }
@@ -182,10 +182,10 @@ final class StageChangeNotifier {
         activeRun === run && !run.cancellation.isCancelled
     }
 
-    private func deliver(_ snapshots: [BillSnapshot], refreshError: Error?, run: Run) {
+    private func deliver(_ snapshots: [BillSnapshot], refreshError: Error?, run: Run, refreshedIDs: Set<String> = []) {
         guard isActive(run) else { return }
         // 포그라운드 진입과 BGAppRefreshTask가 모두 이 경로를 지난다. 앱을 열지 않아도 위젯이 갱신된다.
-        WidgetSnapshotUpdater.updateFavorites(snapshots)
+        WidgetSnapshotUpdater.updateFavorites(repository.favoriteSnapshots(), refreshedIDs: refreshedIDs)
         let finalResult: Result<Void, Error> = refreshError.map { .failure($0) } ?? .success(())
         let keys = defaults.dictionary(forKey: Self.notifiedStageKeysDefaultsKey) as? [String: String] ?? [:]
         let candidates = Self.billsToNotify(from: snapshots, notifiedStageKeys: keys)
