@@ -25,13 +25,14 @@ final class SearchViewController: UIViewController {
         contentView.updateRecentSearches(recentSearchManager.load())
         setupSearchResultsView()
         bindViewModel()
-        contentView.updateFilterSummary(viewModel.filter)
+        updateFilterSummary()
         contentView.showIdleState()
     }
     
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
         navigationController?.setNavigationBarHidden(true, animated: animated)
+        updateFilterSummary()
     }
     
     override func viewWillDisappear(_ animated: Bool) {
@@ -112,6 +113,7 @@ final class SearchViewController: UIViewController {
         contentView.searchBar.text = normalizedTerm
         contentView.searchBar.resignFirstResponder()
         viewModel.search(query: normalizedTerm)
+        updateFilterSummary()
     }
 
     private func loadNextPageIfNeeded() {
@@ -120,15 +122,36 @@ final class SearchViewController: UIViewController {
     
     private func applyFilter(_ filter: BillFilter) {
         viewModel.updateFilter(filter)
-        contentView.updateFilterSummary(filter)
+        updateFilterSummary()
         if !filter.normalizedQuery.isEmpty { viewModel.search() }
     }
 
+    private func updateFilterSummary() {
+        contentView.updateFilterSummary(viewModel.filter)
+    }
 }
 
 // MARK: - SearchViewDelegate
 
 extension SearchViewController: SearchViewDelegate {
+    func showFilters(from sourceView: UIView) {
+        let panel = SearchFilterViewController(filter: viewModel.filter)
+        panel.onChange = { [weak self] in self?.applyFilter($0) }
+        panel.modalPresentationStyle = .popover
+        let width = min(340, view.bounds.width - 32)
+        let source = sourceView.convert(sourceView.bounds, to: view)
+        panel.loadViewIfNeeded()
+        panel.sizeToFit(width: width, maximumHeight: max(180, view.safeAreaLayoutGuide.layoutFrame.maxY - source.maxY - 20))
+        if let popover = panel.popoverPresentationController {
+            popover.sourceView = sourceView
+            popover.sourceRect = sourceView.bounds
+            popover.permittedArrowDirections = .up
+            popover.backgroundColor = Theme.cellBackgroundColor
+            popover.delegate = panel
+        }
+        present(panel, animated: true)
+    }
+
     func deleteAll() {
         recentSearchManager.deleteAll()
         DispatchQueue.main.async {
@@ -142,20 +165,6 @@ extension SearchViewController: SearchViewDelegate {
         performSearch(with: viewModel.filter.normalizedQuery.isEmpty ? (contentView.searchBar.text ?? "") : viewModel.filter.normalizedQuery)
     }
 
-    func showFilters() {
-        contentView.searchBar.resignFirstResponder()
-        let editor = SearchFilterViewController(filter: viewModel.filter)
-        editor.onApply = { [weak self] in self?.applyFilter($0) }
-        let navigation = UINavigationController(rootViewController: editor)
-        navigation.modalPresentationStyle = .pageSheet
-        if let sheet = navigation.sheetPresentationController {
-            sheet.detents = [.medium(), .large()]
-            sheet.selectedDetentIdentifier = .large
-            sheet.prefersGrabberVisible = true
-        }
-        present(navigation, animated: true)
-    }
-
 }
 
 // MARK: - UISearchBarDelegate
@@ -164,6 +173,7 @@ extension SearchViewController: UISearchBarDelegate {
     func searchBar(_ searchBar: UISearchBar, textDidChange searchText: String) {
         // Editing invalidates old responses immediately, including while a result is loading.
         viewModel.clearResults()
+        updateFilterSummary()
         contentView.setResultsVisible(false)
         contentView.showIdleState()
         searchResultsViewController.view.isHidden = true
