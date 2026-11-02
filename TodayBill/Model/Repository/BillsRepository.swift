@@ -13,12 +13,23 @@ enum BillsRepositoryError: Error {
     case missingSnapshot
 }
 
+protocol SearchRequestCancelling { func cancel() }
+extension URLSessionTask: SearchRequestCancelling {}
+
+struct BillSearchPage {
+    let snapshots: [BillSnapshot]
+    let hasMore: Bool
+    var isUsingCache = false
+}
+
 protocol BillRepositoryProtocol {
     func fetchHomeBills(date: Date, completion: @escaping (Result<[BillSnapshot], Error>) -> Void)
     func fetchHomeDashboard(date: Date, completion: @escaping (Result<HomeDashboard, Error>) -> Void)
     func fetchHotBills(limit: Int, completion: @escaping (Result<[HotBillSnapshot], Error>) -> Void)
     func fetchLawEnforcements(range: LawEnforcementDateRange, completion: @escaping (Result<[LawEnforcementSnapshot], Error>) -> Void)
     func refreshHomeDashboard(completion: @escaping (Result<HomeDashboard, Error>) -> Void)
+    @discardableResult
+    func searchPage(filter: BillFilter, page: Int, completion: @escaping (Result<BillSearchPage, Error>) -> Void) -> SearchRequestCancelling?
     func searchBills(filter: BillFilter, page: Int, completion: @escaping (Result<[BillSnapshot], Error>) -> Void)
     func fetchDetail(id: String, age: Int, completion: @escaping (Result<BillSnapshot, Error>) -> Void)
     func toggleFavorite(id: String, completion: @escaping (Result<BillSnapshot, Error>) -> Void)
@@ -230,19 +241,23 @@ final class BillRepository: BillRepositoryProtocol, FavoriteRefreshing {
     }
 
     func searchBills(filter: BillFilter, page: Int, completion: @escaping (Result<[BillSnapshot], Error>) -> Void) {
-        apiClient.searchBills(filter: filter, page: page) { [weak self] result in
-            guard let self = self else { return }
+        searchPage(filter: filter, page: page) { completion($0.map(\.snapshots)) }
+    }
 
+    @discardableResult
+    func searchPage(filter: BillFilter, page: Int, completion: @escaping (Result<BillSearchPage, Error>) -> Void) -> SearchRequestCancelling? {
+        return apiClient.searchPage(filter: filter, page: page) { [weak self] result in
+            guard let self else { return }
             switch result {
-            case .success(let rows):
-                let fetchedSnapshots = rows.map(BillSnapshot.init(row:))
-                self.coreDataManager.saveSnapshots(fetchedSnapshots)
-                let snapshots = rows.compactMap { self.coreDataManager.fetchSnapshot(id: $0.BILL_ID) }
+            case .success(let response):
+                self.coreDataManager.saveSnapshots(response.rows.map(BillSnapshot.init(row:)))
+                let snapshots = response.rows.compactMap { self.coreDataManager.fetchSnapshot(id: $0.BILL_ID) }
                     .filter { $0.matches(filter: filter) }
-                completion(.success(BillSnapshot.sort(snapshots, order: filter.sortOrder)))
+                completion(.success(BillSearchPage(snapshots: BillSnapshot.sort(snapshots, order: filter.sortOrder), hasMore: response.hasMore)))
             case .failure(let error):
-                let cached = self.coreDataManager.searchSnapshots(filter: filter)
-                cached.isEmpty ? completion(.failure(error)) : completion(.success(cached))
+                // Cached matches are a labelled first-page fallback, never another network page.
+                let cached = page == 1 ? self.coreDataManager.searchSnapshots(filter: filter) : []
+                cached.isEmpty ? completion(.failure(error)) : completion(.success(BillSearchPage(snapshots: cached, hasMore: false, isUsingCache: true)))
             }
         }
     }
@@ -549,83 +564,113 @@ final class HomeViewModel {
     }
 }
 
+enum SearchPaginationState: Equatable {
+    case hidden, loading, more, cached
+    case retry(String)
+}
+
 final class SearchViewModel {
     private let repository: BillRepositoryProtocol
     private(set) var filter = BillFilter()
-    private(set) var currentPage = 1
+    /// Last successfully received page; failed pages do not advance this cursor.
+    private(set) var currentPage = 0
     private(set) var canLoadMore = true
     private var isLoading = false
     private var results: [BillSnapshot] = []
+    private var generation = 0
+    private var activeRequest: SearchRequestCancelling?
+    private var recordedSearch = false
     var onStateChange: ((ViewState<[BillSnapshot]>) -> Void)?
+    var onPaginationChange: ((SearchPaginationState) -> Void)?
+    var onSearchCompleted: ((String) -> Void)?
 
-    init(repository: BillRepositoryProtocol = BillRepository.shared) {
-        self.repository = repository
-    }
+    init(repository: BillRepositoryProtocol = BillRepository.shared) { self.repository = repository }
 
     func updateFilter(_ filter: BillFilter) {
+        generation += 1
+        activeRequest?.cancel()
+        activeRequest = nil
+        isLoading = false
+        currentPage = 0
+        results = []
+        canLoadMore = true
+        recordedSearch = false
         self.filter = filter
     }
 
     func search(query: String? = nil, reset: Bool = true) {
-        if let query {
-            filter.query = query
-        }
-
-        guard !filter.normalizedQuery.isEmpty, !isLoading else { return }
-
-        if reset {
-            currentPage = 1
+        let needsReset = reset || query.map { $0.trimmingCharacters(in: .whitespacesAndNewlines) != filter.normalizedQuery } == true
+        if let query { filter.query = query }
+        guard !filter.normalizedQuery.isEmpty else { clearResults(); return }
+        if needsReset {
+            generation += 1
+            activeRequest?.cancel()
+            activeRequest = nil
+            isLoading = false
+            currentPage = 0
             canLoadMore = true
             results = []
+            recordedSearch = false
+            onPaginationChange?(.hidden)
             onStateChange?(.loading("검색 중입니다."))
         }
+        loadNextPageIfNeeded()
+    }
 
+    func loadNextPageIfNeeded() {
+        guard canLoadMore, !isLoading, !filter.normalizedQuery.isEmpty else { return }
+        let token = generation
+        let requestFilter = filter
+        let page = currentPage + 1
         isLoading = true
-        repository.searchBills(filter: filter, page: currentPage) { [weak self] result in
-            guard let self = self else { return }
-
+        onPaginationChange?(.loading)
+        activeRequest = repository.searchPage(filter: requestFilter, page: page) { [weak self] result in
             DispatchQueue.main.async {
+                guard let self, self.generation == token else { return }
                 self.isLoading = false
+                self.activeRequest = nil
                 switch result {
-                case .success(let snapshots):
-                    self.canLoadMore = !snapshots.isEmpty
-                    let mergedResults = reset ? snapshots : self.mergeUnique(self.results + snapshots)
-                    self.results = BillSnapshot.sort(mergedResults, order: self.filter.sortOrder)
-                    self.results.isEmpty
-                    ? self.onStateChange?(.empty("검색 결과가 없습니다."))
-                    : self.onStateChange?(.loaded(self.results))
-                case .failure(let error):
-                    if reset {
-                        self.onStateChange?(.error("검색에 실패했습니다.\n\(error.localizedDescription)"))
-                    } else {
-                        self.canLoadMore = false
+                case .success(let response):
+                    self.currentPage = page
+                    self.canLoadMore = response.hasMore
+                    self.results = BillSnapshot.sort(self.mergeUnique(self.results + response.snapshots), order: requestFilter.sortOrder)
+                    if self.results.isEmpty && response.hasMore {
+                        // Empty filtered pages do not end the search or require an impossible scroll.
+                        self.loadNextPageIfNeeded()
+                        return
                     }
+                    self.onPaginationChange?(response.isUsingCache ? .cached : (response.hasMore ? .more : .hidden))
+                    self.results.isEmpty ? self.onStateChange?(.empty("조건에 맞는 검색 결과가 없습니다.")) : self.onStateChange?(.loaded(self.results))
+                    if !self.recordedSearch && self.generation == token {
+                        self.recordedSearch = true
+                        self.onSearchCompleted?(requestFilter.normalizedQuery)
+                    }
+                case .failure(let error):
+                    let message = "결과를 더 불러오지 못했습니다. 다시 시도해 주세요."
+                    self.onPaginationChange?(.retry(message))
+                    if self.results.isEmpty { self.onStateChange?(.error("검색에 실패했습니다.\n\(error.localizedDescription)")) }
                 }
             }
         }
     }
 
-    func loadNextPageIfNeeded() {
-        guard canLoadMore, !isLoading, !filter.normalizedQuery.isEmpty else { return }
-        currentPage += 1
-        search(reset: false)
-    }
-
     func clearResults() {
+        generation += 1
+        activeRequest?.cancel()
+        activeRequest = nil
+        isLoading = false
         filter.query = ""
-        currentPage = 1
+        currentPage = 0
         canLoadMore = true
         results = []
+        recordedSearch = false
+        onPaginationChange?(.hidden)
         onStateChange?(.idle)
     }
 
     private func mergeUnique(_ snapshots: [BillSnapshot]) -> [BillSnapshot] {
         var seen = Set<String>()
-        return snapshots.filter { snapshot in
-            guard !seen.contains(snapshot.billID) else { return false }
-            seen.insert(snapshot.billID)
-            return true
-        }
+        return snapshots.filter { seen.insert($0.billID).inserted }
     }
 }
 

@@ -11,6 +11,12 @@ enum OpenAssemblyAPIClientError: Error {
     case missingAPIKey
     case invalidURL
     case invalidResponse
+    case serviceError(String)
+}
+
+struct BillRowsPage {
+    let rows: [Row]
+    let hasMore: Bool
 }
 
 final class OpenAssemblyAPIClient {
@@ -63,18 +69,16 @@ final class OpenAssemblyAPIClient {
     }
 
     func searchBills(filter: BillFilter, page: Int, completion: @escaping (Result<[Row], Error>) -> Void) {
-        var queryItems = [
-            URLQueryItem(name: "pIndex", value: "\(page)"),
-            URLQueryItem(name: "pSize", value: "100"),
-            URLQueryItem(name: "AGE", value: "22")
-        ]
+        searchPage(filter: filter, page: page) { completion($0.map(\.rows)) }
+    }
 
-        let normalizedQuery = filter.normalizedQuery
-        if !normalizedQuery.isEmpty {
-            queryItems.append(URLQueryItem(name: "BILL_NAME", value: normalizedQuery))
-        }
-
-        fetchRows(queryItems: queryItems, completion: completion)
+    @discardableResult
+    func searchPage(filter: BillFilter, page: Int, completion: @escaping (Result<BillRowsPage, Error>) -> Void) -> URLSessionDataTask? {
+        var items = [URLQueryItem(name: "pIndex", value: "\(page)"),
+                     URLQueryItem(name: "pSize", value: "100"), URLQueryItem(name: "AGE", value: "22")]
+        if !filter.normalizedQuery.isEmpty { items.append(URLQueryItem(name: "BILL_NAME", value: filter.normalizedQuery)) }
+        // Keep the existing name-search parameters; other filters apply to raw rows locally.
+        return fetchPage(queryItems: items, completion: completion)
     }
 
     @discardableResult
@@ -92,37 +96,45 @@ final class OpenAssemblyAPIClient {
 
     @discardableResult
     private func fetchRows(queryItems: [URLQueryItem], completion: @escaping (Result<[Row], Error>) -> Void) -> URLSessionDataTask? {
+        fetchPage(queryItems: queryItems) { completion($0.map(\.rows)) }
+    }
+
+    @discardableResult
+    private func fetchPage(queryItems: [URLQueryItem], completion: @escaping (Result<BillRowsPage, Error>) -> Void) -> URLSessionDataTask? {
         let request: URLRequest
-        do {
-            request = try makeRequest(queryItems: queryItems)
-        } catch {
-            completion(.failure(error))
-            return nil
-        }
-
+        do { request = try makeRequest(queryItems: queryItems) }
+        catch { completion(.failure(error)); return nil }
+        let page = Int(queryItems.first { $0.name == "pIndex" }?.value ?? "1") ?? 1
+        let size = Int(queryItems.first { $0.name == "pSize" }?.value ?? "100") ?? 100
         let task = session.dataTask(with: request) { data, response, error in
-            if let error = error {
-                completion(.failure(error))
-                return
+            if let error { completion(.failure(error)); return }
+            guard let response = response as? HTTPURLResponse, (200...299).contains(response.statusCode), let data else {
+                completion(.failure(OpenAssemblyAPIClientError.invalidResponse)); return
             }
-
-            guard let response = response as? HTTPURLResponse, (200...299).contains(response.statusCode),
-                  let data = data else {
-                completion(.failure(OpenAssemblyAPIClientError.invalidResponse))
-                return
-            }
-
             do {
-                let decodedResponse = try JSONDecoder().decode(Bills.self, from: data)
-                let rows = decodedResponse.nzmimeepazxkubdpn.compactMap { $0.row }.flatMap { $0 }                
-                completion(.success(rows))
-            } catch {
-                completion(.failure(error))
-            }
+                // No-data and service errors may arrive as a top-level RESULT with HTTP 200.
+                struct EmptyResponse: Decodable { let RESULT: APIResult }
+                if let empty = try? JSONDecoder().decode(EmptyResponse.self, from: data) {
+                    guard empty.RESULT.CODE == "INFO-200" else {
+                        throw OpenAssemblyAPIClientError.serviceError(empty.RESULT.CODE)
+                    }
+                    completion(.success(BillRowsPage(rows: [], hasMore: false))); return
+                }
+                let response = try JSONDecoder().decode(Bills.self, from: data)
+                let heads = response.nzmimeepazxkubdpn.flatMap { $0.head ?? [] }
+                if let failure = heads.compactMap(\.RESULT).first(where: { !["INFO-000", "INFO-200"].contains($0.CODE) }) {
+                    throw OpenAssemblyAPIClientError.serviceError(failure.CODE)
+                }
+                let rows = response.nzmimeepazxkubdpn.flatMap { $0.row ?? [] }
+                let total = heads.compactMap(\.list_total_count).first
+                let hasMore = !rows.isEmpty && (total.map { page * size < $0 } ?? (rows.count >= size))
+                completion(.success(BillRowsPage(rows: rows, hasMore: hasMore)))
+            } catch { completion(.failure(error)) }
         }
         task.resume()
         return task
     }
+
 }
 
 final class OpenAssemblyVoteAPIClient {
