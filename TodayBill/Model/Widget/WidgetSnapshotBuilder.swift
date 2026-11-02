@@ -9,7 +9,8 @@ enum WidgetSnapshotBuilder {
         now: Date,
         refreshedFavoriteIDs: Set<String> = [],
         proposalDate: Date? = nil,
-        proposalsUpdatedAt: Date? = nil
+        proposalsUpdatedAt: Date? = nil,
+        clearProposalCount: Bool = false
     ) -> BillWidgetSnapshot {
         let rows: [BillWidgetSnapshot.Row]
         let changeCount: Int
@@ -46,10 +47,10 @@ enum WidgetSnapshotBuilder {
 
         return BillWidgetSnapshot(
             generatedAt: now, favoriteCount: favoriteCount, rows: rows, changeCount: changeCount,
-            todayProposalCount: todayProposalCount ?? previous?.todayProposalCount,
+            todayProposalCount: clearProposalCount ? nil : (todayProposalCount ?? previous?.todayProposalCount),
             favoritesUpdatedAt: favoritesUpdatedAt,
-            proposalDate: todayProposalCount == nil ? previous?.proposalDate : proposalDate,
-            proposalsUpdatedAt: todayProposalCount == nil ? previous?.proposalsUpdatedAt : proposalsUpdatedAt,
+            proposalDate: todayProposalCount == nil && !clearProposalCount ? previous?.proposalDate : proposalDate,
+            proposalsUpdatedAt: todayProposalCount == nil && !clearProposalCount ? previous?.proposalsUpdatedAt : proposalsUpdatedAt,
             favoriteRefreshDates: refreshDates
         )
     }

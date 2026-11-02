@@ -720,10 +720,13 @@ extension StageNotificationDeliveryTests {
 }
 
 final class WidgetProposalCountIntegrationTests: XCTestCase {
-    private func dashboard(dates: [String], networkFails: Bool = false) throws -> HomeDashboard {
+    private func dashboard(dates: [String], networkFails: Bool = false, seedToday: Bool = false, forceRefresh: Bool = true) throws -> HomeDashboard {
         ProposalCountURLProtocol.dates = dates
         ProposalCountURLProtocol.networkFails = networkFails
         let manager = CoreDataManager.makeInMemory()
+        if seedToday {
+            manager.saveSnapshots([BillSnapshot(billID: "STALE-TODAY", age: 22, title: "Old cached record", proposedDate: formatted(Date()))])
+        }
         if networkFails {
             manager.saveSnapshots(dates.enumerated().map { index, date in
                 BillSnapshot(billID: "QA-COUNT-\(index)", age: 22, title: "QA", proposedDate: date)
@@ -739,7 +742,9 @@ final class WidgetProposalCountIntegrationTests: XCTestCase {
         let repository = BillRepository(apiClient: OpenAssemblyAPIClient(session: session), lawInfoClient: LawInfoAPIClient(session: session), coreDataManager: manager, dashboardCache: HomeDashboardCache(defaults: defaults))
         let done = expectation(description: "dashboard count result")
         var captured: Result<HomeDashboard, Error>?
-        repository.refreshHomeDashboard { result in captured = result; done.fulfill() }
+        let capture: (Result<HomeDashboard, Error>) -> Void = { result in captured = result; done.fulfill() }
+        if forceRefresh { repository.refreshHomeDashboard(completion: capture) }
+        else { repository.fetchHomeDashboard(date: Date(), completion: capture) }
         wait(for: [done], timeout: 5)
         return try XCTUnwrap(captured).get()
     }
@@ -1006,5 +1011,48 @@ extension WidgetProposalCountIntegrationTests {
             failed.fulfill()
         }
         wait(for: [failed], timeout: 3)
+    }
+}
+
+extension WidgetProposalCountIntegrationTests {
+    func testOldCachedRowsWithoutCountMetadataStillFetchTheDailyCount() throws {
+        let result = try dashboard(dates: [formatted(Date())], seedToday: true, forceRefresh: false)
+        XCTAssertEqual(result.todayProposalCount, 1)
+        XCTAssertFalse(result.newProposals.contains { $0.billID == "STALE-TODAY" })
+        XCTAssertNotNil(result.todayProposalsUpdatedAt)
+    }
+
+    func testSuccessfulEmptyResponseDoesNotReuseStaleTodayRowsInBreakdown() throws {
+        let result = try dashboard(dates: [], seedToday: true)
+        XCTAssertEqual(result.todayProposalCount, 0)
+        XCTAssertTrue(result.newProposals.isEmpty)
+    }
+}
+
+extension StageNotificationDeliveryTests {
+    func testFailedFavoriteReadPreservesTheWidgetAndConfirmedEmptyReadClearsIt() throws {
+        try withPreservedWidgetFile { store in
+            let original = WidgetSnapshotBuilder.make(previous: nil, favorites: [changed("READ-FAIL")], todayProposalCount: nil, now: Date())
+            XCTAssertTrue(store.write(original))
+            WidgetSnapshotUpdater.updateFavorites(.failure(URLError(.cannotOpenFile)))
+            XCTAssertEqual(store.read(), original)
+            WidgetSnapshotUpdater.updateFavorites(.success([]))
+            XCTAssertEqual(store.read()?.favoriteCount, 0)
+        }
+    }
+
+    func testSuccessfulUnknownDailyTotalClearsPreviousSameDayCount() throws {
+        try withPreservedWidgetFile { store in
+            let now = Date()
+            let original = BillWidgetSnapshot(generatedAt: now, favoriteCount: 1, rows: [], changeCount: 0,
+                todayProposalCount: 37, proposalDate: now, proposalsUpdatedAt: now.addingTimeInterval(-3600))
+            XCTAssertTrue(store.write(original))
+            WidgetSnapshotUpdater.updateDashboard(HomeDashboard(todayProposalDate: now, todayProposalsUpdatedAt: now))
+            XCTAssertNil(store.read()?.proposalCount(on: now))
+            XCTAssertEqual(store.read()?.favoriteCount, 1)
+            WidgetSnapshotUpdater.updateDashboard(HomeDashboard(todayProposalCount: 37, todayProposalDate: now,
+                todayProposalsUpdatedAt: now.addingTimeInterval(-3600)))
+            XCTAssertNil(store.read()?.proposalCount(on: now), "Older cached data cannot undo invalidation")
+        }
     }
 }

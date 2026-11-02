@@ -85,6 +85,7 @@ final class BillRepository: BillRepositoryProtocol, FavoriteRefreshing {
     private struct HomeBillSource {
         let snapshots: [BillSnapshot]
         let count: Int?
+        let todaySnapshots: [BillSnapshot]?
         let countDate: Date?
         let countUpdatedAt: Date?
         let isUsingCache: Bool
@@ -107,11 +108,14 @@ final class BillRepository: BillRepositoryProtocol, FavoriteRefreshing {
             let dateIsToday = previous?.todayProposalDate.map { Calendar.current.isDateInToday($0) } ?? false
             return HomeBillSource(snapshots: snapshots,
                                   count: dateIsToday ? previous?.todayProposalCount : nil,
+                                  todaySnapshots: dateIsToday ? previous?.newProposals : nil,
                                   countDate: dateIsToday ? previous?.todayProposalDate : nil,
                                   countUpdatedAt: dateIsToday ? previous?.todayProposalsUpdatedAt : nil,
                                   isUsingCache: true, failed: failed)
         }
-        if !forceRefresh && !cached.isEmpty {
+        if !forceRefresh && !cached.isEmpty,
+           previous?.todayProposalDate.map({ Calendar.current.isDateInToday($0) }) == true,
+           previous?.todayProposalCount != nil {
             completion(.success(cachedSource(cached, failed: false)))
             return
         }
@@ -125,10 +129,12 @@ final class BillRepository: BillRepositoryProtocol, FavoriteRefreshing {
                 let today = self.formatDate(now) ?? ""
                 // A full-size page may be truncated. Do not claim it is the whole day's count.
                 let count = rows.count < 1000 ? Set(rows.filter { $0.PROPOSE_DT == today }.map(\.BILL_ID)).count : nil
+                let todayIDs = Set(rows.filter { $0.PROPOSE_DT == today }.map(\.BILL_ID))
+                let todayRows = self.coreDataManager.fetchSnapshots(for: today).filter { todayIDs.contains($0.billID) }
                 completion(.success(HomeBillSource(
                     snapshots: selected.isEmpty ? self.coreDataManager.fetchLatestSnapshots() : selected,
-                    count: count, countDate: count == nil ? nil : now,
-                    countUpdatedAt: count == nil ? nil : now, isUsingCache: false, failed: false
+                    count: count, todaySnapshots: todayRows,
+                    countDate: now, countUpdatedAt: now, isUsingCache: false, failed: false
                 )))
             case .failure(let error):
                 let fallback = self.coreDataManager.fetchLatestSnapshots()
@@ -161,6 +167,7 @@ final class BillRepository: BillRepositoryProtocol, FavoriteRefreshing {
                         }
                     }
                     var dashboard = self.makeHomeDashboard(selectedDateBills: source.snapshots,
+                                                            todayProposals: source.todaySnapshots,
                                                             lawEnforcements: laws,
                                                             failedSections: failedSections)
                     dashboard.todayProposalCount = source.count
@@ -279,7 +286,7 @@ final class BillRepository: BillRepositoryProtocol, FavoriteRefreshing {
             StarBillManager.shared.removeBillFromStarred(by: id)
             StageChangeNotifier.clearNotified(billID: id)
         }
-        WidgetSnapshotUpdater.updateFavorites(coreDataManager.fetchFavoriteSnapshots())
+        WidgetSnapshotUpdater.updateFavorites(coreDataManager.fetchFavoriteSnapshotsResult())
         NotificationCenter.default.post(name: StageChangeNotifier.favoritesDidChange, object: nil)
         completion(.success(snapshot))
     }
@@ -297,7 +304,9 @@ final class BillRepository: BillRepositoryProtocol, FavoriteRefreshing {
         completion: @escaping (Result<[BillSnapshot], Error>) -> Void
     ) {
         DispatchQueue.main.async {
-            let favorites = self.coreDataManager.fetchFavoriteSnapshots()
+            let favorites: [BillSnapshot]
+            do { favorites = try self.coreDataManager.fetchFavoriteSnapshotsResult().get() }
+            catch { completion(.failure(error)); return }
             var nextIndex = 0
             var inFlight = 0
             var successfulIDs = Set<String>()
@@ -319,7 +328,9 @@ final class BillRepository: BillRepositoryProtocol, FavoriteRefreshing {
                 guard !finished else { return }
                 guard !cancellation.isCancelled else { finish(.failure(URLError(.cancelled))); return }
                 if nextIndex == favorites.count && inFlight == 0 {
-                    let refreshed = self.coreDataManager.fetchFavoriteSnapshots().filter { successfulIDs.contains($0.billID) }
+                    let refreshed: [BillSnapshot]
+                    do { refreshed = try self.coreDataManager.fetchFavoriteSnapshotsResult().get().filter { successfulIDs.contains($0.billID) } }
+                    catch { finish(.failure(error)); return }
                     if let firstError {
                         finish(.failure(FavoriteRefreshFailure(
                             refreshedSnapshots: refreshed,
@@ -364,7 +375,7 @@ final class BillRepository: BillRepositoryProtocol, FavoriteRefreshing {
 
     func markStageSeen(id: String) {
         coreDataManager.markStageSeen(id: id)
-        WidgetSnapshotUpdater.updateFavorites(coreDataManager.fetchFavoriteSnapshots())
+        WidgetSnapshotUpdater.updateFavorites(coreDataManager.fetchFavoriteSnapshotsResult())
     }
 
     func fetchSummary(for snapshot: BillSnapshot, completion: @escaping (Result<BillSnapshot, Error>) -> Void) {
@@ -418,6 +429,10 @@ final class BillRepository: BillRepositoryProtocol, FavoriteRefreshing {
         coreDataManager.fetchFavoriteSnapshots()
     }
 
+    func favoriteSnapshotsResult() -> Result<[BillSnapshot], Error> {
+        coreDataManager.fetchFavoriteSnapshotsResult()
+    }
+
     static func makeTrackingSections(from snapshots: [BillSnapshot]) -> [BillTrackingSection] {
         let changed = snapshots.filter(\.hasUnseenStageChange)
         let unchanged = snapshots.filter { !$0.hasUnseenStageChange }
@@ -436,6 +451,7 @@ final class BillRepository: BillRepositoryProtocol, FavoriteRefreshing {
 
     private func makeHomeDashboard(
         selectedDateBills: [BillSnapshot],
+        todayProposals: [BillSnapshot]?,
         lawEnforcements: [LawEnforcementSnapshot],
         failedSections: [HomeDashboardSection]
     ) -> HomeDashboard {
@@ -443,7 +459,7 @@ final class BillRepository: BillRepositoryProtocol, FavoriteRefreshing {
         let latestSnapshots = coreDataManager.fetchLatestSnapshots()
         let dashboardSource = recentSnapshots.isEmpty ? selectedDateBills : recentSnapshots
         let todaySnapshots = formatDate(Date()).map { coreDataManager.fetchSnapshots(for: $0) } ?? []
-        let newProposalsSource = todaySnapshots
+        let newProposalsSource = todayProposals ?? todaySnapshots
         let favorites = coreDataManager.fetchFavoriteSnapshots()
         let matchedLawEnforcements = LawBillMatcher.match(
             lawEnforcements: lawEnforcements,

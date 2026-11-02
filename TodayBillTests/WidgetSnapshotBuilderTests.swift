@@ -358,9 +358,6 @@ final class TabBarLayoutTests: XCTestCase {
         window.layoutIfNeeded()
         container.setNeedsLayout()
         container.layoutIfNeeded()
-        guard container.safeAreaInsets.bottom > 0 else {
-            throw XCTSkip("This device has no home-indicator safe area")
-        }
         container.tabBar.configure(symbolNames: ["house", "magnifyingglass", "star"], titles: ["홈", "검색", "관심"])
         container.tabBar.layoutIfNeeded()
         XCTAssertEqual(container.tabBar.bounds.height,
@@ -474,7 +471,7 @@ extension WidgetSnapshotBuilderTests {
                                           proposalDate: morning, proposalsUpdatedAt: morning)
         let midnight = try XCTUnwrap(calendar.date(byAdding: .day, value: 1, to: day))
         XCTAssertEqual(snapshot.refreshBoundaries(after: morning, calendar: calendar),
-                       [source.addingTimeInterval(6 * 3600), midnight])
+                       [source.addingTimeInterval(6 * 3600), morning.addingTimeInterval(6 * 3600), midnight])
         XCTAssertNil(snapshot.proposalCount(on: midnight, calendar: calendar))
         XCTAssertTrue(snapshot.refreshBoundaries(after: midnight, calendar: calendar).isEmpty)
     }
@@ -524,5 +521,24 @@ extension WidgetDeepLinkIntegrationTests {
             XCTAssertNil(AppDeepLink(url: URL(string: value)!), value)
         }
         XCTAssertEqual(AppDeepLink(url: URL(string: "todaybill://bill/A?age=22")!), .bill(id: "A", age: 22))
+    }
+}
+
+final class WidgetRowDestinationTests: XCTestCase {
+    func testInvalidAssemblyAgeFallsBackToTheFavoritesRoot() {
+        for age in [0, -1] {
+            let row = BillWidgetSnapshot.Row(billID: "A", age: age, title: "Test", stageTitle: "제안", hasChange: false)
+            XCTAssertEqual(AppDeepLink(url: row.destinationURL), .favorites)
+        }
+        let valid = BillWidgetSnapshot.Row(billID: "A", age: 22, title: "Test", stageTitle: "제안", hasChange: false)
+        XCTAssertEqual(AppDeepLink(url: valid.destinationURL), .bill(id: "A", age: 22))
+    }
+
+    func testProposalFreshnessBoundaryIsScheduledEvenWithoutFavorites() {
+        let now = Date()
+        let source = now.addingTimeInterval(-3600)
+        let value = BillWidgetSnapshot(generatedAt: now, favoriteCount: 0, rows: [], changeCount: 0,
+            todayProposalCount: 3, proposalDate: now, proposalsUpdatedAt: source)
+        XCTAssertTrue(value.refreshBoundaries(after: now).contains(source.addingTimeInterval(BillWidgetSnapshot.stalenessThreshold)))
     }
 }

@@ -73,7 +73,7 @@ struct BillWidgetView: View {
     }
 
     private func rowView(_ row: BillWidgetSnapshot.Row) -> some View {
-        Link(destination: Self.detailURL(for: row)) {
+        Link(destination: row.destinationURL) {
             HStack(spacing: 6) {
                 Circle()
                     .fill(row.hasChange ? WidgetTheme.accent : Color.clear)
@@ -93,17 +93,6 @@ struct BillWidgetView: View {
         }
     }
 
-    /// 상세 화면은 billID와 age를 둘 다 요구한다.
-    private static func detailURL(for row: BillWidgetSnapshot.Row) -> URL {
-        var components = URLComponents()
-        components.scheme = "todaybill"
-        components.host = "bill"
-        components.path = "/\(row.billID)"
-        components.queryItems = [URLQueryItem(name: "age", value: String(row.age))]
-        // 구성 요소가 모두 고정이라 실패할 수 없다.
-        return components.url ?? URL(string: "todaybill://favorites")!
-    }
-
     private func message(_ text: String) -> some View {
         Text(text)
             .font(.caption)
@@ -112,9 +101,20 @@ struct BillWidgetView: View {
 
     private var footer: some View {
         VStack(alignment: .leading, spacing: 2) {
-            Text(entry.snapshot?.proposalCount(on: entry.date).map { "오늘 발의 \($0)건" } ?? "오늘 발의 건수 미확인")
-                .font(.caption2)
-                .foregroundColor(WidgetTheme.secondaryText)
+            VStack(alignment: .leading, spacing: 0) {
+                Text(entry.snapshot?.proposalCount(on: entry.date).map { "오늘 발의 \($0)건" } ?? "오늘 발의 건수 미확인")
+                if entry.snapshot?.proposalCount(on: entry.date) != nil,
+                   let updatedAt = entry.snapshot?.proposalsUpdatedAt,
+                   entry.date.timeIntervalSince(updatedAt) >= Self.stalenessThreshold {
+                    HStack(spacing: 0) {
+                        Text("발의 정보 · ")
+                        Text(updatedAt, style: .relative)
+                        Text(" 전")
+                    }
+                }
+            }
+            .font(.caption2)
+            .foregroundColor(WidgetTheme.secondaryText)
             if entry.snapshot?.favoriteCount != nil && entry.snapshot?.favoriteCount != 0 {
                 if let refreshedAt = entry.snapshot?.favoritesUpdatedAt {
                     if entry.date.timeIntervalSince(refreshedAt) >= Self.stalenessThreshold {

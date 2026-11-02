@@ -47,10 +47,15 @@ final class StageCheckCancellation {
 
 protocol FavoriteRefreshing {
     func favoriteSnapshots() -> [BillSnapshot]
+    func favoriteSnapshotsResult() -> Result<[BillSnapshot], Error>
     func refreshFavoriteSnapshots(
         cancellation: StageCheckCancellation,
         completion: @escaping (Result<[BillSnapshot], Error>) -> Void
     )
+}
+
+extension FavoriteRefreshing {
+    func favoriteSnapshotsResult() -> Result<[BillSnapshot], Error> { .success(favoriteSnapshots()) }
 }
 
 /// A refresh failure can still carry changes fetched successfully for other bills.
@@ -185,7 +190,7 @@ final class StageChangeNotifier {
     private func deliver(_ snapshots: [BillSnapshot], refreshError: Error?, run: Run, refreshedIDs: Set<String> = []) {
         guard isActive(run) else { return }
         // 포그라운드 진입과 BGAppRefreshTask가 모두 이 경로를 지난다. 앱을 열지 않아도 위젯이 갱신된다.
-        WidgetSnapshotUpdater.updateFavorites(repository.favoriteSnapshots(), refreshedIDs: refreshedIDs)
+        WidgetSnapshotUpdater.updateFavorites(repository.favoriteSnapshotsResult(), refreshedIDs: refreshedIDs)
         let finalResult: Result<Void, Error> = refreshError.map { .failure($0) } ?? .success(())
         let keys = defaults.dictionary(forKey: Self.notifiedStageKeysDefaultsKey) as? [String: String] ?? [:]
         let candidates = Self.billsToNotify(from: snapshots, notifiedStageKeys: keys)

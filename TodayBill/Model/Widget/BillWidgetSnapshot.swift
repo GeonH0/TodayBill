@@ -60,8 +60,8 @@ struct BillWidgetSnapshot: Codable, Equatable {
     /// Schedule source staleness and day rollover independently of file writes/reloads.
     func refreshBoundaries(after date: Date, calendar: Calendar = .current) -> [Date] {
         var dates = Set<Date>()
-        if let favoritesUpdatedAt {
-            let boundary = favoritesUpdatedAt.addingTimeInterval(Self.stalenessThreshold)
+        for sourceDate in [favoritesUpdatedAt, proposalsUpdatedAt].compactMap({ $0 }) {
+            let boundary = sourceDate.addingTimeInterval(Self.stalenessThreshold)
             if boundary > date { dates.insert(boundary) }
         }
         if proposalCount(on: date, calendar: calendar) != nil,
@@ -83,5 +83,15 @@ struct BillWidgetSnapshot: Codable, Equatable {
         let title: String
         let stageTitle: String
         let hasChange: Bool
+
+        var destinationURL: URL {
+            guard age > 0, !billID.isEmpty, !billID.contains("/") else { return URL(string: "todaybill://favorites")! }
+            var components = URLComponents()
+            components.scheme = "todaybill"
+            components.host = "bill"
+            components.path = "/\(billID)"
+            components.queryItems = [URLQueryItem(name: "age", value: String(age))]
+            return components.url ?? URL(string: "todaybill://favorites")!
+        }
     }
 }

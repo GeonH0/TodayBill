@@ -243,7 +243,7 @@ struct HomeDashboard: Codable, Equatable {
     }
 
     var hasVisibleContent: Bool {
-        todayProposalCount != nil || !newProposals.isEmpty ||
+        (todayProposalCount != nil && todayProposalDate.map { Calendar.current.isDateInToday($0) } == true) || !newProposals.isEmpty ||
             !stageChanges.isEmpty ||
             !hotBills.isEmpty ||
             !lawEnforcements.isEmpty ||

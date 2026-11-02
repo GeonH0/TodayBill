@@ -6,6 +6,11 @@ enum WidgetSnapshotUpdater {
     private static let store = WidgetSnapshotStore()
     private static let lock = NSLock()
 
+    static func updateFavorites(_ result: Result<[BillSnapshot], Error>, refreshedIDs: Set<String> = []) {
+        guard case .success(let favorites) = result else { return }
+        updateFavorites(favorites, refreshedIDs: refreshedIDs)
+    }
+
     static func updateFavorites(_ favorites: [BillSnapshot], refreshedIDs: Set<String> = []) {
         update(favorites: favorites, refreshedIDs: refreshedIDs)
     }
@@ -16,16 +21,16 @@ enum WidgetSnapshotUpdater {
 
     static func updateDashboard(_ dashboard: HomeDashboard, now: Date = Date()) {
         guard !dashboard.failedSections.contains(.newProposals),
-              let count = dashboard.todayProposalCount,
               let date = dashboard.todayProposalDate,
               let refreshedAt = dashboard.todayProposalsUpdatedAt,
               Calendar.current.isDate(date, inSameDayAs: now) else { return }
-        updateTodayProposalCount(count, for: date, refreshedAt: refreshedAt)
+        update(todayProposalCount: dashboard.todayProposalCount, proposalDate: date,
+               proposalsUpdatedAt: refreshedAt, clearProposalCount: dashboard.todayProposalCount == nil)
     }
 
     private static func update(favorites: [BillSnapshot]? = nil, refreshedIDs: Set<String> = [],
                                todayProposalCount: Int? = nil, proposalDate: Date? = nil,
-                               proposalsUpdatedAt: Date? = nil) {
+                               proposalsUpdatedAt: Date? = nil, clearProposalCount: Bool = false) {
         lock.lock()
         let previous = store.read()
         if let incoming = proposalsUpdatedAt, let stored = previous?.proposalsUpdatedAt, incoming < stored {
@@ -35,7 +40,7 @@ enum WidgetSnapshotUpdater {
         let snapshot = WidgetSnapshotBuilder.make(
             previous: previous, favorites: favorites, todayProposalCount: todayProposalCount,
             now: Date(), refreshedFavoriteIDs: refreshedIDs,
-            proposalDate: proposalDate, proposalsUpdatedAt: proposalsUpdatedAt
+            proposalDate: proposalDate, proposalsUpdatedAt: proposalsUpdatedAt, clearProposalCount: clearProposalCount
         )
         let written = store.write(snapshot)
         lock.unlock()

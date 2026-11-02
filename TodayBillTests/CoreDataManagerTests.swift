@@ -535,6 +535,7 @@ final class CoreDataManagerTests: XCTestCase {
 }
 
 private final class MockBillRepository: BillRepositoryProtocol {
+    var dashboardRequests: [Date] = []
     var holdSearch = false
     var searchRequests: [(BillFilter, Int)] = []
     var pendingSearchCompletions: [(Result<[BillSnapshot], Error>) -> Void] = []
@@ -554,6 +555,7 @@ private final class MockBillRepository: BillRepositoryProtocol {
     }
 
     func fetchHomeDashboard(date: Date, completion: @escaping (Result<HomeDashboard, Error>) -> Void) {
+        dashboardRequests.append(date)
         completion(dashboardResult)
     }
 
@@ -716,4 +718,23 @@ private final class FilterPagingURLProtocol: URLProtocol {
         client?.urlProtocolDidFinishLoading(self)
     }
     override func stopLoading() {}
+}
+
+final class HomeDayChangeTests: XCTestCase {
+    func testSignificantTimeChangeReloadsTheDashboard() {
+        let repository = MockBillRepository(dashboardResult: .success(HomeDashboard()))
+        let controller = CalenderViewController(viewModel: HomeViewModel(repository: repository))
+        controller.loadViewIfNeeded()
+        XCTAssertEqual(repository.dashboardRequests.count, 1)
+        NotificationCenter.default.post(name: UIApplication.significantTimeChangeNotification, object: nil)
+        XCTAssertEqual(repository.dashboardRequests.count, 2)
+        XCTAssertTrue(Calendar.current.isDateInToday(repository.dashboardRequests.last!))
+    }
+
+    func testOnlyTodaysVerifiedCountMakesAnOtherwiseEmptyDashboardVisible() {
+        let yesterday = Calendar.current.date(byAdding: .day, value: -1, to: Date())!
+        XCTAssertFalse(HomeDashboard(todayProposalCount: 0, todayProposalDate: yesterday).hasVisibleContent)
+        XCTAssertFalse(HomeDashboard(todayProposalCount: 0).hasVisibleContent)
+        XCTAssertTrue(HomeDashboard(todayProposalCount: 0, todayProposalDate: Date()).hasVisibleContent)
+    }
 }
