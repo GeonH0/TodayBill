@@ -624,7 +624,7 @@ private final class MockBillRepository: BillRepositoryProtocol {
 }
 
 
-/// Regression coverage for request ownership, filtered pagination, and draft application.
+/// Regression coverage for request ownership, filtered pagination, and compact filter selection.
 final class SearchFilterRegressionTests: XCTestCase {
     private func drain() {
         let done = expectation(description: "main queue drained")
@@ -739,24 +739,25 @@ final class SearchFilterRegressionTests: XCTestCase {
     }
 
     @MainActor
-    func testFilterSheetEditsDraftAndOnlyApplyPublishesIt() throws {
-        let original = BillFilter(query: "환경", committee: "교육", favoriteOnly: true)
-        let editor = SearchFilterViewController(filter: original)
-        var applied: [BillFilter] = []
-        editor.onApply = { applied.append($0) }
-        editor.loadViewIfNeeded()
-        let form = try XCTUnwrap(editor.view as? SearchFilterView)
-        XCTAssertEqual(editor.numberOfSections(in: form.tableView), 5)
-        editor.tableView(form.tableView, didSelectRowAt: IndexPath(row: 5, section: 0))
-        XCTAssertEqual(editor.draft.status, .completed)
-        XCTAssertTrue(applied.isEmpty)
-        editor.resetDraft()
-        XCTAssertEqual(editor.draft, BillFilter(query: "환경"))
-        XCTAssertTrue(applied.isEmpty)
-        editor.applyDraft()
-        editor.applyDraft()
-        XCTAssertEqual(applied, [BillFilter(query: "환경")])
-        XCTAssertEqual(original.committee, "교육", "Editing a copy must not mutate the applied filter")
+    func testPanelAppliesChoicesImmediatelyAndPreservesOtherOptions() throws {
+        func descendants(_ view: UIView) -> [UIView] { view.subviews.flatMap { [$0] + descendants($0) } }
+        let filter = BillFilter(query: "환경", status: .committee, committee: "교육", favoriteOnly: true, sortOrder: .oldest)
+        let panel = SearchFilterViewController(filter: filter)
+        panel.loadViewIfNeeded()
+        let buttons = descendants(panel.view).compactMap { $0 as? UIButton }
+        XCTAssertTrue(try XCTUnwrap(buttons.first { $0.configuration?.title == "위원회" }).accessibilityTraits.contains(.selected))
+        XCTAssertTrue(try XCTUnwrap(buttons.first { $0.configuration?.title == "오래된순" }).accessibilityTraits.contains(.selected))
+        var changes: [BillFilter] = []
+        panel.onChange = { changes.append($0) }
+        let completed = try XCTUnwrap(buttons.first { $0.configuration?.title == "완료" })
+        completed.sendActions(for: .touchUpInside)
+        XCTAssertEqual(changes.count, 1)
+        XCTAssertEqual(changes.first?.status, .completed)
+        XCTAssertEqual(changes.first?.normalizedQuery, "환경")
+        XCTAssertEqual(changes.first?.committee, "교육")
+        XCTAssertEqual(changes.first?.favoriteOnly, true)
+        XCTAssertEqual(changes.first?.sortOrder, .oldest)
+        XCTAssertTrue(completed.accessibilityTraits.contains(.selected))
     }
 
     func testRecentRangeIncludesTheWholeFirstDayAndExcludesEarlierDay() {
@@ -970,38 +971,43 @@ extension SearchFilterRegressionTests {
 
 extension SearchFilterRegressionTests {
     @MainActor
-    func testFilterFormKeepsActionsInsideSmallAndWideLayouts() throws {
-        for size in [CGSize(width: 320, height: 568), CGSize(width: 760, height: 390), CGSize(width: 768, height: 1024)] {
-            let editor = SearchFilterViewController(filter: BillFilter())
-            let previousKey = UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }.flatMap(\.windows).first(where: \.isKeyWindow)
-            let window = UIWindow(frame: CGRect(origin: .zero, size: size))
-            window.rootViewController = editor
-            window.makeKeyAndVisible()
-            defer { window.isHidden = true; window.rootViewController = nil; previousKey?.makeKey() }
-            editor.loadViewIfNeeded()
-            let form = try XCTUnwrap(editor.view as? SearchFilterView)
-            form.frame = CGRect(origin: .zero, size: size)
-            window.layoutIfNeeded()
-            form.setNeedsLayout()
-            form.layoutIfNeeded()
-            XCTAssertGreaterThanOrEqual(form.applyButton.bounds.height, 44)
-            XCTAssertGreaterThanOrEqual(form.resetButton.bounds.height, 44)
-            let applyFrame = form.applyButton.convert(form.applyButton.bounds, to: form)
-            XCTAssertGreaterThanOrEqual(applyFrame.minY, form.tableView.frame.maxY)
-            XCTAssertLessThanOrEqual(applyFrame.maxY, form.bounds.maxY)
-            XCTAssertGreaterThan(form.tableView.bounds.height, 0)
+    func testFilterButtonAndPanelChoicesKeepAccessibleTouchTargets() throws {
+        func descendants(_ view: UIView) -> [UIView] { view.subviews.flatMap { [$0] + descendants($0) } }
+        let view = SearchView(frame: CGRect(x: 0, y: 0, width: 320, height: 568))
+        view.updateFilterSummary(BillFilter())
+        view.layoutIfNeeded()
+        let button = try XCTUnwrap(descendants(view).first { $0.accessibilityIdentifier == "search-filter-button" } as? UIButton)
+        XCTAssertGreaterThanOrEqual(button.bounds.height, 44)
+        XCTAssertEqual(button.configuration?.title, "필터")
+        for width: CGFloat in [288, 340] {
+            let panel = SearchFilterViewController(filter: BillFilter())
+            panel.loadViewIfNeeded()
+            panel.sizeToFit(width: width, maximumHeight: 400)
+            panel.view.frame = CGRect(origin: .zero, size: panel.preferredContentSize)
+            panel.view.layoutIfNeeded()
+            XCTAssertLessThanOrEqual(panel.preferredContentSize.height, 400)
+            for option in descendants(panel.view).compactMap({ $0 as? UIButton }).filter({ $0.configuration != nil }) {
+                XCTAssertGreaterThanOrEqual(option.bounds.height, 44)
+                XCTAssertTrue(panel.view.bounds.contains(option.convert(option.bounds, to: panel.view).origin))
+            }
         }
     }
 
     @MainActor
-    func testSelectedFilterRowsExposeSelectedAccessibilityTraits() throws {
-        let editor = SearchFilterViewController(filter: BillFilter(status: .committee, favoriteOnly: true))
-        editor.loadViewIfNeeded()
-        let form = try XCTUnwrap(editor.view as? SearchFilterView)
-        let selected = editor.tableView(form.tableView, cellForRowAt: IndexPath(row: 2, section: 0))
-        XCTAssertEqual(selected.accessoryType, .checkmark)
-        XCTAssertTrue(selected.accessibilityTraits.contains(.selected))
-        let other = editor.tableView(form.tableView, cellForRowAt: IndexPath(row: 0, section: 0))
-        XCTAssertFalse(other.accessibilityTraits.contains(.selected))
+    func testPanelCommitteeEditingAndResetPublishWithoutAnotherScreen() throws {
+        func descendants(_ view: UIView) -> [UIView] { view.subviews.flatMap { [$0] + descendants($0) } }
+        let panel = SearchFilterViewController(filter: BillFilter(query: "환경", status: .committee, favoriteOnly: true))
+        panel.loadViewIfNeeded()
+        let field = try XCTUnwrap(descendants(panel.view).first { $0.accessibilityIdentifier == "filter-committee" } as? UITextField)
+        var changes: [BillFilter] = []
+        panel.onChange = { changes.append($0) }
+        field.text = " 교육 "
+        panel.textFieldDidEndEditing(field)
+        XCTAssertEqual(changes.last?.committee, "교육")
+        let reset = try XCTUnwrap(descendants(panel.view).first { $0.accessibilityIdentifier == "filter-reset" } as? UIButton)
+        reset.sendActions(for: .touchUpInside)
+        XCTAssertEqual(changes.last, BillFilter(query: "환경"))
+        XCTAssertTrue(field.text?.isEmpty ?? true)
+        XCTAssertFalse(reset.isEnabled)
     }
 }

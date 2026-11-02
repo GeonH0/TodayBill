@@ -11,8 +11,8 @@ import UIKit
 protocol SearchViewDelegate: AnyObject {
     func deleteAll()
     func didSelectSearchTerm(_ term: String) // 검색어 선택
+    func showFilters(from sourceView: UIView)
     func retrySearch()
-    func showFilters()
 }
 
 final class SearchView: UIView {
@@ -82,10 +82,14 @@ final class SearchView: UIView {
             return outgoing
         }
         button.configuration = config
-        button.addAction(UIAction(handler: { [weak self] _ in
-            self?.delegate?.showFilters()
-        }), for: .touchUpInside)
+        button.addAction(UIAction { [weak self] _ in
+            guard let self else { return }
+            self.searchBar.resignFirstResponder()
+            self.delegate?.showFilters(from: self.filterButton)
+        }, for: .touchUpInside)
         button.accessibilityLabel = "검색 필터"
+        button.accessibilityIdentifier = "search-filter-button"
+        button.heightAnchor.constraint(greaterThanOrEqualToConstant: 44).isActive = true
         return button
     }()
 
@@ -248,8 +252,9 @@ final class SearchView: UIView {
         config?.title = filter.activeOptionCount == 0 ? "필터" : "필터 \(filter.activeOptionCount)"
         filterButton.configuration = config
         filterButton.accessibilityValue = filter.activeSummary
-        filterSummaryLabel.text = filter.activeSummary
+        filterSummaryLabel.text = filter.activeOptionCount == 0 ? nil : filter.activeSummary
     }
+
 
     /// Labels the loaded count without claiming a complete server-side match total.
     func updateResultCount(_ count: Int?) {
