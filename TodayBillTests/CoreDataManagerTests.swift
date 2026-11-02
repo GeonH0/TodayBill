@@ -729,6 +729,11 @@ final class HomeDayChangeTests: XCTestCase {
         NotificationCenter.default.post(name: UIApplication.significantTimeChangeNotification, object: nil)
         XCTAssertEqual(repository.dashboardRequests.count, 2)
         XCTAssertTrue(Calendar.current.isDateInToday(repository.dashboardRequests.last!))
+        let historical = Calendar.current.date(byAdding: .day, value: -7, to: Date())!
+        let selection = UICalendarSelectionSingleDate(delegate: controller)
+        controller.dateSelection(selection, didSelectDate: Calendar.current.dateComponents([.year, .month, .day], from: historical))
+        NotificationCenter.default.post(name: UIApplication.significantTimeChangeNotification, object: nil)
+        XCTAssertTrue(Calendar.current.isDate(repository.dashboardRequests.last!, inSameDayAs: historical))
     }
 
     func testOnlyTodaysVerifiedCountMakesAnOtherwiseEmptyDashboardVisible() {

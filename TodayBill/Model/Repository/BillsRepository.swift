@@ -113,7 +113,7 @@ final class BillRepository: BillRepositoryProtocol, FavoriteRefreshing {
                                   countUpdatedAt: dateIsToday ? previous?.todayProposalsUpdatedAt : nil,
                                   isUsingCache: true, failed: failed)
         }
-        if !forceRefresh && !cached.isEmpty,
+        if !forceRefresh && !cached.isEmpty && !Calendar.current.isDateInToday(date),
            previous?.todayProposalDate.map({ Calendar.current.isDateInToday($0) }) == true,
            previous?.todayProposalCount != nil {
             completion(.success(cachedSource(cached, failed: false)))

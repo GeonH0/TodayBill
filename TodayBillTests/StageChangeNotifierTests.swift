@@ -413,12 +413,16 @@ final class StageNotificationDeliveryTests: XCTestCase {
 private final class StubFavoriteRefresher: FavoriteRefreshing {
     var snapshots: [BillSnapshot]
     var result: Result<[BillSnapshot], Error>?
+    var readError: Error?
     var refreshCount = 0
     var holdRefresh = false
     var wasCancelled = false
     var refreshCompletion: ((Result<[BillSnapshot], Error>) -> Void)?
     init(_ snapshots: [BillSnapshot]) { self.snapshots = snapshots }
     func favoriteSnapshots() -> [BillSnapshot] { snapshots }
+    func favoriteSnapshotsResult() -> Result<[BillSnapshot], Error> {
+        readError.map { .failure($0) } ?? .success(snapshots)
+    }
     func refreshFavoriteSnapshots(cancellation: StageCheckCancellation, completion: @escaping (Result<[BillSnapshot], Error>) -> Void) {
         refreshCount += 1
         cancellation.onCancel { [weak self] in self?.wasCancelled = true }
@@ -974,7 +978,7 @@ extension WidgetProposalCountIntegrationTests {
         XCTAssertTrue(value.hasVisibleContent)
     }
 
-    func testCachedAndFailedHomeResultsPreserveTheCountSourceTimestamp() throws {
+    func testTodayCacheHitRefreshesCountAndFailedHomeResultPreservesItsSourceTimestamp() throws {
         ProposalCountURLProtocol.dates = Array(repeating: formatted(Date()), count: 14)
         ProposalCountURLProtocol.networkFails = false
         let configuration = URLSessionConfiguration.ephemeral
@@ -991,13 +995,14 @@ extension WidgetProposalCountIntegrationTests {
         let fresh = expectation(description: "fresh count source")
         repository.refreshHomeDashboard { result in first = try? result.get(); fresh.fulfill() }
         wait(for: [fresh], timeout: 3)
-        let sourceTime = try XCTUnwrap(first?.todayProposalsUpdatedAt)
+        var sourceTime = try XCTUnwrap(first?.todayProposalsUpdatedAt)
         let cached = expectation(description: "cached source time")
         repository.fetchHomeDashboard(date: Date()) { result in
             let value = try? result.get()
             XCTAssertEqual(value?.todayProposalCount, 14)
-            XCTAssertEqual(value?.todayProposalsUpdatedAt, sourceTime)
-            XCTAssertEqual(value?.isUsingCache, true)
+            XCTAssertGreaterThanOrEqual(value?.todayProposalsUpdatedAt ?? .distantPast, sourceTime)
+            sourceTime = value?.todayProposalsUpdatedAt ?? sourceTime
+            XCTAssertEqual(value?.isUsingCache, false)
             cached.fulfill()
         }
         wait(for: [cached], timeout: 3)
@@ -1053,6 +1058,43 @@ extension StageNotificationDeliveryTests {
             WidgetSnapshotUpdater.updateDashboard(HomeDashboard(todayProposalCount: 37, todayProposalDate: now,
                 todayProposalsUpdatedAt: now.addingTimeInterval(-3600)))
             XCTAssertNil(store.read()?.proposalCount(on: now), "Older cached data cannot undo invalidation")
+        }
+    }
+}
+
+extension StageNotificationDeliveryTests {
+    func testPreNotificationReadFailureIsReportedAndDoesNotSend() throws {
+        try withPreservedWidgetFile { _ in
+            let repository = StubFavoriteRefresher([changed("PRECHECK-FAIL")])
+            let center = StubStageNotificationCenter()
+            center.onAuthorization = { repository.readError = URLError(.cannotOpenFile) }
+            let notifier = makeNotifier(repository, center)
+            let done = expectation(description: "read failure propagated")
+            notifier.run(refresh: false) { result in
+                guard case .failure = result else { XCTFail("Read failure must not report success"); done.fulfill(); return }
+                done.fulfill()
+            }
+            wait(for: [done], timeout: 3)
+            XCTAssertTrue(center.requests.isEmpty)
+        }
+    }
+
+    func testInitialFavoriteReadFailurePreservesWidgetAndReportsError() throws {
+        try withPreservedWidgetFile { store in
+            let original = WidgetSnapshotBuilder.make(previous: nil, favorites: [changed("INITIAL-FAIL")], todayProposalCount: nil, now: Date())
+            XCTAssertTrue(store.write(original))
+            let repository = StubFavoriteRefresher([])
+            repository.readError = URLError(.cannotOpenFile)
+            let center = StubStageNotificationCenter()
+            let notifier = makeNotifier(repository, center)
+            let done = expectation(description: "initial read failed")
+            notifier.run(refresh: false) { result in
+                guard case .failure = result else { XCTFail("Read failure must propagate"); done.fulfill(); return }
+                done.fulfill()
+            }
+            wait(for: [done], timeout: 3)
+            XCTAssertEqual(store.read(), original)
+            XCTAssertTrue(center.requests.isEmpty)
         }
     }
 }

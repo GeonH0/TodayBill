@@ -11,7 +11,7 @@
 
 Environment: iPhone 17 Pro, iOS 26.3.1 Simulator, arm64, Debug.
 
-The app and embedded widget extension built successfully, and the app launched. The final full suite executed **117 tests: 117 passed, 0 expected failures, 0 failures, 0 skipped**. The previous seven expected-failure cases now assert correct behavior directly. Existing Core Data duplicate BillEntity model warnings remain in test logs.
+The app and embedded widget extension built successfully, and the app launched. The final full suite executed **119 tests: 119 passed, 0 expected failures, 0 failures, 0 skipped**. The previous seven expected-failure cases now assert correct behavior directly. Existing Core Data duplicate BillEntity model warnings remain in test logs.
 
 Coverage includes persistence/corruption/write failure, row ordering and limits, partial refresh with failed favorites preserved, actual repository removal/read mutations writing to the App Group, cache/source freshness, legacy cache migration, unknown versus confirmed-zero counts, proposal date rollover, malformed URLs, root restoration on repeated deep links, real window-hosted nonzero safe-area layout, touch sizing, and light/dark contrast including muted text.
 
@@ -51,6 +51,16 @@ CodeRabbit completed its review of `52efc1e` on 2026-11-02: six new Minor issues
 
 Eight additional regression tests cover these paths. All 117 tests pass with no expected failures. A further CodeRabbit review is requested after pushing these changes; its result is not implied by this local validation.
 
+## Third CodeRabbit pass
+
+[Review of 5d3d2b6](https://github.com/GeonH0/TodayBill/pull/30#pullrequestreview-5731707145) completed successfully. It posted no new inline issues and raised two Minor follow-up comments plus one Trivial coverage comment:
+
+- The pre-notification favorites recheck now uses Result and propagates read failure instead of silently skipping eligible notifications. The initial widget read also propagates failure. Tests confirm no notification is sent and the previous widget file is preserved on an initial read failure.
+- Loading today's dashboard now fetches the API even when Core Data already contains today-dated bills. Historical-date cache reads remain available when today's count metadata is valid; failed requests still keep their source timestamp and cached count.
+- The time-change test now selects a historical date and verifies that the notification preserves that selection, alongside the original today-date check.
+
+Final full suite: **119 passed, 0 expected failures, 0 failures, 0 skipped**. These follow-up fixes are committed separately and submitted for another review; the latest pushed commit should be checked before merging.
+
 ## Search-filter follow-up
 
 - Reset omits the committee filter.
@@ -66,7 +76,7 @@ See [the follow-up implementation plan](../plans/2026-11-02-search-filter-improv
 - The current proposal API request fetches at most 1,000 records. A full-size response does not establish the complete daily total, so it produces an unknown count rather than a potentially truncated number. Full pagination/server-count support remains future work.
 - Actual home-screen widget placement and widget taps are not visually verified. Earlier app-host renders are not equivalent to WidgetKit home-screen rendering.
 - Six-hour and midnight transitions are verified with deterministic model tests, not an elapsed wall-clock device run. Actual background scheduling, iOS 16.4 runtime behavior, and physical-device provisioning remain unverified.
-- Local final result bundle: `/tmp/todaybill-pr30-rereview-fixes-2026-11-02.xcresult` (not committed).
+- Local final result bundle: `/tmp/todaybill-pr30-final-followups-2026-11-02.xcresult` (not committed).
 
 ## Repeat the tests
 
