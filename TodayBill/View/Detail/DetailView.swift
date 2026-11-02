@@ -517,7 +517,7 @@ final class DetailView: UIView {
         config.background.cornerRadius = Theme.Radius.button
         config.contentInsets = NSDirectionalEdgeInsets(top: 0, leading: 16, bottom: 0, trailing: 16)
         config.baseBackgroundColor = url == nil ? Theme.fill : Theme.accent
-        config.baseForegroundColor = url == nil ? Theme.textMuted : .white
+        config.baseForegroundColor = url == nil ? Theme.textMuted : Theme.onAccent
         config.titleTextAttributesTransformer = UIConfigurationTextAttributesTransformer { incoming in
             var outgoing = incoming
             outgoing.font = Theme.Font.button

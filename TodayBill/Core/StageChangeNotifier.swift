@@ -47,10 +47,15 @@ final class StageCheckCancellation {
 
 protocol FavoriteRefreshing {
     func favoriteSnapshots() -> [BillSnapshot]
+    func favoriteSnapshotsResult() -> Result<[BillSnapshot], Error>
     func refreshFavoriteSnapshots(
         cancellation: StageCheckCancellation,
         completion: @escaping (Result<[BillSnapshot], Error>) -> Void
     )
+}
+
+extension FavoriteRefreshing {
+    func favoriteSnapshotsResult() -> Result<[BillSnapshot], Error> { .success(favoriteSnapshots()) }
 }
 
 /// A refresh failure can still carry changes fetched successfully for other bills.
@@ -151,10 +156,10 @@ final class StageChangeNotifier {
                     switch result {
                     case .success(let snapshots):
                         self.defaults.set(self.now(), forKey: Self.lastSuccessfulRefreshKey)
-                        self.deliver(snapshots, refreshError: nil, run: run)
+                        self.deliver(snapshots, refreshError: nil, run: run, refreshedIDs: Set(snapshots.map(\.billID)))
                     case .failure(let error):
                         if let partial = error as? FavoriteRefreshFailure {
-                            self.deliver(partial.refreshedSnapshots, refreshError: error, run: run)
+                            self.deliver(partial.refreshedSnapshots, refreshError: error, run: run, refreshedIDs: Set(partial.refreshedSnapshots.map(\.billID)))
                         } else {
                             self.finish(run, result: .failure(error))
                         }
@@ -182,8 +187,13 @@ final class StageChangeNotifier {
         activeRun === run && !run.cancellation.isCancelled
     }
 
-    private func deliver(_ snapshots: [BillSnapshot], refreshError: Error?, run: Run) {
+    private func deliver(_ snapshots: [BillSnapshot], refreshError: Error?, run: Run, refreshedIDs: Set<String> = []) {
         guard isActive(run) else { return }
+        // 포그라운드 진입과 BGAppRefreshTask가 모두 이 경로를 지난다. 앱을 열지 않아도 위젯이 갱신된다.
+        let favorites: [BillSnapshot]
+        do { favorites = try repository.favoriteSnapshotsResult().get() }
+        catch { finish(run, result: .failure(error)); return }
+        WidgetSnapshotUpdater.updateFavorites(favorites, refreshedIDs: refreshedIDs)
         let finalResult: Result<Void, Error> = refreshError.map { .failure($0) } ?? .success(())
         let keys = defaults.dictionary(forKey: Self.notifiedStageKeysDefaultsKey) as? [String: String] ?? [:]
         let candidates = Self.billsToNotify(from: snapshots, notifiedStageKeys: keys)
@@ -197,7 +207,9 @@ final class StageChangeNotifier {
                     return
                 }
                 // The user may have read/unfavorited a bill while the settings request was in flight.
-                let current = self.repository.favoriteSnapshots()
+                let current: [BillSnapshot]
+                do { current = try self.repository.favoriteSnapshotsResult().get() }
+                catch { self.finish(run, result: .failure(error)); return }
                 let toNotify = candidates.filter { candidate in
                     current.contains { $0.billID == candidate.billID && $0.stageKey == candidate.stageKey && $0.hasUnseenStageChange }
                 }
@@ -216,7 +228,9 @@ final class StageChangeNotifier {
                         }
                         // Scheduling has succeeded. Merge with current history, not the earlier copy.
                         var updatedKeys = self.defaults.dictionary(forKey: Self.notifiedStageKeysDefaultsKey) as? [String: String] ?? [:]
-                        let current = self.repository.favoriteSnapshots()
+                        let current: [BillSnapshot]
+                        do { current = try self.repository.favoriteSnapshotsResult().get() }
+                        catch { self.finish(run, result: .failure(error)); return }
                         for bill in toNotify where current.contains(where: {
                             $0.billID == bill.billID && $0.stageKey == bill.stageKey && $0.hasUnseenStageChange
                         }) {

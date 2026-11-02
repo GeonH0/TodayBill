@@ -204,6 +204,10 @@ enum HomeDashboardSection: String, Codable, CaseIterable {
 
 struct HomeDashboard: Codable, Equatable {
     var newProposals: [BillSnapshot]
+    /// Count and source date are separate from the ten-row preview and cache write time.
+    var todayProposalCount: Int?
+    var todayProposalDate: Date?
+    var todayProposalsUpdatedAt: Date?
     var stageChanges: [BillSnapshot]
     var hotBills: [HotBillSnapshot]
     var lawEnforcements: [LawEnforcementSnapshot]
@@ -214,6 +218,9 @@ struct HomeDashboard: Codable, Equatable {
 
     init(
         newProposals: [BillSnapshot] = [],
+        todayProposalCount: Int? = nil,
+        todayProposalDate: Date? = nil,
+        todayProposalsUpdatedAt: Date? = nil,
         stageChanges: [BillSnapshot] = [],
         hotBills: [HotBillSnapshot] = [],
         lawEnforcements: [LawEnforcementSnapshot] = [],
@@ -223,6 +230,9 @@ struct HomeDashboard: Codable, Equatable {
         failedSections: [HomeDashboardSection] = []
     ) {
         self.newProposals = newProposals
+        self.todayProposalCount = todayProposalCount
+        self.todayProposalDate = todayProposalDate
+        self.todayProposalsUpdatedAt = todayProposalsUpdatedAt
         self.stageChanges = stageChanges
         self.hotBills = hotBills
         self.lawEnforcements = lawEnforcements
@@ -233,7 +243,7 @@ struct HomeDashboard: Codable, Equatable {
     }
 
     var hasVisibleContent: Bool {
-        !newProposals.isEmpty ||
+        (todayProposalCount != nil && todayProposalDate.map { Calendar.current.isDateInToday($0) } == true) || !newProposals.isEmpty ||
             !stageChanges.isEmpty ||
             !hotBills.isEmpty ||
             !lawEnforcements.isEmpty ||

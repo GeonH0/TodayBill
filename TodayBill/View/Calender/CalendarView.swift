@@ -469,7 +469,8 @@ private final class HeadlineStatView: UIView {
     }
 
     func configure(with dashboard: HomeDashboard) {
-        countLabel.text = "\(dashboard.newProposals.count)"
+        let count = dashboard.todayProposalDate.flatMap { Calendar.current.isDateInToday($0) ? dashboard.todayProposalCount : nil }
+        countLabel.text = count.map(String.init) ?? "—"
         stageChangeStatView.configure(count: dashboard.stageChanges.count)
         enforcementStatView.configure(count: Self.upcomingLawCount(from: dashboard.lawEnforcements))
 
@@ -480,7 +481,7 @@ private final class HeadlineStatView: UIView {
             statusBadgeLabel.configure(text: "최신", style: .progress)
         }
 
-        accessibilityLabel = "오늘 발의 \(dashboard.newProposals.count)건"
+        accessibilityLabel = count.map { "오늘 발의 \($0)건" } ?? "오늘 발의 건수 미확인"
     }
 
     private static func upcomingLawCount(from enforcements: [LawEnforcementSnapshot]) -> Int {
@@ -604,7 +605,7 @@ private final class CommitteeBreakdownView: UIView {
 }
 
 private final class CommitteeBarRow: UIView {
-    /// Rank shades of the one accent - #1F5CD8 down to a pale tint, never a second hue.
+    /// Rank shades of charcoal, from the accent down to a pale neutral tint.
     private static let rankAlphas: [CGFloat] = [1.0, 0.72, 0.48, 0.28]
 
     init(name: String, count: Int, ratio: CGFloat, rank: Int) {

@@ -125,6 +125,11 @@ final class CoreDataManager {
     }
 
     func fetchFavoriteSnapshots() -> [BillSnapshot] {
+        (try? fetchFavoriteSnapshotsResult().get()) ?? []
+    }
+
+    /// Preserve fetch errors for paths that must distinguish failure from an empty list.
+    func fetchFavoriteSnapshotsResult() -> Result<[BillSnapshot], Error> {
         performContext {
             let request = BillEntity.fetchRequest()
             request.predicate = NSPredicate(format: "isFavorite == YES")
@@ -134,10 +139,9 @@ final class CoreDataManager {
             ]
 
             do {
-                return try context.fetch(request).map(BillSnapshot.init(entity:))
+                return .success(try context.fetch(request).map(BillSnapshot.init(entity:)))
             } catch {
-                print("즐겨찾기 fetch 실패: \(error)")
-                return []
+                return .failure(error)
             }
         }
     }

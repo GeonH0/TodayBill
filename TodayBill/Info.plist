@@ -28,6 +28,17 @@
 			</array>
 		</dict>
 	</dict>
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleURLName</key>
+			<string>Test.TodayBill</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>todaybill</string>
+			</array>
+		</dict>
+	</array>
 	<key>serviceKey</key>
 	<string>7e233d4fbea04f17b0e3218ccb604750</string>
 	<key>LawInfoServiceKey</key>

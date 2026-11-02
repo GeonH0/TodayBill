@@ -16,6 +16,15 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
         guard let windowScene = (scene as? UIWindowScene) else { return }
         window = UIWindow(windowScene: windowScene)
         AppInitializer.setupRootViewController(for: window)
+        // 앱이 꺼져 있을 때 위젯을 탭하면 여기로 들어온다.
+        if let url = connectionOptions.urlContexts.first?.url {
+            AppInitializer.handle(url: url)
+        }
+    }
+
+    func scene(_ scene: UIScene, openURLContexts URLContexts: Set<UIOpenURLContext>) {
+        guard let url = URLContexts.first?.url else { return }
+        AppInitializer.handle(url: url)
     }
 
     func sceneDidDisconnect(_ scene: UIScene) {

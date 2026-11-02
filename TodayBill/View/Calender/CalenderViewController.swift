@@ -8,7 +8,7 @@ import UIKit
 
 final class CalenderViewController: UIViewController {
     private let contentView = CalendarView()
-    private let viewModel = HomeViewModel()
+    private let viewModel: HomeViewModel
     private var todayListViewController: TodayBillsViewController!
     private var selectedDate: String?
     private var requestedDate: Date?
@@ -25,6 +25,13 @@ final class CalenderViewController: UIViewController {
         return label
     }()
 
+    init(viewModel: HomeViewModel = HomeViewModel()) {
+        self.viewModel = viewModel
+        super.init(nibName: nil, bundle: nil)
+    }
+
+    required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
+
     override func loadView() {
         view = contentView
         view.backgroundColor = Theme.backgroundColor
@@ -37,8 +44,18 @@ final class CalenderViewController: UIViewController {
         setupConstraints()
         setupDashboardActions()
         bindViewModel()
+        NotificationCenter.default.addObserver(self, selector: #selector(reloadAfterTimeChange),
+                                               name: UIApplication.significantTimeChangeNotification, object: nil)
         fetchBills(for: Date(), isInitialLoad: true)
     }
+
+    @objc private func reloadAfterTimeChange() {
+        // Keep a user-selected calendar date while refreshing the today-based dashboard.
+        fetchBills(for: isUserSelectingDate ? (requestedDate ?? Date()) : Date(),
+                   isInitialLoad: !isUserSelectingDate)
+    }
+
+    deinit { NotificationCenter.default.removeObserver(self) }
 
     override func viewDidLayoutSubviews() {
         super.viewDidLayoutSubviews()
@@ -101,6 +118,7 @@ final class CalenderViewController: UIViewController {
             case .loaded(let dashboard):
                 self.currentDashboard = dashboard
                 self.contentView.updateDashboard(dashboard)
+                WidgetSnapshotUpdater.updateDashboard(dashboard)
                 let snapshots = self.selectedSnapshots(from: dashboard)
                 if let requestedDateString = self.formattedDate(self.requestedDate), self.isUserSelectingDate {
                     self.selectedDate = requestedDateString
