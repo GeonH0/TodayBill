@@ -20,6 +20,7 @@ struct BillSearchPage {
     let snapshots: [BillSnapshot]
     let hasMore: Bool
     var isUsingCache = false
+    var totalCount: Int? = nil
 }
 
 protocol BillRepositoryProtocol {
@@ -253,7 +254,7 @@ final class BillRepository: BillRepositoryProtocol, FavoriteRefreshing {
                 self.coreDataManager.saveSnapshots(response.rows.map(BillSnapshot.init(row:)))
                 let snapshots = response.rows.compactMap { self.coreDataManager.fetchSnapshot(id: $0.BILL_ID) }
                     .filter { $0.matches(filter: filter) }
-                completion(.success(BillSearchPage(snapshots: BillSnapshot.sort(snapshots, order: filter.sortOrder), hasMore: response.hasMore)))
+                completion(.success(BillSearchPage(snapshots: BillSnapshot.sort(snapshots, order: filter.sortOrder), hasMore: response.hasMore, totalCount: response.totalCount)))
             case .failure(let error):
                 // Cached matches are a labelled first-page fallback, never another network page.
                 let cached = page == 1 ? self.coreDataManager.searchSnapshots(filter: filter) : []
@@ -572,6 +573,8 @@ enum SearchPaginationState: Equatable {
 final class SearchViewModel {
     private let repository: BillRepositoryProtocol
     private(set) var filter = BillFilter()
+    private(set) var totalCount: Int?
+    private(set) var isUsingCache = false
     /// Last successfully received page; failed pages do not advance this cursor.
     private(set) var currentPage = 0
     private(set) var canLoadMore = true
@@ -593,6 +596,8 @@ final class SearchViewModel {
         isLoading = false
         currentPage = 0
         results = []
+        totalCount = nil
+        isUsingCache = false
         canLoadMore = true
         recordedSearch = false
         self.filter = filter
@@ -610,6 +615,8 @@ final class SearchViewModel {
             currentPage = 0
             canLoadMore = true
             results = []
+            totalCount = nil
+            isUsingCache = false
             recordedSearch = false
             onPaginationChange?(.hidden)
             onStateChange?(.loading("검색 중입니다."))
@@ -633,7 +640,15 @@ final class SearchViewModel {
                 case .success(let response):
                     self.currentPage = page
                     self.canLoadMore = response.hasMore
+                    self.isUsingCache = response.isUsingCache
                     self.results = BillSnapshot.sort(self.mergeUnique(self.results + response.snapshots), order: requestFilter.sortOrder)
+                    // The API total applies to the name query, before local filters.
+                    let locallyFiltered = requestFilter.dateRange != .all || requestFilter.status != nil
+                        || !(requestFilter.committee?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ?? true)
+                        || requestFilter.favoriteOnly
+                    self.totalCount = response.isUsingCache ? nil : (locallyFiltered
+                        ? (response.hasMore ? nil : self.results.count)
+                        : (response.totalCount ?? self.totalCount))
                     if self.results.isEmpty && response.hasMore {
                         // Empty filtered pages do not end the search or require an impossible scroll.
                         self.loadNextPageIfNeeded()
@@ -663,6 +678,8 @@ final class SearchViewModel {
         currentPage = 0
         canLoadMore = true
         results = []
+        totalCount = nil
+        isUsingCache = false
         recordedSearch = false
         onPaginationChange?(.hidden)
         onStateChange?(.idle)
@@ -674,11 +691,26 @@ final class SearchViewModel {
     }
 }
 
-final class FavoritesViewModel {
-    private let repository: BillRepository
-    var onStateChange: ((ViewState<[BillTrackingSection]>) -> Void)?
+protocol FavoritesRepositoryProtocol {
+    func favoriteSnapshots() -> [BillSnapshot]
+    func refreshFavoriteSnapshots(completion: @escaping (Result<[BillSnapshot], Error>) -> Void)
+    func toggleFavorite(id: String, completion: @escaping (Result<BillSnapshot, Error>) -> Void)
+    func markStageSeen(id: String)
+}
 
-    init(repository: BillRepository = .shared) {
+extension BillRepository: FavoritesRepositoryProtocol {}
+
+enum FavoritesViewState {
+    case idle, loading(String), loaded([BillTrackingSection]), empty(String), error(String)
+    case cached([BillTrackingSection], warning: String)
+}
+
+final class FavoritesViewModel {
+    private let repository: FavoritesRepositoryProtocol
+    private var refreshWarning: String?
+    var onStateChange: ((FavoritesViewState) -> Void)?
+
+    init(repository: FavoritesRepositoryProtocol = BillRepository.shared) {
         self.repository = repository
     }
 
@@ -689,17 +721,24 @@ final class FavoritesViewModel {
             DispatchQueue.main.async {
                 switch result {
                 case .success(let snapshots):
+                    guard let self else { return }
+                    if refresh { self.refreshWarning = nil }
                     let sections = BillRepository.makeTrackingSections(from: snapshots)
-                    sections.isEmpty
-                    ? self?.onStateChange?(.empty("즐겨찾기한 법안이 없습니다.\n관심 있는 법안의 별을 눌러 저장해보세요."))
-                    : self?.onStateChange?(.loaded(sections))
+                    if sections.isEmpty {
+                        self.onStateChange?(.empty("즐겨찾기한 법안이 없습니다.\n관심 있는 법안의 별을 눌러 저장해보세요."))
+                    } else if let warning = self.refreshWarning {
+                        self.onStateChange?(.cached(sections, warning: warning))
+                    } else {
+                        self.onStateChange?(.loaded(sections))
+                    }
                 case .failure(let error):
-                    // Offline display is separate from a successful background refresh.
+                    let warning = "새로고침하지 못해 저장된 정보를 표시합니다. 진행 상태가 최신이 아닐 수 있습니다. 다시 새로고침해 주세요."
+                    self?.refreshWarning = warning
                     let cached = self?.repository.favoriteSnapshots() ?? []
                     if cached.isEmpty {
                         self?.onStateChange?(.error(error.localizedDescription))
                     } else {
-                        self?.onStateChange?(.loaded(BillRepository.makeTrackingSections(from: cached)))
+                        self?.onStateChange?(.cached(BillRepository.makeTrackingSections(from: cached), warning: warning))
                     }
                 }
             }

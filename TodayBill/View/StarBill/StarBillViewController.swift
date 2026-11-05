@@ -9,6 +9,7 @@ import UIKit
 
 final class StarBillViewController: UIViewController {
     private let viewModel = FavoritesViewModel()
+    private var refreshWarning: String?
     private var sections: [BillTrackingSection] = []
 
     private let tableView: UITableView = {
@@ -122,6 +123,15 @@ final class StarBillViewController: UIViewController {
                 self.statusStackView.isHidden = false
                 self.loadingIndicator.startAnimating()
             case .loaded(let sections):
+                self.refreshWarning = nil
+                self.sections = sections
+                self.updateHeader()
+                self.tableView.reloadData()
+                self.statusStackView.isHidden = true
+                self.loadingIndicator.stopAnimating()
+                self.tableView.isHidden = false
+            case .cached(let sections, let warning):
+                self.refreshWarning = warning
                 self.sections = sections
                 self.updateHeader()
                 self.tableView.reloadData()
@@ -129,6 +139,7 @@ final class StarBillViewController: UIViewController {
                 self.loadingIndicator.stopAnimating()
                 self.tableView.isHidden = false
             case .empty(let message):
+                self.refreshWarning = nil
                 self.sections = []
                 self.updateHeader()
                 self.tableView.reloadData()
@@ -153,7 +164,7 @@ final class StarBillViewController: UIViewController {
     }
 
     private func updateHeader() {
-        headerView.configure(with: sections.flatMap { $0.snapshots })
+        headerView.configure(with: sections.flatMap { $0.snapshots }, warning: refreshWarning)
         layoutHeader(force: true)
     }
 
@@ -234,7 +245,7 @@ extension StarBillViewController: UITableViewDataSource, UITableViewDelegate {
 }
 
 /// 관심 법안 헤더: 화면 제목 · 한 줄 요약, 그리고 이번 주 변동을 담은 잉크 카드 하나.
-private final class TrackingHeaderView: UIView {
+final class TrackingHeaderView: UIView {
     private let titleLabel: UILabel = {
         let label = UILabel()
         label.text = "관심 법안"
@@ -267,6 +278,16 @@ private final class TrackingHeaderView: UIView {
         return label
     }()
 
+    private let refreshWarningLabel: UILabel = {
+        let label = UILabel()
+        label.font = Theme.Font.rowLabel
+        label.textColor = Theme.onInkPrimary
+        label.numberOfLines = 0
+        label.isHidden = true
+        label.accessibilityIdentifier = "favoritesRefreshWarning"
+        return label
+    }()
+
     private let highlightCardView: UIView = {
         let view = UIView()
         view.backgroundColor = Theme.inkSurface
@@ -288,7 +309,7 @@ private final class TrackingHeaderView: UIView {
     private func setupView() {
         backgroundColor = Theme.backgroundColor
 
-        let highlightStack = UIStackView(arrangedSubviews: [highlightCaptionLabel, highlightMessageLabel])
+        let highlightStack = UIStackView(arrangedSubviews: [highlightCaptionLabel, highlightMessageLabel, refreshWarningLabel])
         highlightStack.axis = .vertical
         highlightStack.spacing = 2
         highlightStack.translatesAutoresizingMaskIntoConstraints = false
@@ -318,7 +339,9 @@ private final class TrackingHeaderView: UIView {
         ])
     }
 
-    func configure(with snapshots: [BillSnapshot]) {
+    func configure(with snapshots: [BillSnapshot], warning: String?) {
+        refreshWarningLabel.text = warning
+        refreshWarningLabel.isHidden = warning == nil
         let total = snapshots.count
         let inProgress = snapshots.filter { $0.stage != .completed && $0.stage != .unknown }.count
         subtitleLabel.text = total == 0

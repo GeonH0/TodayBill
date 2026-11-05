@@ -256,11 +256,14 @@ final class SearchView: UIView {
     }
 
 
-    /// Labels the loaded count without claiming a complete server-side match total.
-    func updateResultCount(_ count: Int?) {
+    func updateResultCount(_ count: Int?, total: Int? = nil, isUsingCache: Bool = false) {
         resultTitleLabel.isHidden = count == nil
         resultCountLabel.isHidden = count == nil
-        resultCountLabel.text = count.map { "불러온 \($0)건" }
+        resultCountLabel.text = count.map { loaded in
+            if isUsingCache { return "저장된 \(loaded)건" }
+            if let total { return "전체 \(total)건" }
+            return "불러온 \(loaded)건"
+        }
     }
 
     // MARK: - Private Setup Methods

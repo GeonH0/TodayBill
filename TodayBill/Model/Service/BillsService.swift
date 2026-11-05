@@ -17,6 +17,7 @@ enum OpenAssemblyAPIClientError: Error {
 struct BillRowsPage {
     let rows: [Row]
     let hasMore: Bool
+    var totalCount: Int? = nil
 }
 
 final class OpenAssemblyAPIClient {
@@ -118,7 +119,7 @@ final class OpenAssemblyAPIClient {
                     guard empty.RESULT.CODE == "INFO-200" else {
                         throw OpenAssemblyAPIClientError.serviceError(empty.RESULT.CODE)
                     }
-                    completion(.success(BillRowsPage(rows: [], hasMore: false))); return
+                    completion(.success(BillRowsPage(rows: [], hasMore: false, totalCount: 0))); return
                 }
                 let response = try JSONDecoder().decode(Bills.self, from: data)
                 let heads = response.nzmimeepazxkubdpn.flatMap { $0.head ?? [] }
@@ -128,7 +129,7 @@ final class OpenAssemblyAPIClient {
                 let rows = response.nzmimeepazxkubdpn.flatMap { $0.row ?? [] }
                 let total = heads.compactMap(\.list_total_count).first
                 let hasMore = !rows.isEmpty && (total.map { page * size < $0 } ?? (rows.count >= size))
-                completion(.success(BillRowsPage(rows: rows, hasMore: hasMore)))
+                completion(.success(BillRowsPage(rows: rows, hasMore: hasMore, totalCount: total)))
             } catch { completion(.failure(error)) }
         }
         task.resume()

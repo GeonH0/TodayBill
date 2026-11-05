@@ -842,10 +842,28 @@ final class SearchPageMetadataTests: XCTestCase {
     func testTotalMetadataControlsPaginationBeforeClientFiltering() throws {
         try respond(rows: 1, total: 201)
         XCTAssertTrue(try page().hasMore)
+        XCTAssertEqual(try page().totalCount, 201)
         XCTAssertFalse(try page(3).hasMore)
     }
+    func testRepositoryPreservesTotalThroughSnapshotMapping() throws {
+        try respond(rows: 100, total: 312)
+        let repository = BillRepository(apiClient: OpenAssemblyAPIClient(session: session), coreDataManager: .makeInMemory())
+        let done = expectation(description: "repository total")
+        repository.searchPage(filter: BillFilter(query: "환경"), page: 1) { result in
+            do {
+                let value = try result.get()
+                XCTAssertEqual(value.totalCount, 312)
+                XCTAssertEqual(value.snapshots.count, 100)
+                XCTAssertTrue(value.hasMore)
+            } catch { XCTFail("\(error)") }
+            done.fulfill()
+        }
+        wait(for: [done], timeout: 3)
+    }
+
     func testMissingTotalUsesRawPageSizeInsteadOfFilteredCount() throws {
         try respond(rows: 100)
+        XCTAssertNil(try page().totalCount)
         XCTAssertTrue(try page().hasMore)
         try respond(rows: 1)
         XCTAssertFalse(try page().hasMore)
@@ -854,6 +872,7 @@ final class SearchPageMetadataTests: XCTestCase {
         SearchPageURLProtocol.data = Data(#"{"RESULT":{"CODE":"INFO-200","MESSAGE":"no data"}}"#.utf8)
         let value = try page()
         XCTAssertTrue(value.rows.isEmpty)
+        XCTAssertEqual(value.totalCount, 0)
         XCTAssertFalse(value.hasMore)
     }
     func testServiceErrorIsNotTreatedAsNoMatches() throws {
@@ -1009,5 +1028,143 @@ extension SearchFilterRegressionTests {
         XCTAssertEqual(changes.last, BillFilter(query: "환경"))
         XCTAssertTrue(field.text?.isEmpty ?? true)
         XCTAssertFalse(reset.isEnabled)
+    }
+}
+
+final class SearchTotalCountTests: XCTestCase {
+    private func drain() {
+        let done = expectation(description: "main queue")
+        DispatchQueue.main.async { done.fulfill() }
+        wait(for: [done], timeout: 2)
+    }
+
+    func testServerTotalStaysStableAcrossPagesAndResetsForNewSearch() {
+        let repository = MockBillRepository(dashboardResult: .success(HomeDashboard()))
+        repository.pageOverrides[1] = .success(BillSearchPage(snapshots: [BillSnapshot(billID: "A", age: 22, title: "환경")], hasMore: true, totalCount: 312))
+        repository.pageOverrides[2] = .success(BillSearchPage(snapshots: [BillSnapshot(billID: "B", age: 22, title: "환경")], hasMore: true, totalCount: 312))
+        let model = SearchViewModel(repository: repository)
+        model.search(query: "환경")
+        drain()
+        XCTAssertEqual(model.totalCount, 312)
+        model.loadNextPageIfNeeded()
+        drain()
+        XCTAssertEqual(model.totalCount, 312)
+        model.clearResults()
+        XCTAssertNil(model.totalCount)
+        repository.holdSearch = true
+        repository.pageOverrides = [:]
+        model.search(query: "교육")
+        XCTAssertNil(model.totalCount)
+    }
+
+    func testLocalFilterDoesNotExposeUnfilteredServerTotal() {
+        let repository = MockBillRepository(dashboardResult: .success(HomeDashboard()))
+        repository.pageOverrides[1] = .success(BillSearchPage(snapshots: [BillSnapshot(billID: "A", age: 22, title: "환경")], hasMore: true, totalCount: 312))
+        repository.pageOverrides[2] = .success(BillSearchPage(snapshots: [], hasMore: false, totalCount: 312))
+        let model = SearchViewModel(repository: repository)
+        model.updateFilter(BillFilter(query: "환경", favoriteOnly: true))
+        model.search()
+        drain()
+        XCTAssertNil(model.totalCount)
+        model.loadNextPageIfNeeded()
+        drain()
+        XCTAssertEqual(model.totalCount, 1)
+    }
+
+    func testCacheFallbackNeverClaimsAConfirmedTotal() {
+        let repository = MockBillRepository(dashboardResult: .success(HomeDashboard()))
+        repository.pageOverrides[1] = .success(BillSearchPage(snapshots: [BillSnapshot(billID: "A", age: 22, title: "환경")], hasMore: false, isUsingCache: true))
+        let model = SearchViewModel(repository: repository)
+        model.search(query: "환경")
+        drain()
+        XCTAssertNil(model.totalCount)
+        XCTAssertTrue(model.isUsingCache)
+    }
+}
+
+private final class FavoritesStateRepository: FavoritesRepositoryProtocol {
+    var snapshots = [BillSnapshot(billID: "CACHED", age: 22, title: "환경", isFavorite: true)]
+    var result: Result<[BillSnapshot], Error> = .failure(URLError(.notConnectedToInternet))
+    func favoriteSnapshots() -> [BillSnapshot] { snapshots }
+    func refreshFavoriteSnapshots(completion: @escaping (Result<[BillSnapshot], Error>) -> Void) { completion(result) }
+    func toggleFavorite(id: String, completion: @escaping (Result<BillSnapshot, Error>) -> Void) {}
+    func markStageSeen(id: String) {}
+}
+
+final class FavoritesRefreshStateTests: XCTestCase {
+    private func drain() {
+        let done = expectation(description: "main queue")
+        DispatchQueue.main.async { done.fulfill() }
+        wait(for: [done], timeout: 2)
+    }
+
+    func testFailedRefreshKeepsCachedBillsAndWarningUntilSuccessfulRefresh() {
+        let repository = FavoritesStateRepository()
+        let model = FavoritesViewModel(repository: repository)
+        var cachedCount = 0
+        var loadedCount = 0
+        model.onStateChange = {
+            if case .cached(let sections, let warning) = $0 {
+                XCTAssertEqual(sections.flatMap(\.snapshots).map(\.billID), ["CACHED"])
+                XCTAssertFalse(warning.isEmpty)
+                cachedCount += 1
+            }
+            if case .loaded = $0 { loadedCount += 1 }
+        }
+        model.load(refresh: true)
+        drain()
+        XCTAssertEqual(cachedCount, 1)
+        XCTAssertEqual(loadedCount, 0)
+        model.load(refresh: false)
+        drain()
+        XCTAssertEqual(cachedCount, 2, "Returning from detail must preserve the failed refresh warning")
+        repository.result = .success(repository.snapshots)
+        model.load(refresh: true)
+        drain()
+        XCTAssertEqual(loadedCount, 1)
+        model.load(refresh: false)
+        drain()
+        XCTAssertEqual(loadedCount, 2)
+    }
+
+    func testFailureWithoutCacheEmitsError() {
+        let repository = FavoritesStateRepository()
+        repository.snapshots = []
+        let model = FavoritesViewModel(repository: repository)
+        var failed = false
+        model.onStateChange = { if case .error = $0 { failed = true } }
+        model.load(refresh: true)
+        drain()
+        XCTAssertTrue(failed)
+    }
+}
+
+@MainActor
+final class ResultFreshnessRenderingTests: XCTestCase {
+    private func labels(in view: UIView) -> [UILabel] {
+        view.subviews.flatMap { child in (child as? UILabel).map { [$0] } ?? labels(in: child) }
+    }
+
+    func testSearchCountDistinguishesTotalLoadedAndCached() {
+        let view = SearchView()
+        view.updateResultCount(100, total: 312)
+        XCTAssertTrue(labels(in: view).contains { $0.text == "전체 312건" && !$0.isHidden })
+        view.updateResultCount(100)
+        XCTAssertTrue(labels(in: view).contains { $0.text == "불러온 100건" && !$0.isHidden })
+        view.updateResultCount(3, isUsingCache: true)
+        XCTAssertTrue(labels(in: view).contains { $0.text == "저장된 3건" && !$0.isHidden })
+    }
+
+    func testFavoritesHeaderKeepsWarningBesideTrackedStatusAndClearsOnRecovery() throws {
+        let header = TrackingHeaderView()
+        let snapshots = [BillSnapshot(billID: "A", age: 22, title: "환경", isFavorite: true)]
+        header.configure(with: snapshots, warning: "새로고침하지 못해 저장된 정보를 표시합니다.")
+        let warning = try XCTUnwrap(labels(in: header).first { $0.accessibilityIdentifier == "favoritesRefreshWarning" })
+        XCTAssertFalse(warning.isHidden)
+        XCTAssertEqual(warning.numberOfLines, 0)
+        XCTAssertTrue(labels(in: header).contains { $0.text == "확인하지 않은 단계 변경이 없습니다" })
+        header.configure(with: snapshots, warning: nil)
+        XCTAssertTrue(warning.isHidden)
+        XCTAssertNil(warning.text)
     }
 }

@@ -89,13 +89,13 @@ final class SearchViewController: UIViewController {
                 self.contentView.showLoadingState(message)
             case .loaded(let snapshots):
                 self.searchResultsViewController.updateResults(snapshots)
-                self.contentView.updateResultCount(snapshots.count)
+                self.contentView.updateResultCount(snapshots.count, total: self.viewModel.totalCount, isUsingCache: self.viewModel.isUsingCache)
                 self.contentView.showIdleState()
                 self.contentView.setResultsVisible(true)
                 self.searchResultsViewController.view.isHidden = false
             case .empty(let message):
                 self.searchResultsViewController.updateResults([BillSnapshot]())
-                self.contentView.updateResultCount(0)
+                self.contentView.updateResultCount(0, total: self.viewModel.totalCount, isUsingCache: self.viewModel.isUsingCache)
                 self.contentView.showIdleState()
                 self.contentView.setResultsVisible(true)
                 self.searchResultsViewController.setEmptyMessage(message)
