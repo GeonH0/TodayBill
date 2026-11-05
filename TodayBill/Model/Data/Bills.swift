@@ -387,9 +387,9 @@ struct BillDateRange: Codable, Equatable {
 
     static let all = BillDateRange(start: nil, end: nil)
 
-    static func recent(days: Int, calendar: Calendar = .current) -> BillDateRange {
-        let end = Date()
-        return BillDateRange(start: calendar.date(byAdding: .day, value: -days, to: end), end: end)
+    static func recent(days: Int, calendar: Calendar = .current, now: Date = Date()) -> BillDateRange {
+        let end = calendar.startOfDay(for: now)
+        return BillDateRange(start: calendar.date(byAdding: .day, value: -(max(1, days) - 1), to: end), end: end)
     }
 
     var title: String {
@@ -438,6 +438,13 @@ struct BillFilter: Codable, Equatable {
 
     var normalizedQuery: String {
         query.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    mutating func resetOptions() { self = BillFilter(query: query) }
+
+    var activeOptionCount: Int {
+        [status != nil, !(committee?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ?? true),
+         favoriteOnly, dateRange != .all, sortOrder != .latest].filter { $0 }.count
     }
 
     var activeSummary: String {
@@ -1120,10 +1127,10 @@ struct BillSnapshot: Codable, Equatable, Identifiable {
 
         if filter.dateRange.start != nil || filter.dateRange.end != nil {
             guard let proposedDateValue else { return false }
-            if let start = filter.dateRange.start, proposedDateValue < start {
+            if let start = filter.dateRange.start, Calendar.current.startOfDay(for: proposedDateValue) < Calendar.current.startOfDay(for: start) {
                 return false
             }
-            if let end = filter.dateRange.end, proposedDateValue > end {
+            if let end = filter.dateRange.end, Calendar.current.startOfDay(for: proposedDateValue) > Calendar.current.startOfDay(for: end) {
                 return false
             }
         }

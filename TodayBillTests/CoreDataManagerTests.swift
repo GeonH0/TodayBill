@@ -536,6 +536,8 @@ final class CoreDataManagerTests: XCTestCase {
 
 private final class MockBillRepository: BillRepositoryProtocol {
     var dashboardRequests: [Date] = []
+    var pageOverrides: [Int: Result<BillSearchPage, Error>] = [:]
+    var requestHandles: [MockSearchRequest] = []
     var holdSearch = false
     var searchRequests: [(BillFilter, Int)] = []
     var pendingSearchCompletions: [(Result<[BillSnapshot], Error>) -> Void] = []
@@ -569,6 +571,18 @@ private final class MockBillRepository: BillRepositoryProtocol {
 
     func refreshHomeDashboard(completion: @escaping (Result<HomeDashboard, Error>) -> Void) {
         completion(dashboardResult)
+    }
+
+    func searchPage(filter: BillFilter, page: Int, completion: @escaping (Result<BillSearchPage, Error>) -> Void) -> SearchRequestCancelling? {
+        let request = MockSearchRequest()
+        requestHandles.append(request)
+        if let result = pageOverrides[page] {
+            searchRequests.append((filter, page))
+            completion(result)
+        } else {
+            searchBills(filter: filter, page: page) { completion($0.map { BillSearchPage(snapshots: $0, hasMore: !$0.isEmpty) }) }
+        }
+        return request
     }
 
     func searchBills(filter: BillFilter, page: Int, completion: @escaping (Result<[BillSnapshot], Error>) -> Void) {
@@ -610,98 +624,152 @@ private final class MockBillRepository: BillRepositoryProtocol {
 }
 
 
-/// Diagnostic tests pin the observed defects; they are not assertions of desired behavior.
-final class SearchFilterInspectionTests: XCTestCase {
-    func testReproducesFilterChangeBeingDroppedWhileOldSearchIsLoading() {
+/// Regression coverage for request ownership, filtered pagination, and compact filter selection.
+final class SearchFilterRegressionTests: XCTestCase {
+    private func drain() {
+        let done = expectation(description: "main queue drained")
+        DispatchQueue.main.async { done.fulfill() }
+        wait(for: [done], timeout: 2)
+    }
+
+    func testFilterChangeStartsANewRequestAndIgnoresOldResults() {
         let repository = MockBillRepository(dashboardResult: .success(HomeDashboard()))
         repository.holdSearch = true
         let model = SearchViewModel(repository: repository)
         model.search(query: "환경")
-        var newFilter = model.filter
-        newFilter.status = .completed
-        model.updateFilter(newFilter)
-        model.search(reset: true)
-        XCTAssertEqual(repository.searchRequests.count, 1, "The new filter request was dropped")
-        let done = expectation(description: "stale result under new filter")
-        model.onStateChange = { state in
-            if case .loaded(let snapshots) = state {
-                XCTAssertEqual(model.filter.status, .completed)
-                XCTAssertFalse(snapshots[0].matches(filter: model.filter))
-                done.fulfill()
-            }
-        }
-        repository.pendingSearchCompletions[0](.success([BillSnapshot(billID: "QA-OLD", age: 22, title: "환경 법안")]))
-        wait(for: [done], timeout: 2)
+        var filter = model.filter
+        filter.status = .completed
+        model.updateFilter(filter)
+        model.search()
+        XCTAssertEqual(repository.searchRequests.count, 2)
+        var loaded: [[String]] = []
+        model.onStateChange = { if case .loaded(let values) = $0 { loaded.append(values.map(\.billID)) } }
+        repository.pendingSearchCompletions[1](.success([BillSnapshot(billID: "NEW", age: 22, title: "환경", procResult: "가결")]))
+        repository.pendingSearchCompletions[0](.success([BillSnapshot(billID: "OLD", age: 22, title: "환경")]))
+        drain()
+        XCTAssertEqual(loaded, [["NEW"]])
+        XCTAssertEqual(model.filter.status, .completed)
     }
 
-    func testReproducesClearedSearchBeingReplacedByLateResults() {
+    func testClearedSearchIgnoresLateSuccessAndDoesNotRecordRecentTerm() {
         let repository = MockBillRepository(dashboardResult: .success(HomeDashboard()))
         repository.holdSearch = true
         let model = SearchViewModel(repository: repository)
+        var loaded = false
+        var recentTerms: [String] = []
+        model.onStateChange = { if case .loaded = $0 { loaded = true } }
+        model.onSearchCompleted = { recentTerms.append($0) }
         model.search(query: "환경")
         model.clearResults()
+        repository.pendingSearchCompletions[0](.success([BillSnapshot(billID: "LATE", age: 22, title: "환경")]))
+        drain()
+        XCTAssertFalse(loaded)
+        XCTAssertTrue(recentTerms.isEmpty)
         XCTAssertTrue(model.filter.normalizedQuery.isEmpty)
-        let done = expectation(description: "late result resurrects cleared search")
-        model.onStateChange = { state in
-            if case .loaded(let snapshots) = state {
-                XCTAssertTrue(model.filter.normalizedQuery.isEmpty)
-                XCTAssertEqual(snapshots.first?.billID, "QA-LATE")
-                done.fulfill()
-            }
-        }
-        repository.pendingSearchCompletions[0](.success([BillSnapshot(billID: "QA-LATE", age: 22, title: "환경 법안")]))
-        wait(for: [done], timeout: 2)
+        XCTAssertEqual(model.currentPage, 0)
     }
 
-    func testReproducesFilteredEmptyFirstPageHidingMatchingSecondPage() {
+    func testLateOldErrorCannotEndNewSearchLoading() {
+        let repository = MockBillRepository(dashboardResult: .success(HomeDashboard()))
+        repository.holdSearch = true
+        let model = SearchViewModel(repository: repository)
+        model.search(query: "이전")
+        model.search(query: "현재")
+        var errorShown = false
+        model.onStateChange = { if case .error = $0 { errorShown = true } }
+        repository.pendingSearchCompletions[0](.failure(URLError(.timedOut)))
+        drain()
+        model.loadNextPageIfNeeded()
+        XCTAssertEqual(repository.searchRequests.count, 2, "The current request must still own the loading flag")
+        XCTAssertFalse(errorShown)
+        repository.pendingSearchCompletions[1](.success([]))
+        drain()
+    }
+
+    func testFilteredEmptyFirstPageAutomaticallyContinuesToMatchingSecondPage() {
         let configuration = URLSessionConfiguration.ephemeral
         configuration.protocolClasses = [FilterPagingURLProtocol.self]
         let session = URLSession(configuration: configuration)
         defer { session.invalidateAndCancel() }
-        let repository = BillRepository(apiClient: OpenAssemblyAPIClient(session: session), coreDataManager: CoreDataManager.makeInMemory())
+        let repository = BillRepository(apiClient: OpenAssemblyAPIClient(session: session), coreDataManager: .makeInMemory())
         let model = SearchViewModel(repository: repository)
-        let filter = BillFilter(query: "환경", status: .completed)
-        model.updateFilter(filter)
-        let empty = expectation(description: "first raw page filtered to zero")
+        model.updateFilter(BillFilter(query: "환경", status: .completed))
+        let done = expectation(description: "page two match")
         model.onStateChange = { state in
-            if case .empty = state { empty.fulfill() }
+            if case .loaded(let values) = state {
+                XCTAssertEqual(values.map(\.billID), ["QA-MATCH"])
+                done.fulfill()
+            }
+            if case .empty = state { XCTFail("Filtered page one is not the end of the raw results") }
         }
         model.search()
-        wait(for: [empty], timeout: 3)
+        wait(for: [done], timeout: 5)
+        XCTAssertEqual(model.currentPage, 2)
         XCTAssertFalse(model.canLoadMore)
+    }
+
+    func testPaginationFailureKeepsResultsAndRetriesTheSamePage() {
+        let repository = MockBillRepository(dashboardResult: .success(HomeDashboard()))
+        repository.pageOverrides[1] = .success(BillSearchPage(snapshots: [BillSnapshot(billID: "A", age: 22, title: "환경")], hasMore: true))
+        repository.pageOverrides[2] = .failure(URLError(.notConnectedToInternet))
+        let model = SearchViewModel(repository: repository)
+        model.search(query: "환경")
+        drain()
         model.loadNextPageIfNeeded()
-        XCTAssertEqual(model.currentPage, 1, "No second page requested by the model")
-        let next = expectation(description: "matching data exists on page two")
-        repository.searchBills(filter: filter, page: 2) { result in
-            switch result {
-            case .success(let snapshots): XCTAssertEqual(snapshots.map(\.billID), ["QA-MATCH"])
-            case .failure(let error): XCTFail("\(error)")
-            }
-            next.fulfill()
-        }
-        wait(for: [next], timeout: 3)
+        drain()
+        XCTAssertEqual(model.currentPage, 1)
+        XCTAssertTrue(model.canLoadMore)
+        repository.pageOverrides[2] = .success(BillSearchPage(snapshots: [BillSnapshot(billID: "B", age: 22, title: "환경")], hasMore: false))
+        var latest: [String] = []
+        model.onStateChange = { if case .loaded(let values) = $0 { latest = values.map(\.billID).sorted() } }
+        model.loadNextPageIfNeeded()
+        drain()
+        XCTAssertEqual(repository.searchRequests.map { $0.1 }, [1, 2, 2])
+        XCTAssertEqual(latest, ["A", "B"])
+        XCTAssertEqual(model.currentPage, 2)
+        XCTAssertFalse(model.canLoadMore)
+    }
+
+    func testResetClearsEveryOptionAndKeepsTheQuery() {
+        var filter = BillFilter(query: "환경", dateRange: .recent(days: 30), status: .completed,
+                                committee: "환경노동", favoriteOnly: true, sortOrder: .oldest)
+        filter.resetOptions()
+        XCTAssertEqual(filter, BillFilter(query: "환경"))
+        XCTAssertEqual(filter.activeOptionCount, 0)
     }
 
     @MainActor
-    func testFilterMenuContainsFourteenUnsectionedActions() throws {
-        let search = SearchViewController()
-        let window = UIWindow(frame: CGRect(x: 0, y: 0, width: 402, height: 874))
-        window.rootViewController = UINavigationController(rootViewController: search)
-        window.tintColor = Theme.accent
-        window.makeKeyAndVisible()
-        defer { window.isHidden = true; window.rootViewController = nil }
-        search.loadViewIfNeeded()
-        search.showFilters()
-        let alert = try XCTUnwrap(search.presentedViewController as? UIAlertController)
-        XCTAssertEqual(alert.preferredStyle, .actionSheet)
-        XCTAssertEqual(alert.actions.count, 14)
-        XCTAssertEqual(alert.actions.first?.title, "전체 상태")
-        XCTAssertTrue(alert.actions.contains { $0.title == "소관 위원회 입력" })
-        XCTAssertTrue(alert.actions.contains { $0.title == "필터 초기화" })
-        XCTAssertEqual(alert.actions.first { $0.title == "필터 초기화" }?.style, .default)
-        let presented = expectation(for: NSPredicate { _, _ in !alert.isBeingPresented }, evaluatedWith: nil)
-        wait(for: [presented], timeout: 3)
-        alert.dismiss(animated: false)
+    func testPanelAppliesChoicesImmediatelyAndPreservesOtherOptions() throws {
+        func descendants(_ view: UIView) -> [UIView] { view.subviews.flatMap { [$0] + descendants($0) } }
+        let filter = BillFilter(query: "환경", status: .committee, committee: "교육", favoriteOnly: true, sortOrder: .oldest)
+        let panel = SearchFilterViewController(filter: filter)
+        panel.loadViewIfNeeded()
+        let buttons = descendants(panel.view).compactMap { $0 as? UIButton }
+        XCTAssertTrue(try XCTUnwrap(buttons.first { $0.configuration?.title == "위원회" }).accessibilityTraits.contains(.selected))
+        XCTAssertTrue(try XCTUnwrap(buttons.first { $0.configuration?.title == "오래된순" }).accessibilityTraits.contains(.selected))
+        var changes: [BillFilter] = []
+        panel.onChange = { changes.append($0) }
+        let completed = try XCTUnwrap(buttons.first { $0.configuration?.title == "완료" })
+        completed.sendActions(for: .touchUpInside)
+        XCTAssertEqual(changes.count, 1)
+        XCTAssertEqual(changes.first?.status, .completed)
+        XCTAssertEqual(changes.first?.normalizedQuery, "환경")
+        XCTAssertEqual(changes.first?.committee, "교육")
+        XCTAssertEqual(changes.first?.favoriteOnly, true)
+        XCTAssertEqual(changes.first?.sortOrder, .oldest)
+        XCTAssertTrue(completed.accessibilityTraits.contains(.selected))
+    }
+
+    func testRecentRangeIncludesTheWholeFirstDayAndExcludesEarlierDay() {
+        let now = Date()
+        let range = BillDateRange.recent(days: 30, now: now)
+        let formatter = DateFormatter()
+        formatter.dateFormat = "yyyy-MM-dd"
+        let first = Calendar.current.startOfDay(for: range.start!)
+        let previous = Calendar.current.date(byAdding: .day, value: -1, to: first)!
+        let filter = BillFilter(dateRange: range)
+        XCTAssertTrue(BillSnapshot(billID: "FIRST", age: 22, title: "A", proposedDate: formatter.string(from: first)).matches(filter: filter))
+        XCTAssertFalse(BillSnapshot(billID: "OLDER", age: 22, title: "A", proposedDate: formatter.string(from: previous)).matches(filter: filter))
     }
 }
 
@@ -712,7 +780,7 @@ private final class FilterPagingURLProtocol: URLProtocol {
         let page = URLComponents(url: request.url!, resolvingAgainstBaseURL: false)?.queryItems?.first { $0.name == "pIndex" }?.value
         var row = ["BILL_ID": page == "2" ? "QA-MATCH" : "QA-NONMATCH", "BILL_NO": "123", "BILL_NAME": "환경 법안", "PROPOSE_DT": "2026-01-01", "AGE": "22", "DETAIL_LINK": "https://example.com", "PROPOSER": "QA", "MEMBER_LIST": "QA"]
         if page == "2" { row["PROC_RESULT"] = "가결" }
-        let data = try! JSONSerialization.data(withJSONObject: ["nzmimeepazxkubdpn": [["row": [row]]]])
+        let data = try! JSONSerialization.data(withJSONObject: ["nzmimeepazxkubdpn": [["head": [["list_total_count": 101]]], ["row": [row]]]])
         client?.urlProtocol(self, didReceive: HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!, cacheStoragePolicy: .notAllowed)
         client?.urlProtocol(self, didLoad: data)
         client?.urlProtocolDidFinishLoading(self)
@@ -741,5 +809,362 @@ final class HomeDayChangeTests: XCTestCase {
         XCTAssertFalse(HomeDashboard(todayProposalCount: 0, todayProposalDate: yesterday).hasVisibleContent)
         XCTAssertFalse(HomeDashboard(todayProposalCount: 0).hasVisibleContent)
         XCTAssertTrue(HomeDashboard(todayProposalCount: 0, todayProposalDate: Date()).hasVisibleContent)
+    }
+}
+
+final class SearchPageMetadataTests: XCTestCase {
+    private var session: URLSession!
+    override func setUp() {
+        super.setUp()
+        SearchPageURLProtocol.status = 200
+        let configuration = URLSessionConfiguration.ephemeral
+        configuration.protocolClasses = [SearchPageURLProtocol.self]
+        session = URLSession(configuration: configuration)
+    }
+    override func tearDown() { session.invalidateAndCancel(); super.tearDown() }
+    private func row(_ id: String) -> [String: String] {
+        ["BILL_ID": id, "BILL_NO": "1", "BILL_NAME": "환경", "PROPOSE_DT": "2026-01-01",
+         "AGE": "22", "DETAIL_LINK": "https://example.com", "PROPOSER": "QA", "MEMBER_LIST": "QA"]
+    }
+    private func respond(rows: Int, total: Int? = nil) throws {
+        var values: [[String: Any]] = []
+        if let total { values.append(["head": [["list_total_count": total], ["RESULT": ["CODE": "INFO-000"]]]]) }
+        values.append(["row": (0..<rows).map { row("\($0)") }])
+        SearchPageURLProtocol.data = try JSONSerialization.data(withJSONObject: ["nzmimeepazxkubdpn": values])
+    }
+    private func page(_ number: Int = 1) throws -> BillRowsPage {
+        let done = expectation(description: "raw API page")
+        var received: Result<BillRowsPage, Error>?
+        OpenAssemblyAPIClient(session: session).searchPage(filter: BillFilter(query: "환경"), page: number) { received = $0; done.fulfill() }
+        wait(for: [done], timeout: 3)
+        return try XCTUnwrap(received).get()
+    }
+    func testTotalMetadataControlsPaginationBeforeClientFiltering() throws {
+        try respond(rows: 1, total: 201)
+        XCTAssertTrue(try page().hasMore)
+        XCTAssertEqual(try page().totalCount, 201)
+        XCTAssertFalse(try page(3).hasMore)
+    }
+    func testRepositoryPreservesTotalThroughSnapshotMapping() throws {
+        try respond(rows: 100, total: 312)
+        let repository = BillRepository(apiClient: OpenAssemblyAPIClient(session: session), coreDataManager: .makeInMemory())
+        let done = expectation(description: "repository total")
+        repository.searchPage(filter: BillFilter(query: "환경"), page: 1) { result in
+            do {
+                let value = try result.get()
+                XCTAssertEqual(value.totalCount, 312)
+                XCTAssertEqual(value.snapshots.count, 100)
+                XCTAssertTrue(value.hasMore)
+            } catch { XCTFail("\(error)") }
+            done.fulfill()
+        }
+        wait(for: [done], timeout: 3)
+    }
+
+    func testMissingTotalUsesRawPageSizeInsteadOfFilteredCount() throws {
+        try respond(rows: 100)
+        XCTAssertNil(try page().totalCount)
+        XCTAssertTrue(try page().hasMore)
+        try respond(rows: 1)
+        XCTAssertFalse(try page().hasMore)
+    }
+    func testNoDataResponseIsAConfirmedEmptyPage() throws {
+        SearchPageURLProtocol.data = Data(#"{"RESULT":{"CODE":"INFO-200","MESSAGE":"no data"}}"#.utf8)
+        let value = try page()
+        XCTAssertTrue(value.rows.isEmpty)
+        XCTAssertEqual(value.totalCount, 0)
+        XCTAssertFalse(value.hasMore)
+    }
+    func testServiceErrorIsNotTreatedAsNoMatches() throws {
+        SearchPageURLProtocol.data = Data(#"{"RESULT":{"CODE":"ERROR-290","MESSAGE":"invalid key"}}"#.utf8)
+        XCTAssertThrowsError(try page())
+        SearchPageURLProtocol.data = Data(#"{"nzmimeepazxkubdpn":[{"head":[{"RESULT":{"CODE":"ERROR-290"}}]}]}"#.utf8)
+        XCTAssertThrowsError(try page())
+    }
+    func testNetworkFallbackIsLabelledAndCannotBecomeAnotherPage() throws {
+        let manager = CoreDataManager.makeInMemory()
+        manager.saveSnapshots([BillSnapshot(billID: "CACHED", age: 22, title: "환경")])
+        let repository = BillRepository(apiClient: OpenAssemblyAPIClient(session: session), coreDataManager: manager)
+        SearchPageURLProtocol.status = 503
+        SearchPageURLProtocol.data = Data()
+        let first = expectation(description: "cached first page")
+        repository.searchPage(filter: BillFilter(query: "환경"), page: 1) { result in
+            do {
+                let value = try result.get()
+                XCTAssertTrue(value.isUsingCache)
+                XCTAssertFalse(value.hasMore)
+                XCTAssertEqual(value.snapshots.map(\.billID), ["CACHED"])
+            } catch { XCTFail("\(error)") }
+            first.fulfill()
+        }
+        wait(for: [first], timeout: 3)
+        let next = expectation(description: "page two must report a fetch error")
+        repository.searchPage(filter: BillFilter(query: "환경"), page: 2) { result in
+            if case .success = result { XCTFail("A cached first page cannot impersonate page two") }
+            next.fulfill()
+        }
+        wait(for: [next], timeout: 3)
+    }
+}
+
+private final class SearchPageURLProtocol: URLProtocol {
+    static var data = Data()
+    static var status = 200
+    override class func canInit(with request: URLRequest) -> Bool { true }
+    override class func canonicalRequest(for request: URLRequest) -> URLRequest { request }
+    override func startLoading() {
+        client?.urlProtocol(self, didReceive: HTTPURLResponse(url: request.url!, statusCode: Self.status, httpVersion: nil, headerFields: nil)!, cacheStoragePolicy: .notAllowed)
+        client?.urlProtocol(self, didLoad: Self.data)
+        client?.urlProtocolDidFinishLoading(self)
+    }
+    override func stopLoading() {}
+}
+
+extension SearchFilterRegressionTests {
+    func testMultipleFilteredEmptyPagesContinueWithoutAScroll() {
+        let repository = MockBillRepository(dashboardResult: .success(HomeDashboard()))
+        repository.pageOverrides[1] = .success(BillSearchPage(snapshots: [], hasMore: true))
+        repository.pageOverrides[2] = .success(BillSearchPage(snapshots: [], hasMore: true))
+        repository.pageOverrides[3] = .success(BillSearchPage(snapshots: [BillSnapshot(billID: "FOUND", age: 22, title: "환경")], hasMore: false))
+        let model = SearchViewModel(repository: repository)
+        let done = expectation(description: "third page match")
+        model.onStateChange = { if case .loaded(let values) = $0 {
+            XCTAssertEqual(values.map(\.billID), ["FOUND"])
+            done.fulfill()
+        } }
+        model.search(query: "환경")
+        wait(for: [done], timeout: 3)
+        XCTAssertEqual(repository.searchRequests.map { $0.1 }, [1, 2, 3])
+    }
+
+    func testFinalEmptyPageEndsTheSearchOnlyOnce() {
+        let repository = MockBillRepository(dashboardResult: .success(HomeDashboard()))
+        repository.pageOverrides[1] = .success(BillSearchPage(snapshots: [], hasMore: true))
+        repository.pageOverrides[2] = .success(BillSearchPage(snapshots: [], hasMore: false))
+        let model = SearchViewModel(repository: repository)
+        let done = expectation(description: "confirmed no matches")
+        model.onStateChange = { if case .empty = $0 { done.fulfill() } }
+        model.search(query: "환경")
+        wait(for: [done], timeout: 3)
+        XCTAssertFalse(model.canLoadMore)
+        model.loadNextPageIfNeeded()
+        XCTAssertEqual(repository.searchRequests.count, 2)
+    }
+
+    func testPagesDeduplicateAndSortTheAccumulatedResults() {
+        let repository = MockBillRepository(dashboardResult: .success(HomeDashboard()))
+        let a = BillSnapshot(billID: "A", age: 22, title: "환경", proposedDate: "2026-03-01")
+        let b = BillSnapshot(billID: "B", age: 22, title: "환경", proposedDate: "2026-01-01")
+        repository.pageOverrides[1] = .success(BillSearchPage(snapshots: [a], hasMore: true))
+        repository.pageOverrides[2] = .success(BillSearchPage(snapshots: [a, b], hasMore: false))
+        let model = SearchViewModel(repository: repository)
+        model.updateFilter(BillFilter(query: "환경", sortOrder: .oldest))
+        let done = expectation(description: "deduplicated sorted pages")
+        model.onStateChange = { if case .loaded(let values) = $0 {
+            if values.count == 1 { model.loadNextPageIfNeeded() }
+            else { XCTAssertEqual(values.map(\.billID), ["B", "A"]); done.fulfill() }
+        } }
+        model.search()
+        wait(for: [done], timeout: 3)
+    }
+}
+
+private final class MockSearchRequest: SearchRequestCancelling {
+    private(set) var cancelled = false
+    func cancel() { cancelled = true }
+}
+
+extension SearchFilterRegressionTests {
+    func testSupersededAndClearedRequestsAreCancelled() {
+        let repository = MockBillRepository(dashboardResult: .success(HomeDashboard()))
+        repository.holdSearch = true
+        let model = SearchViewModel(repository: repository)
+        model.search(query: "이전")
+        model.search(query: "현재")
+        XCTAssertTrue(repository.requestHandles[0].cancelled)
+        XCTAssertFalse(repository.requestHandles[1].cancelled)
+        model.clearResults()
+        XCTAssertTrue(repository.requestHandles[1].cancelled)
+    }
+}
+
+extension SearchFilterRegressionTests {
+    @MainActor
+    func testFilterButtonAndPanelChoicesKeepAccessibleTouchTargets() throws {
+        func descendants(_ view: UIView) -> [UIView] { view.subviews.flatMap { [$0] + descendants($0) } }
+        let view = SearchView(frame: CGRect(x: 0, y: 0, width: 320, height: 568))
+        view.updateFilterSummary(BillFilter())
+        view.layoutIfNeeded()
+        let button = try XCTUnwrap(descendants(view).first { $0.accessibilityIdentifier == "search-filter-button" } as? UIButton)
+        XCTAssertGreaterThanOrEqual(button.bounds.height, 44)
+        XCTAssertEqual(button.configuration?.title, "필터")
+        for width: CGFloat in [288, 340] {
+            let panel = SearchFilterViewController(filter: BillFilter())
+            panel.loadViewIfNeeded()
+            panel.sizeToFit(width: width, maximumHeight: 400)
+            panel.view.frame = CGRect(origin: .zero, size: panel.preferredContentSize)
+            panel.view.layoutIfNeeded()
+            XCTAssertLessThanOrEqual(panel.preferredContentSize.height, 400)
+            for option in descendants(panel.view).compactMap({ $0 as? UIButton }).filter({ $0.configuration != nil }) {
+                XCTAssertGreaterThanOrEqual(option.bounds.height, 44)
+                XCTAssertTrue(panel.view.bounds.contains(option.convert(option.bounds, to: panel.view).origin))
+            }
+        }
+    }
+
+    @MainActor
+    func testPanelCommitteeEditingAndResetPublishWithoutAnotherScreen() throws {
+        func descendants(_ view: UIView) -> [UIView] { view.subviews.flatMap { [$0] + descendants($0) } }
+        let panel = SearchFilterViewController(filter: BillFilter(query: "환경", status: .committee, favoriteOnly: true))
+        panel.loadViewIfNeeded()
+        let field = try XCTUnwrap(descendants(panel.view).first { $0.accessibilityIdentifier == "filter-committee" } as? UITextField)
+        var changes: [BillFilter] = []
+        panel.onChange = { changes.append($0) }
+        field.text = " 교육 "
+        panel.textFieldDidEndEditing(field)
+        XCTAssertEqual(changes.last?.committee, "교육")
+        let reset = try XCTUnwrap(descendants(panel.view).first { $0.accessibilityIdentifier == "filter-reset" } as? UIButton)
+        reset.sendActions(for: .touchUpInside)
+        XCTAssertEqual(changes.last, BillFilter(query: "환경"))
+        XCTAssertTrue(field.text?.isEmpty ?? true)
+        XCTAssertFalse(reset.isEnabled)
+    }
+}
+
+final class SearchTotalCountTests: XCTestCase {
+    private func drain() {
+        let done = expectation(description: "main queue")
+        DispatchQueue.main.async { done.fulfill() }
+        wait(for: [done], timeout: 2)
+    }
+
+    func testServerTotalStaysStableAcrossPagesAndResetsForNewSearch() {
+        let repository = MockBillRepository(dashboardResult: .success(HomeDashboard()))
+        repository.pageOverrides[1] = .success(BillSearchPage(snapshots: [BillSnapshot(billID: "A", age: 22, title: "환경")], hasMore: true, totalCount: 312))
+        repository.pageOverrides[2] = .success(BillSearchPage(snapshots: [BillSnapshot(billID: "B", age: 22, title: "환경")], hasMore: true, totalCount: 312))
+        let model = SearchViewModel(repository: repository)
+        model.search(query: "환경")
+        drain()
+        XCTAssertEqual(model.totalCount, 312)
+        model.loadNextPageIfNeeded()
+        drain()
+        XCTAssertEqual(model.totalCount, 312)
+        model.clearResults()
+        XCTAssertNil(model.totalCount)
+        repository.holdSearch = true
+        repository.pageOverrides = [:]
+        model.search(query: "교육")
+        XCTAssertNil(model.totalCount)
+    }
+
+    func testLocalFilterDoesNotExposeUnfilteredServerTotal() {
+        let repository = MockBillRepository(dashboardResult: .success(HomeDashboard()))
+        repository.pageOverrides[1] = .success(BillSearchPage(snapshots: [BillSnapshot(billID: "A", age: 22, title: "환경")], hasMore: true, totalCount: 312))
+        repository.pageOverrides[2] = .success(BillSearchPage(snapshots: [], hasMore: false, totalCount: 312))
+        let model = SearchViewModel(repository: repository)
+        model.updateFilter(BillFilter(query: "환경", favoriteOnly: true))
+        model.search()
+        drain()
+        XCTAssertNil(model.totalCount)
+        model.loadNextPageIfNeeded()
+        drain()
+        XCTAssertEqual(model.totalCount, 1)
+    }
+
+    func testCacheFallbackNeverClaimsAConfirmedTotal() {
+        let repository = MockBillRepository(dashboardResult: .success(HomeDashboard()))
+        repository.pageOverrides[1] = .success(BillSearchPage(snapshots: [BillSnapshot(billID: "A", age: 22, title: "환경")], hasMore: false, isUsingCache: true))
+        let model = SearchViewModel(repository: repository)
+        model.search(query: "환경")
+        drain()
+        XCTAssertNil(model.totalCount)
+        XCTAssertTrue(model.isUsingCache)
+    }
+}
+
+private final class FavoritesStateRepository: FavoritesRepositoryProtocol {
+    var snapshots = [BillSnapshot(billID: "CACHED", age: 22, title: "환경", isFavorite: true)]
+    var result: Result<[BillSnapshot], Error> = .failure(URLError(.notConnectedToInternet))
+    func favoriteSnapshots() -> [BillSnapshot] { snapshots }
+    func refreshFavoriteSnapshots(completion: @escaping (Result<[BillSnapshot], Error>) -> Void) { completion(result) }
+    func toggleFavorite(id: String, completion: @escaping (Result<BillSnapshot, Error>) -> Void) {}
+    func markStageSeen(id: String) {}
+}
+
+final class FavoritesRefreshStateTests: XCTestCase {
+    private func drain() {
+        let done = expectation(description: "main queue")
+        DispatchQueue.main.async { done.fulfill() }
+        wait(for: [done], timeout: 2)
+    }
+
+    func testFailedRefreshKeepsCachedBillsAndWarningUntilSuccessfulRefresh() {
+        let repository = FavoritesStateRepository()
+        let model = FavoritesViewModel(repository: repository)
+        var cachedCount = 0
+        var loadedCount = 0
+        model.onStateChange = {
+            if case .cached(let sections, let warning) = $0 {
+                XCTAssertEqual(sections.flatMap(\.snapshots).map(\.billID), ["CACHED"])
+                XCTAssertFalse(warning.isEmpty)
+                cachedCount += 1
+            }
+            if case .loaded = $0 { loadedCount += 1 }
+        }
+        model.load(refresh: true)
+        drain()
+        XCTAssertEqual(cachedCount, 1)
+        XCTAssertEqual(loadedCount, 0)
+        model.load(refresh: false)
+        drain()
+        XCTAssertEqual(cachedCount, 2, "Returning from detail must preserve the failed refresh warning")
+        repository.result = .success(repository.snapshots)
+        model.load(refresh: true)
+        drain()
+        XCTAssertEqual(loadedCount, 1)
+        model.load(refresh: false)
+        drain()
+        XCTAssertEqual(loadedCount, 2)
+    }
+
+    func testFailureWithoutCacheEmitsError() {
+        let repository = FavoritesStateRepository()
+        repository.snapshots = []
+        let model = FavoritesViewModel(repository: repository)
+        var failed = false
+        model.onStateChange = { if case .error = $0 { failed = true } }
+        model.load(refresh: true)
+        drain()
+        XCTAssertTrue(failed)
+    }
+}
+
+@MainActor
+final class ResultFreshnessRenderingTests: XCTestCase {
+    private func labels(in view: UIView) -> [UILabel] {
+        view.subviews.flatMap { child in (child as? UILabel).map { [$0] } ?? labels(in: child) }
+    }
+
+    func testSearchCountDistinguishesTotalLoadedAndCached() {
+        let view = SearchView()
+        view.updateResultCount(100, total: 312)
+        XCTAssertTrue(labels(in: view).contains { $0.text == "전체 312건" && !$0.isHidden })
+        view.updateResultCount(100)
+        XCTAssertTrue(labels(in: view).contains { $0.text == "불러온 100건" && !$0.isHidden })
+        view.updateResultCount(3, isUsingCache: true)
+        XCTAssertTrue(labels(in: view).contains { $0.text == "저장된 3건" && !$0.isHidden })
+    }
+
+    func testFavoritesHeaderKeepsWarningBesideTrackedStatusAndClearsOnRecovery() throws {
+        let header = TrackingHeaderView()
+        let snapshots = [BillSnapshot(billID: "A", age: 22, title: "환경", isFavorite: true)]
+        header.configure(with: snapshots, warning: "새로고침하지 못해 저장된 정보를 표시합니다.")
+        let warning = try XCTUnwrap(labels(in: header).first { $0.accessibilityIdentifier == "favoritesRefreshWarning" })
+        XCTAssertFalse(warning.isHidden)
+        XCTAssertEqual(warning.numberOfLines, 0)
+        XCTAssertTrue(labels(in: header).contains { $0.text == "확인하지 않은 단계 변경이 없습니다" })
+        header.configure(with: snapshots, warning: nil)
+        XCTAssertTrue(warning.isHidden)
+        XCTAssertNil(warning.text)
     }
 }

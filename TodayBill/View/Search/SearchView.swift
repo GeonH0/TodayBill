@@ -11,8 +11,8 @@ import UIKit
 protocol SearchViewDelegate: AnyObject {
     func deleteAll()
     func didSelectSearchTerm(_ term: String) // 검색어 선택
+    func showFilters(from sourceView: UIView)
     func retrySearch()
-    func showFilters()
 }
 
 final class SearchView: UIView {
@@ -24,7 +24,7 @@ final class SearchView: UIView {
         searchbar.barTintColor = Theme.backgroundColor
         searchbar.isTranslucent = false
         searchbar.backgroundImage = UIImage()
-        searchbar.placeholder = "법안명 또는 키워드 검색"
+        searchbar.placeholder = "법안명 검색"
         searchbar.searchTextField.accessibilityLabel = "법안 검색"
         searchbar.searchTextField.backgroundColor = Theme.cellBackgroundColor
         searchbar.searchTextField.font = UIFont.systemFont(ofSize: 16, weight: .semibold)
@@ -71,7 +71,7 @@ final class SearchView: UIView {
             systemName: "chevron.down",
             withConfiguration: UIImage.SymbolConfiguration(pointSize: 10, weight: .bold)
         )
-        config.title = "최신순"
+        config.title = "필터"
         config.imagePlacement = .trailing
         config.imagePadding = 5
         config.baseForegroundColor = Theme.textMuted
@@ -82,10 +82,14 @@ final class SearchView: UIView {
             return outgoing
         }
         button.configuration = config
-        button.addAction(UIAction(handler: { [weak self] _ in
-            self?.delegate?.showFilters()
-        }), for: .touchUpInside)
+        button.addAction(UIAction { [weak self] _ in
+            guard let self else { return }
+            self.searchBar.resignFirstResponder()
+            self.delegate?.showFilters(from: self.filterButton)
+        }, for: .touchUpInside)
         button.accessibilityLabel = "검색 필터"
+        button.accessibilityIdentifier = "search-filter-button"
+        button.heightAnchor.constraint(greaterThanOrEqualToConstant: 44).isActive = true
         return button
     }()
 
@@ -103,6 +107,15 @@ final class SearchView: UIView {
         label.font = UIFont.systemFont(ofSize: 14, weight: .heavy)
         label.textColor = Theme.accent
         label.isHidden = true
+        return label
+    }()
+
+    private let filterSummaryLabel: UILabel = {
+        let label = UILabel()
+        label.numberOfLines = 0
+        label.font = .preferredFont(forTextStyle: .caption1)
+        label.adjustsFontForContentSizeCategory = true
+        label.textColor = Theme.textMuted
         return label
     }()
 
@@ -212,7 +225,7 @@ final class SearchView: UIView {
     weak var delegate: SearchViewDelegate?
 
     var resultsTopAnchor: NSLayoutYAxisAnchor {
-        filterStackView.bottomAnchor
+        filterSummaryLabel.bottomAnchor
     }
 
     // MARK: - Initializer
@@ -234,17 +247,23 @@ final class SearchView: UIView {
         self.recentSearches = searches
     }
 
-    func updateFilterSummary(_ summary: String) {
-        filterButton.configuration?.title = summary
-        // 명시적 accessibilityLabel이 버튼 제목을 가리므로, 바뀐 요약을 직접 넣어준다.
-        filterButton.accessibilityLabel = "검색 필터, \(summary)"
+    func updateFilterSummary(_ filter: BillFilter) {
+        var config = filterButton.configuration
+        config?.title = filter.activeOptionCount == 0 ? "필터" : "필터 \(filter.activeOptionCount)"
+        filterButton.configuration = config
+        filterButton.accessibilityValue = filter.activeSummary
+        filterSummaryLabel.text = filter.activeOptionCount == 0 ? nil : filter.activeSummary
     }
 
-    /// Shows "검색 결과 24" beside the sort chip; `nil` hides the pair while idle.
-    func updateResultCount(_ count: Int?) {
+
+    func updateResultCount(_ count: Int?, total: Int? = nil, isUsingCache: Bool = false) {
         resultTitleLabel.isHidden = count == nil
         resultCountLabel.isHidden = count == nil
-        resultCountLabel.text = count.map { "\($0)" }
+        resultCountLabel.text = count.map { loaded in
+            if isUsingCache { return "저장된 \(loaded)건" }
+            if let total { return "전체 \(total)건" }
+            return "불러온 \(loaded)건"
+        }
     }
 
     // MARK: - Private Setup Methods
@@ -257,6 +276,7 @@ final class SearchView: UIView {
     private func addSubviews() {
         addSubview(searchBar)
         addSubview(filterStackView)
+        addSubview(filterSummaryLabel)
         addSubview(keywordScrollView)
         addSubview(allDeleteButton)
         addSubview(recentTitleLabel)
@@ -276,6 +296,7 @@ final class SearchView: UIView {
 
     private func setupConstraints() {
         searchBar.translatesAutoresizingMaskIntoConstraints = false
+        filterSummaryLabel.translatesAutoresizingMaskIntoConstraints = false
         filterStackView.translatesAutoresizingMaskIntoConstraints = false
         keywordScrollView.translatesAutoresizingMaskIntoConstraints = false
         keywordStackView.translatesAutoresizingMaskIntoConstraints = false
@@ -294,10 +315,13 @@ final class SearchView: UIView {
             filterStackView.topAnchor.constraint(equalTo: searchBar.bottomAnchor, constant: 4),
             filterStackView.leadingAnchor.constraint(equalTo: leadingAnchor, constant: Theme.Spacing.screenHorizontal),
             filterStackView.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -Theme.Spacing.screenHorizontal),
-            filterStackView.heightAnchor.constraint(equalToConstant: 40),
+            filterStackView.heightAnchor.constraint(greaterThanOrEqualToConstant: 44),
+            filterSummaryLabel.topAnchor.constraint(equalTo: filterStackView.bottomAnchor, constant: 2),
+            filterSummaryLabel.leadingAnchor.constraint(equalTo: filterStackView.leadingAnchor),
+            filterSummaryLabel.trailingAnchor.constraint(equalTo: filterStackView.trailingAnchor),
             
             // Keyword Scroll View
-            keywordScrollView.topAnchor.constraint(equalTo: filterStackView.bottomAnchor, constant: 8),
+            keywordScrollView.topAnchor.constraint(equalTo: filterSummaryLabel.bottomAnchor, constant: 8),
             keywordScrollView.leadingAnchor.constraint(equalTo: leadingAnchor, constant: Theme.Spacing.screenHorizontal),
             keywordScrollView.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -Theme.Spacing.screenHorizontal),
             keywordScrollView.heightAnchor.constraint(equalToConstant: 40),

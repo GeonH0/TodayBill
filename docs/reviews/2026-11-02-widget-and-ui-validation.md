@@ -17,7 +17,7 @@ Coverage includes persistence/corruption/write failure, row ordering and limits,
 
 API fixtures exercise the real API client → Repository → dashboard → widget update path. A 14-proposal response keeps the widget count at 14 while the dashboard preview remains limited to 10. Empty successful responses confirm zero; offline/unverified responses remain unknown. A law-section failure does not invalidate a separately successful proposal fetch.
 
-`SearchFilterInspectionTests` still contains three diagnostic tests that assert observed incorrect behavior and a menu-structure test. Their passing result does **not** establish correct search behavior. Conversion to desired-behavior assertions belongs to the separate filter plan.
+At the widget merge, `SearchFilterInspectionTests` contained diagnostic assertions of incorrect search behavior; their passing result did not establish correct behavior. The subsequent `codex/search-filter-improvements` branch replaces them with `SearchFilterRegressionTests` and API pagination tests. See [the search validation record](2026-11-02-search-filter-validation.md) for that branch’s separate scope and results.
 
 ## Review fixes
 
@@ -68,6 +68,8 @@ Final full suite: **119 passed, 0 expected failures, 0 failures, 0 skipped**. Th
 Full suite after this change: **120 passed, 0 expected failures, 0 failures, 0 skipped**. Notification registration has already succeeded at this failure point; propagating the error does not retract an already delivered notification or guarantee exactly-once delivery across registration and history persistence.
 
 ## Search-filter follow-up
+
+These were the defects identified during widget work. They are now implemented and tested on the separate search-filter branch; that branch still needs review before develop integration.
 
 - Reset omits the committee filter.
 - An in-flight search drops new filter requests.
